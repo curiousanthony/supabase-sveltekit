@@ -8,6 +8,7 @@
 <Card>
 	<CardHeader>Login to the site!</CardHeader>
 	<CardContent>
-		<Button href="/auth/login/github">Sign in with GitHub</Button>
+		<Button href="/auth/login/google" variant="default">Sign in with Google</Button>
+		<Button href="/auth/login/github" variant="secondary">Sign in with GitHub</Button>
 	</CardContent>
 </Card>
