@@ -9,27 +9,29 @@
 	import Label from '$lib/components/ui/label/label.svelte';
 
 	const { data } = $props();
+	const { user } = $derived(data);
 
-	const { userProfile } = $derived(data);
+	//const { userProfile } = $derived(data);
 
 	// $inspect(data.user);
 	// $inspect(user);
 
-	let firstName = $state('');
-	let lastName = $state('');
-	let email = $state('');
+	// let firstName = $state('');
+	// let lastName = $state('');
+	// let email = $state('');
 
-	$effect(() => {
-		if (userProfile) {
-			firstName = userProfile.firstName;
-			lastName = userProfile.lastName;
-			email = userProfile.email;
-		}
-	});
+	// $effect(() => {
+	// 	if (userProfile) {
+	// 		firstName = userProfile.firstName;
+	// 		lastName = userProfile.lastName;
+	// 		email = userProfile.email;
+	// 	}
+	// });
 </script>
 
-{#if userProfile}
+{#if user}
 	<!-- <span>You are logged in {user.user_metadata.name}!</span> -->
+	<h3>User data: {JSON.stringify(user, null, 2)}</h3>
 	<Card>
 		<CardHeader>
 			<h1 class="text-2xl font-bold">Hello</h1>
@@ -39,7 +41,7 @@
 		</CardContent>
 	</Card>
 
-	<Card>
+	<!-- <Card>
 		<CardHeader>
 			<h3>Manage your profile</h3>
 		</CardHeader>
@@ -78,7 +80,7 @@
 				<Button type="submit">Submit</Button>
 			</form>
 		</CardContent>
-	</Card>
+	</Card> -->
 
 	<Card>
 		<CardHeader>

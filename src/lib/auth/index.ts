@@ -7,13 +7,15 @@ export const getOrCreateUserProfile = async(locals: App.Locals) => {
 
     const {user} = await locals.safeGetSession()
 
-    // console.log(user?.user_metadata)
+    console.log("User data:", user)
 
     if (!user) {
         return null
     }
 
-    const curProfile = await db.query.profileTable.findFirst({
+    return user
+
+    /*const curProfile = await db.query.profileTable.findFirst({
         where: eq(profileTable.id, user.id)
     })
 
@@ -38,5 +40,5 @@ export const getOrCreateUserProfile = async(locals: App.Locals) => {
         error(500, "Could not create profile")
     }
 
-    return newProfile;
+    return newProfile;*/
 }
