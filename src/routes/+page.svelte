@@ -49,9 +49,13 @@
 				<!-- <img src={user.user_metadata.avatar_url} alt="Profile picture" class="rounded-full h-" /> -->
 			{/if}
 			<p class="text-muted-foreground">
-				You are logged in with <span class="capitalize">{user.app_metadata.provider}</span> as
+				You are logged in with <span class="font-semibold capitalize"
+					>{user.app_metadata.provider}</span
+				>
+				as
 				<span>{user.email}</span>
 			</p>
+			<Button href="/auth/logout" class="mt-4" variant="secondary">Logout</Button>
 		</CardContent>
 	</Card>
 
@@ -95,15 +99,6 @@
 			</form>
 		</CardContent>
 	</Card> -->
-
-	<Card>
-		<CardHeader>
-			<h3>Logout</h3>
-		</CardHeader>
-		<CardContent>
-			<Button href="/auth/logout">Logout</Button>
-		</CardContent>
-	</Card>
 
 	{#if debug}
 		<pre>auth/index.ts → User data ↓

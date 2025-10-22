@@ -148,9 +148,11 @@
 			<Sidebar.MenuItem>
 				<Sidebar.MenuButton class="data-[slot=sidebar-menu-button]:p-1.5!">
 					{#snippet child({ props })}
-						<a href="##" {...props}>
-							<InnerShadowTopIcon class="size-5!" />
-							<span class="text-base font-semibold">{appInfo.name}</span>
+						<a href="/" {...props} class="flex flex-col items-start">
+							<!-- <InnerShadowTopIcon class="size-5!" /> -->
+							<img src={appInfo.logo} alt={appInfo.name} class="h-6" />
+							<span class="text-xl font-bold text-[#EE2B47]">Manager</span>
+							<!-- <span class="text-base font-semibold">{appInfo.name}</span> -->
 						</a>
 					{/snippet}
 				</Sidebar.MenuButton>
