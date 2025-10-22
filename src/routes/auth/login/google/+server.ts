@@ -9,7 +9,7 @@ export const GET = async ({ locals: {supabase}, url }) => {
       })
   
     if (data?.url) {
-        console.log('Redirecting to: ', data.url)
+        // console.log('Redirecting to: ', data.url)
         throw redirect(307,  data.url)
     }
   

@@ -1,13 +1,13 @@
-import { db } from "$lib/db"
-import { profileTable } from "$lib/db/schema"
-import { error } from "@sveltejs/kit"
-import { eq } from "drizzle-orm"
+// import { db } from "$lib/db"
+// import { profileTable } from "$lib/db/schema"
+// import { error } from "@sveltejs/kit"
+// import { eq } from "drizzle-orm"
 
 export const getOrCreateUserProfile = async(locals: App.Locals) => {
 
     const {user} = await locals.safeGetSession()
 
-    console.log("User data:", user)
+    // console.log("auth/index.ts → User data ↓", user)
 
     if (!user) {
         return null
