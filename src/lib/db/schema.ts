@@ -11,3 +11,11 @@ export const profileTable = pgTable("profile", {
     updated_at: timestamp("updated_at").notNull().defaultNow()
     */
 })
+
+/*
+Users
+Learning centers
+Roles
+User Roles
+User Type
+*/
