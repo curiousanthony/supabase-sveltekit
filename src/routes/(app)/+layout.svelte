@@ -19,7 +19,7 @@
 	<main class="flex w-full flex-col bg-background">
 		<SiteHeader {pageName} />
 		<div class="flex flex-col gap-4 p-4">
-			{@render children?.({ pageName })}
+			{@render children?.()}
 		</div>
 	</main>
 </Sidebar.Provider>

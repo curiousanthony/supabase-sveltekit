@@ -2,14 +2,9 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	let { pageName } = $derived(data);
 </script>
 
 <svelte:head>
-	<title>Contacts</title>
+	<title>{pageName}</title>
 </svelte:head>
-
-<!-- <h1>Contacts</h1> -->
-<!-- 
-<pre>
-	{JSON.stringify(data, null, 2)}
-</pre> -->

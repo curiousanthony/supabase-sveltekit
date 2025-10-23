@@ -10,7 +10,7 @@
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 
 	const { data } = $props();
-	const { user } = $derived(data);
+	const { user, pageName } = $derived(data);
 
 	//const { userProfile } = $derived(data);
 
@@ -31,6 +31,10 @@
 
 	const debug = false;
 </script>
+
+<svelte:head>
+	<title>{pageName}</title>
+</svelte:head>
 
 {#if user}
 	<!-- <span>You are logged in {user.user_metadata.name}!</span> -->
