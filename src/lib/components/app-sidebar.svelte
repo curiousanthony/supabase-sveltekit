@@ -37,6 +37,8 @@
 	import History from '@tabler/icons-svelte/icons/history';
 	import AddressBook from '@tabler/icons-svelte/icons/address-book';
 
+	import { sitemap } from '$lib/settings/config';
+
 	const data = {
 		user: {
 			name: 'Anthony Russo',
@@ -204,7 +206,8 @@
 		</Sidebar.Menu>
 	</Sidebar.Header>
 	<Sidebar.Content>
-		<NavMain items={data.navMain} />
+		<NavMain items={sitemap} />
+		<!-- <NavMain items={data.navMain} /> -->
 		<!-- <NavDocuments items={data.documents} /> -->
 		<NavSecondary items={data.navSecondary} class="mt-auto" />
 	</Sidebar.Content>

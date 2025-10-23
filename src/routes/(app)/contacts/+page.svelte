@@ -8,7 +8,7 @@
 	<title>Contacts</title>
 </svelte:head>
 
-<h1>Contacts</h1>
+<!-- <h1>Contacts</h1> -->
 <!-- 
 <pre>
 	{JSON.stringify(data, null, 2)}

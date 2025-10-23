@@ -10,6 +10,7 @@ import HeartHandshake from '@tabler/icons-svelte/icons/heart-handshake'
 import Books from '@tabler/icons-svelte/icons/books'
 import ThumbUp from '@tabler/icons-svelte/icons/thumb-up'
 import Tool from '@tabler/icons-svelte/icons/tool'
+import History from '@tabler/icons-svelte/icons/history'
 
 export const appInfo = {
 	"name": "Mentore Manager",
@@ -19,32 +20,6 @@ export const appInfo = {
 	"favicon": favicon
 }
 
-// export const sitemap = [
-// 	{
-// 		label: "Boîte de réception",
-// 		path: "/inbox",
-// 	},
-// 	{
-// 		label: "Tableau de bord",
-// 		path: "/",
-// 	},
-// 	{
-// 		label: "Messagerie",
-// 		path: "/messagerie",
-// 	},
-// 	{
-// 		label: "Contacts",
-// 		path: "/contacts",
-// 	},
-// 	{
-// 		label: "Connexion",
-// 		path: "/auth/login",
-// 	},
-// 	{
-// 		label: "Inscription",
-// 		path: "/auth/signup",
-// 	}
-// ]
 
 export const sitemap = [
 	{
@@ -103,3 +78,8 @@ export const sitemap = [
 		icon: History
 	}
 ]
+
+export default {
+	appInfo,
+	sitemap
+}

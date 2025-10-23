@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import { sitemap } from '$lib/settings/config';
 
-	let { pageName = 'Default Page name' } = $props();
+	let { pageName = 'Default Page Name' } = $props();
 </script>
 
 <header
@@ -13,7 +15,7 @@
 		<Sidebar.Trigger class="-ml-1" />
 		<Separator orientation="vertical" class="mx-2 data-[orientation=vertical]:h-4" />
 		<h1 class="text-base font-medium">{pageName}</h1>
-		<div class="ml-auto flex items-center gap-2">
+		<!-- <div class="ml-auto flex items-center gap-2">
 			<Button
 				href="https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard"
 				variant="ghost"
@@ -24,6 +26,6 @@
 			>
 				GitHub
 			</Button>
-		</div>
+		</div> -->
 	</div>
 </header>

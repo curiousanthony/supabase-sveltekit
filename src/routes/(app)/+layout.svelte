@@ -2,8 +2,14 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import AppSidebar from '$lib/components/app-sidebar.svelte';
 	import SiteHeader from '$lib/components/site-header.svelte';
+	import { sitemap } from '$lib/settings/config';
+	import { page } from '$app/state';
 
 	let { data, children } = $props();
+
+	let pageName = $derived(
+		sitemap.find((item) => item.url === page.url.pathname)?.title || 'Default Page name'
+	);
 </script>
 
 <Sidebar.Provider
@@ -11,9 +17,9 @@
 >
 	<AppSidebar variant="inset" />
 	<main class="flex w-full flex-col bg-background">
-		<SiteHeader />
+		<SiteHeader {pageName} />
 		<div class="flex flex-col gap-4 p-4">
-			{@render children?.()}
+			{@render children?.({ pageName })}
 		</div>
 	</main>
 </Sidebar.Provider>

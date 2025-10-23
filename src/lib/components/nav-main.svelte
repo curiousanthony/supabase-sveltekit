@@ -5,6 +5,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import type { Icon } from '@tabler/icons-svelte';
 	import { page } from '$app/state';
+	import Plus from '@tabler/icons-svelte/icons/plus';
 
 	let { items }: { items: { title: string; url: string; icon?: Icon }[] } = $props();
 </script>
@@ -17,8 +18,9 @@
 					class="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
 					tooltipContent="Nouveau"
 				>
-					<CirclePlusFilledIcon />
-					<span>Nouveau</span>
+					<!-- <CirclePlusFilledIcon /> -->
+					<Plus class="h-4 w-4" stroke={3} />
+					<span class="font-semibold">Nouveau</span>
 				</Sidebar.MenuButton>
 				<!-- <Button
 					size="icon"
@@ -35,7 +37,7 @@
 				<Sidebar.MenuItem>
 					<Sidebar.MenuButton tooltipContent={item.title} isActive={page.url.pathname === item.url}>
 						{#if item.url}
-							<a href={item.url} class="flex items-center gap-2">
+							<a href={item.url} class="flex w-full items-center gap-2">
 								{#if item.icon}
 									<item.icon />
 								{/if}
