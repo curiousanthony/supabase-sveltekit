@@ -7,6 +7,8 @@
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import Settings from '@tabler/icons-svelte/icons/settings';
+	import ArrowUp from '@tabler/icons-svelte/icons/arrow-up';
 
 	let { user }: { user: { name: string; email: string; avatar: string } } = $props();
 
@@ -60,17 +62,25 @@
 				<DropdownMenu.Separator />
 				<DropdownMenu.Group>
 					<DropdownMenu.Item>
-						<UserCircleIcon />
-						Account
+						<ArrowUp />
+						Passer au plan supérieur
 					</DropdownMenu.Item>
-					<DropdownMenu.Item>
+					<!-- <DropdownMenu.Item>
+						<UserCircleIcon />
+						Mon compte
+					</DropdownMenu.Item> -->
+					<!-- <DropdownMenu.Item>
 						<CreditCardIcon />
 						Billing
-					</DropdownMenu.Item>
+					</DropdownMenu.Item> -->
 					<DropdownMenu.Item>
+						<Settings />
+						Paramètres
+					</DropdownMenu.Item>
+					<!-- <DropdownMenu.Item>
 						<NotificationIcon />
 						Notifications
-					</DropdownMenu.Item>
+					</DropdownMenu.Item> -->
 				</DropdownMenu.Group>
 				<DropdownMenu.Separator />
 				<DropdownMenu.Item
@@ -79,7 +89,7 @@
 					}}
 				>
 					<LogoutIcon />
-					Log out
+					Se déconnecter
 				</DropdownMenu.Item>
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>

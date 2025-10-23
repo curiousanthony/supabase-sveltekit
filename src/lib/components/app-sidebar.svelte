@@ -151,21 +151,21 @@
 			}
 		],
 		navSecondary: [
+			// {
+			// 	title: 'Settings',
+			// 	url: '#',
+			// 	icon: SettingsIcon
+			// },
 			{
-				title: 'Settings',
-				url: '#',
-				icon: SettingsIcon
-			},
-			{
-				title: 'Get Help',
-				url: '#',
+				title: "Demander de l'aide",
+				url: 'mailto:support@mentore.fr',
 				icon: HelpIcon
-			},
-			{
-				title: 'Search',
-				url: '#',
-				icon: SearchIcon
 			}
+			// {
+			// 	title: 'Search',
+			// 	url: '#',
+			// 	icon: SearchIcon
+			// }
 		],
 		documents: [
 			{
