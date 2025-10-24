@@ -7,5 +7,6 @@ export const load = (async () => {
             asc(users.firstName)
         ]
     });
+    console.log("from crud/+page.server.ts → users:\n", users);
     return {users};
 }) satisfies PageServerLoad;
