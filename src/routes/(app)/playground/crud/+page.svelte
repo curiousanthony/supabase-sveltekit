@@ -4,7 +4,7 @@
 	let { data }: PageProps = $props();
 	let { pageName, users } = $derived(data);
 
-	$inspect(users).with(console.trace);
+	$inspect(users);
 </script>
 
 <svelte:head>
