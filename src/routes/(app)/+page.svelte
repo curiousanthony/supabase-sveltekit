@@ -40,6 +40,7 @@
 	<!-- <span>You are logged in {user.user_metadata.name}!</span> -->
 	<!-- <Button href="/dashboard">Tableau de bord</Button>
 	<Button href="/auth/login">Connexion</Button> -->
+	<Button href="/playground/crud">Playground CRUD</Button>
 
 	<Card>
 		<CardHeader>
