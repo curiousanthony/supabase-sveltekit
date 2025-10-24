@@ -15,7 +15,7 @@
 <Sidebar.Provider
 	style="--sidebar-width: calc(var(--spacing) * 72); --header-height: calc(var(--spacing) * 16);"
 >
-	<AppSidebar variant="inset" />
+	<AppSidebar variant="inset" userObject={data?.user} />
 	<main class="flex w-full flex-col bg-background">
 		<SiteHeader {pageName} />
 		<div class="flex flex-col gap-4 p-4">

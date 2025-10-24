@@ -29,7 +29,7 @@
 	// 	}
 	// });
 
-	const debug = false;
+	const debug = true;
 </script>
 
 <svelte:head>

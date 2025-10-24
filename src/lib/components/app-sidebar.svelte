@@ -38,12 +38,26 @@
 	import AddressBook from '@tabler/icons-svelte/icons/address-book';
 
 	import { sitemap } from '$lib/settings/config';
+	import VersionSwitcher from './workspace-switcher.svelte';
 
-	const data = {
+	let { userObject, ...restProps } = $props();
+	// console.log('userObject: ', userObject.user_metadata);
+	let {
+		name = 'Test',
+		email = 'test@test.com',
+		avatar_url = ''
+	} = $derived(userObject.user_metadata);
+
+	// console.log(name, email, avatar_url);
+
+	// let { user } = $derived(data);
+
+	const fakeData = {
+		workspaces: ['Learning Formations', 'Mentore Academy', 'Acme Formations'],
 		user: {
 			name: 'Anthony Russo',
-			email: 'anthony@mentore.fr'
-			// avatar: '/avatars/shadcn.jpg'
+			email: 'anthony@mentore.fr',
+			avatar: ''
 		},
 		navMain: [
 			{
@@ -186,14 +200,18 @@
 		]
 	};
 
-	let { ...restProps }: ComponentProps<typeof Sidebar.Root> = $props();
+	// let { ...restProps }: ComponentProps<typeof Sidebar.Root> = $props();
 </script>
 
 <Sidebar.Root collapsible="icon" {...restProps}>
 	<Sidebar.Header>
 		<Sidebar.Menu>
 			<Sidebar.MenuItem>
-				<Logo />
+				<VersionSwitcher
+					workspaces={fakeData.workspaces}
+					defaultWorkspace={fakeData.workspaces[0]}
+				/>
+				<!-- <Logo /> -->
 				<!-- <Sidebar.MenuButton class="data-[slot=sidebar-menu-button]:p-1.5!"> -->
 				<!-- {#snippet child({ props })}
 						<a href="/" {...props} class="flex flex-col items-start">
@@ -209,9 +227,9 @@
 		<NavMain items={sitemap} />
 		<!-- <NavMain items={data.navMain} /> -->
 		<!-- <NavDocuments items={data.documents} /> -->
-		<NavSecondary items={data.navSecondary} class="mt-auto" />
+		<NavSecondary items={fakeData.navSecondary} class="mt-auto" />
 	</Sidebar.Content>
 	<Sidebar.Footer>
-		<NavUser user={data.user} />
+		<NavUser user={userObject.user_metadata} />
 	</Sidebar.Footer>
 </Sidebar.Root>
