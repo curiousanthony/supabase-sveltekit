@@ -12,6 +12,17 @@
 
 	let { user }: { user: { name: string; email: string; avatar_url: string } } = $props();
 
+	const getInitials = (fullName: string = user.name) => {
+		const allNames = fullName.trim().split(' ');
+		const initials = allNames.reduce((acc, curr, index) => {
+			if (index === 0 || index === allNames.length - 1) {
+				acc = `${acc}${curr.charAt(0).toUpperCase()}`;
+			}
+			return acc;
+		}, '');
+		return initials;
+	};
+
 	const sidebar = Sidebar.useSidebar();
 </script>
 
@@ -27,7 +38,7 @@
 					>
 						<Avatar.Root class="size-8 rounded-lg">
 							<Avatar.Image src={user.avatar_url} alt={user.name} />
-							<Avatar.Fallback class="rounded-lg">CN</Avatar.Fallback>
+							<Avatar.Fallback class="rounded-lg">{getInitials(user.name)}</Avatar.Fallback>
 						</Avatar.Root>
 						<div class="grid flex-1 text-left text-sm leading-tight">
 							<span class="truncate font-medium">{user.name}</span>
