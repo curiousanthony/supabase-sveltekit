@@ -1,6 +1,4 @@
 import { db } from '$lib/db';
-import type { thematiquesRelations } from '$lib/db/relations';
-import type { thematiques } from '$lib/db/schema';
 import type { PageServerLoad } from './$types';
 
 export const load = (async () => {
@@ -25,7 +23,7 @@ export const load = (async () => {
             ]
         });
 
-        // console.log("from crud/+page.server.ts → formations:\n", formations);
+        console.log("from crud/+page.server.ts → formations:\n", formations);
         return { formations };
     } catch (error) {
         console.error("Error in crud/+page.server.ts → load:\n", error);

@@ -30,8 +30,21 @@
 
 <h1>Liste des formations</h1>
 
-<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+<!-- Make a Kanban board with the formations status "En attente", "En cours", "Terminée" -->
+
+<div class="grid h-screen grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-3">
+	{#each ['En attente', 'En cours', 'Terminée'] as status}
+		<div class="flex flex-col gap-2 rounded-lg bg-accent p-4">
+			<h2 class="text-lg font-semibold">{status}</h2>
+			{#each filterFormationsByStatus(status) as formation}
+				<FormationCard {formation} />
+			{/each}
+		</div>
+	{/each}
+</div>
+
+<!-- <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
 	{#each formations as formation}
 		<FormationCard {formation} />
 	{/each}
-</div>
+</div> -->
