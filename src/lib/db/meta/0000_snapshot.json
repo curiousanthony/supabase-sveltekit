@@ -4,171 +4,66 @@
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.posts": {
-      "name": "posts",
+    "public.workspaces_users": {
+      "name": "workspaces_users",
       "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "posts_id_seq",
-            "increment": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "startWith": "1",
-            "cache": "1",
-            "cycle": false,
-            "schema": "public"
-          }
+          "default": "gen_random_uuid()"
         },
-        "slug": {
-          "name": "slug",
-          "type": "varchar",
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": false
-        },
-        "title": {
-          "name": "title",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "slug_idx": {
-          "name": "slug_idx",
-          "columns": [
-            {
-              "expression": "slug",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "title_idx": {
-          "name": "title_idx",
-          "columns": [
-            {
-              "expression": "title",
-              "asc": true,
-              "nulls": "last",
-              "opclass": "text_ops",
-              "isExpression": false
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "posts_owner_id_users_id_fk": {
-          "name": "posts_owner_id_users_id_fk",
-          "tableFrom": "posts",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {},
-      "policies": {},
-      "isRLSEnabled": false
-    },
-    "public.comments": {
-      "name": "comments",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
           "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "comments_id_seq",
-            "increment": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "startWith": "1",
-            "cache": "1",
-            "cycle": false,
-            "schema": "public"
-          }
+          "default": "now()"
         },
-        "text": {
-          "name": "text",
-          "type": "varchar(256)",
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "post_id": {
-          "name": "post_id",
-          "type": "integer",
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
           "primaryKey": false,
-          "notNull": false
-        },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "comments_owner_id_users_id_fk": {
-          "name": "comments_owner_id_users_id_fk",
-          "tableFrom": "comments",
+        "workspaces_users_workspace_id_fkey": {
+          "name": "workspaces_users_workspace_id_fkey",
+          "tableFrom": "workspaces_users",
+          "tableTo": "workspaces",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "workspace_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "workspaces_users_user_id_fkey": {
+          "name": "workspaces_users_user_id_fkey",
+          "tableFrom": "workspaces_users",
           "tableTo": "users",
           "schemaTo": "public",
           "columnsFrom": [
-            "owner_id"
+            "user_id"
           ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "comments_post_id_posts_id_fk": {
-          "name": "comments_post_id_posts_id_fk",
-          "tableFrom": "comments",
-          "tableTo": "posts",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "post_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -181,23 +76,6 @@
       "name": "users",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "users_id_seq",
-            "increment": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "startWith": "1",
-            "cache": "1",
-            "cycle": false,
-            "schema": "public"
-          }
-        },
         "first_name": {
           "name": "first_name",
           "type": "varchar(256)",
@@ -216,12 +94,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "invitee": {
-          "name": "invitee",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "role": {
           "name": "role",
           "type": "roles",
@@ -229,6 +101,20 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'admin'"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
@@ -249,24 +135,17 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "users_invitee_users_id_fk": {
-          "name": "users_invitee_users_id_fk",
-          "tableFrom": "users",
-          "tableTo": "users",
-          "schemaTo": "public",
-          "columnsFrom": [
-            "invitee"
-          ],
-          "columnsTo": [
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_id2_key": {
+          "columns": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "nullsNotDistinct": false,
+          "name": "users_id2_key"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "checkConstraints": {},
       "policies": {},
       "isRLSEnabled": false
@@ -275,23 +154,6 @@
       "name": "workspaces",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "workspaces_id_seq",
-            "increment": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "startWith": "1",
-            "cache": "1",
-            "cycle": false,
-            "schema": "public"
-          }
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -304,17 +166,97 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "workspaces_id2_key": {
+          "columns": [
+            "id"
+          ],
+          "nullsNotDistinct": false,
+          "name": "workspaces_id2_key"
+        }
+      },
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.courses": {
+      "name": "courses",
+      "schema": "",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "workspaces_id_fkey": {
-          "name": "workspaces_id_fkey",
-          "tableFrom": "workspaces",
+        "courses_workspace_id_fkey": {
+          "name": "courses_workspace_id_fkey",
+          "tableFrom": "courses",
+          "tableTo": "workspaces",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "workspace_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "courses_created_by_fkey": {
+          "name": "courses_created_by_fkey",
+          "tableFrom": "courses",
           "tableTo": "users",
           "schemaTo": "public",
           "columnsFrom": [
-            "id"
+            "created_by"
           ],
           "columnsTo": [
             "id"
@@ -324,7 +266,15 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "courses_id2_key": {
+          "columns": [
+            "id"
+          ],
+          "nullsNotDistinct": false,
+          "name": "courses_id2_key"
+        }
+      },
       "checkConstraints": {},
       "policies": {},
       "isRLSEnabled": true

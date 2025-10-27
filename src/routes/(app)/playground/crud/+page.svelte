@@ -12,5 +12,10 @@
 </svelte:head>
 
 {#each users as user}
-	<p>{user.firstName} {user.lastName}, Rôle : {user.role}, Email : {user.email}, ID : {user.id}</p>
+	<p>
+		{user.firstName}
+		{user.lastName}, Email: {user.email}, ID: {user.id}, Created at: {new Date(
+			user.createdAt
+		).toLocaleString('fr-FR')}
+	</p>
 {/each}

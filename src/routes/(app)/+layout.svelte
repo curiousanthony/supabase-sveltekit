@@ -5,12 +5,16 @@
 	import { sitemap } from '$lib/settings/config';
 	import { page } from '$app/state';
 
+	import { ModeWatcher } from 'mode-watcher';
+
 	let { data, children } = $props();
 
 	let pageName = $derived(
 		sitemap.find((item) => item.url === page.url.pathname)?.title || 'Default Page name'
 	);
 </script>
+
+<ModeWatcher />
 
 <Sidebar.Provider
 	style="--sidebar-width: calc(var(--spacing) * 72); --header-height: calc(var(--spacing) * 16);"

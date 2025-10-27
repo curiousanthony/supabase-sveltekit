@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1760971210228,
-      "tag": "0000_wooden_wind_dancer",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1761234326471,
-      "tag": "0001_round_shinko_yamashiro",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1761290352346,
-      "tag": "0002_swift_sway",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1761381551267,
-      "tag": "0003_ancient_cannonball",
+      "when": 1761560163674,
+      "tag": "0000_neat_romulus",
       "breakpoints": true
     }
   ]
