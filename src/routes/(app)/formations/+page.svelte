@@ -32,7 +32,7 @@
 
 <!-- Make a Kanban board with the formations status "En attente", "En cours", "Terminée" -->
 
-<div class="grid h-screen grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-3">
+<div class="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-3">
 	{#each ['En attente', 'En cours', 'Terminée'] as status}
 		<div class="flex flex-col gap-2 rounded-lg bg-accent p-4">
 			<h2 class="text-lg font-semibold">{status}</h2>

@@ -20,7 +20,7 @@
 	style="--sidebar-width: calc(var(--spacing) * 72); --header-height: calc(var(--spacing) * 16);"
 >
 	<AppSidebar variant="inset" userObject={data?.user} />
-	<main class="flex w-full flex-col bg-background">
+	<main class="flex h-screen w-full flex-col bg-background">
 		<SiteHeader {pageName} />
 		<div class="flex flex-col gap-4 p-4">
 			{@render children?.()}
