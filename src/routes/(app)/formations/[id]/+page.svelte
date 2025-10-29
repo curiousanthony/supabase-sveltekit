@@ -26,7 +26,7 @@ Page de la formation (devra avoir data.formation.name ou id)
 		<p>Modalité : {formation?.modalite}</p>
 		<p>Thématique : {formation?.thematique?.name}</p>
 		<p>Statut : {formation?.statut}</p>
-		{#if formation.modules && formation?.modules?.length > 0}
+		{#if formation?.modules?.length > 0}
 			Liste de modules from "formation.modules"
 			<ul>
 				{#each formation?.modules as module}
