@@ -11,6 +11,7 @@ import Books from '@tabler/icons-svelte/icons/books'
 import ThumbUp from '@tabler/icons-svelte/icons/thumb-up'
 import Tool from '@tabler/icons-svelte/icons/tool'
 import History from '@tabler/icons-svelte/icons/history'
+import Users from '@tabler/icons-svelte/icons/users'
 
 export const appInfo = {
 	"name": "Mentore Manager",
@@ -50,7 +51,8 @@ export const sitemap = [
 	{
 		title: 'Contacts',
 		url: '/contacts',
-		icon: AddressBook
+		// icon: AddressBook,
+		icon: Users
 	},
 	{
 		title: 'Deals',

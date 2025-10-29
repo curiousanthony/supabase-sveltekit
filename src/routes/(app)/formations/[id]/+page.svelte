@@ -11,7 +11,7 @@
 <BackButton />
 
 <!-- Page de la formation : {data.formation.name} -->
-Page de la formation (devra avoir data.formation.name ou id)
+<!-- Page de la formation (devra avoir data.formation.name ou id) -->
 
 <!-- Create the page to see all info related to the current "formation" -->
 <Card.Root>

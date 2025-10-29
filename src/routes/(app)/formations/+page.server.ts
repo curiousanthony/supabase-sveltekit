@@ -23,7 +23,7 @@ export const load = (async () => {
             ]
         });
 
-        console.log("from crud/+page.server.ts → formations:\n", formations);
+        // console.log("from crud/+page.server.ts → formations:\n", formations);
         return { formations };
     } catch (error) {
         console.error("Error in crud/+page.server.ts → load:\n", error);

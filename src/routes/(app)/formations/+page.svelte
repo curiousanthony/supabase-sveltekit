@@ -1,21 +1,21 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
 
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
-	import Badge from '$lib/components/ui/badge/badge.svelte';
-	import Progress from '$lib/components/ui/progress/progress.svelte';
-	import Hourglass from '@tabler/icons-svelte/icons/hourglass';
-	import HourglassFilled from '@tabler/icons-svelte/icons/hourglass-filled';
-	import HourglassEmpty from '@tabler/icons-svelte/icons/hourglass-empty';
-	import UserFilled from '@tabler/icons-svelte/icons/user-filled';
-	import MapPinFilled from '@tabler/icons-svelte/icons/map-pin-filled';
-	import { IconCardsFilled, IconHourglassFilled, IconManFilled } from '@tabler/icons-svelte';
-	import CardsFilled from '@tabler/icons-svelte/icons/cards-filled';
+	// import { Button } from '$lib/components/ui/button/index.js';
+	// import { Label } from '$lib/components/ui/label/index.js';
+	// import { Input } from '$lib/components/ui/input/index.js';
+	// import * as Card from '$lib/components/ui/card/index.js';
+	// import Badge from '$lib/components/ui/badge/badge.svelte';
+	// import Progress from '$lib/components/ui/progress/progress.svelte';
+	// import Hourglass from '@tabler/icons-svelte/icons/hourglass';
+	// import HourglassFilled from '@tabler/icons-svelte/icons/hourglass-filled';
+	// import HourglassEmpty from '@tabler/icons-svelte/icons/hourglass-empty';
+	// import UserFilled from '@tabler/icons-svelte/icons/user-filled';
+	// import MapPinFilled from '@tabler/icons-svelte/icons/map-pin-filled';
+	// import { IconCardsFilled, IconHourglassFilled, IconManFilled } from '@tabler/icons-svelte';
+	// import CardsFilled from '@tabler/icons-svelte/icons/cards-filled';
 	import FormationCard from '$lib/components/custom/formationCard.svelte';
-	import BackButton from '$lib/components/custom/backButton.svelte';
+	// import BackButton from '$lib/components/custom/backButton.svelte';
 
 	let { data }: PageProps = $props();
 	let { formations, pageName } = $derived(data);
@@ -29,7 +29,7 @@
 	<title>{pageName}</title>
 </svelte:head>
 
-<BackButton />
+<!-- <BackButton /> -->
 
 <h1 class="text-2xl font-bold">Liste des formations</h1>
 

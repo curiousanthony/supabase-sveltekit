@@ -8,6 +8,28 @@
 	import Plus from '@tabler/icons-svelte/icons/plus';
 
 	let { items }: { items: { title: string; url: string; icon?: Icon }[] } = $props();
+
+	/**
+	 * Calculates the active state for a menu item using robust route matching.
+	 * @param itemUrl The URL from the menu item (e.g., '/products').
+	 * @param currentPath The current page's pathname (e.g., '/products/123').
+	 * @returns boolean - true if the item should be active.
+	 */
+	function calculateIsActive(itemUrl: string, currentPath: string): boolean {
+		// 1. Is this the root path item?
+		const isRoot = itemUrl === '/';
+
+		// 2. Exact match check
+		const isCurrentPage = currentPath === itemUrl;
+
+		// 3. Parent route check (applies only to non-root items)
+		// Checks if the path starts with the itemUrl followed by a slash,
+		// preventing /settings from matching /settings-billing.
+		const isParent = !isRoot && currentPath.startsWith(itemUrl + '/');
+
+		// The item is active if it's the current page (exact match) or a parent of the current page.
+		return isCurrentPage || isParent;
+	}
 </script>
 
 <Sidebar.Group>
@@ -34,14 +56,15 @@
 		</Sidebar.Menu>
 		<Sidebar.Menu>
 			{#each items as item (item.title)}
+				{@const isActive = calculateIsActive(item.url, page.url.pathname)}
+
 				<Sidebar.MenuItem>
-					<Sidebar.MenuButton tooltipContent={item.title} isActive={page.url.pathname === item.url}>
+					<Sidebar.MenuButton tooltipContent={item.title} {isActive}>
 						{#snippet child({ props })}
 							{#if item.url}
 								<a href={item.url} {...props}>
 									{#if item.icon}
-										{#if page.url.pathname === item.url}
-											<!-- Add a Filled variant of item.icon -->
+										{#if isActive}
 											<item.icon class="text-primary" />
 											<span class="text-[1.1em] text-primary">{item.title}</span>
 										{:else}

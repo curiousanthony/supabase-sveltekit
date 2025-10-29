@@ -22,11 +22,24 @@
 {/if} -->
 
 <!-- --- Formateurs Cards Grid --- -->
-<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
+<div class="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 	{#if formateurs && formateurs.length > 0}
 		{#each formateurs as formateur}
 			<!-- Card container -->
-			<Card.Root class="h-full w-full max-w-sm gap-1">
+			<Card.Root class="h-full w-full max-w-sm gap-1 overflow-hidden pt-0">
+				<!-- <img
+					src="https://placehold.co/400x200"
+					class="mb-3"
+					alt={`Photo du formateur ${formateur.user?.firstName} ${formateur.user?.lastName}`}
+				/> -->
+				<div class="mb-4 overflow-hidden">
+					<img
+						src={formateur.user?.avatarUrl ??
+							'https://api.dicebear.com/9.x/avataaars/svg?seed=Nolan&backgroundColor=ffd5dc&accessories[]&accessoriesProbability=0&clothing=blazerAndShirt,blazerAndSweater,collarAndSweater,graphicShirt,overall,shirtCrewNeck,shirtScoopNeck,shirtVNeck,hoodie&clothingGraphic[]&eyebrows=default,defaultNatural,flatNatural,raisedExcited,raisedExcitedNatural&eyes=default&hairColor=2c1b18,4a312c,724133,b58143,d6b370&mouth=default,smile&skinColor=ae5d29,d08b5b,edb98a,fd9841,ffdbb4,614335&top=bigHair,bob,curly,curvy,dreads,dreads01,dreads02,frida,frizzle,fro,froBand,longButNotTooLong,miaWallace,shaggy,shaggyMullet,shavedSides,shortCurly,shortFlat,shortRound,shortWaved,sides,straight01,straight02,straightAndStrand,bun'}
+						class=" object-cover object-center"
+						alt={`Photo du formateur ${formateur.user?.firstName} ${formateur.user?.lastName}`}
+					/>
+				</div>
 				<Card.Header class="mb-1">
 					<Card.Title>{formateur.user?.firstName ?? ''} {formateur.user?.lastName ?? ''}</Card.Title
 					>
@@ -91,7 +104,7 @@
 						{/each}
 					</div>
 				</Card.Content>
-				<Card.Footer class="mt-4">
+				<Card.Footer class="mt-3">
 					<Button class="w-full" href="/contacts/formateurs/{formateur.id}" disabled
 						>Consulter le profil</Button
 					>
