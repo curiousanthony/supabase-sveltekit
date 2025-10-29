@@ -27,7 +27,7 @@ export const load = (async () => {
         console.log("from formateurs/+page.server.ts → formateurs:\n", formateurs);
         return { formateurs };
     } catch (error) {
-        console.error("Error in crud/+page.server.ts → load:\n", error);
+        console.error("Error in contacts/formateurs/+page.server.ts → load:\n", error);
         throw error;
     }
 }) satisfies PageServerLoad;

@@ -11,5 +11,5 @@
 </svelte:head>
 
 <Button href="/contacts/formateurs">Formateurs</Button>
-<p>Clients</p>
-<p>Apprenants</p>
+<Button href="/contacts/clients" disabled>Clients</Button>
+<Button href="/contacts/apprenants" disabled>Apprenants</Button>

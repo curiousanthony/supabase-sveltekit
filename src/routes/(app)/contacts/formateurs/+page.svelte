@@ -20,11 +20,12 @@
 {/if} -->
 
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-	{#if formateurs}
+	{#if formateurs && formateurs.length > 0}
 		{#each formateurs as formateur}
 			<Card.Root class="justify-between">
 				<Card.Header>
-					<Card.Title>{formateur.user.firstName} {formateur.user.lastName}</Card.Title>
+					<Card.Title>{formateur.user?.firstName ?? ''} {formateur.user?.lastName ?? ''}</Card.Title
+					>
 					<Card.Action>
 						<Tooltip.Provider>
 							<Tooltip.Root>
@@ -67,8 +68,9 @@
 					<!-- <p>Card Content</p> -->
 				</Card.Content>
 				<Card.Footer>
-					<!-- <Button href="/contacts/formateurs/{formateur.id}">Consulter le profil</Button> -->
-					<Button class="w-full" href="/contacts/formateurs">Consulter le profil</Button>
+					<Button class="w-full" href="/contacts/formateurs/{formateur.id}"
+						>Consulter le profil</Button
+					>
 				</Card.Footer>
 			</Card.Root>
 		{/each}

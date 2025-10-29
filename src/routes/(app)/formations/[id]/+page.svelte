@@ -1,9 +1,5 @@
 <script lang="ts">
-	import backButton from '../../../../lib/components/custom/backButton.svelte';
-
 	import type { PageProps } from './$types';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import ChevronLeft from '@tabler/icons-svelte/icons/chevron-left';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import BackButton from '../../../../lib/components/custom/backButton.svelte';

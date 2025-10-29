@@ -32,15 +32,21 @@
 
 	const debug = false;
 
-	const getInitials = (fullName: string = user?.user_metadata.full_name) => {
-		const allNames = fullName.trim().split(' ');
+	const getInitials = (fullName?: string) => {
+		if (!fullName?.trim()) {
+			return 'N/A';
+		}
+		const allNames = fullName
+			.trim()
+			.split(' ')
+			.filter((name) => name.length > 0);
 		const initials = allNames.reduce((acc, curr, index) => {
 			if (index === 0 || index === allNames.length - 1) {
 				acc = `${acc}${curr.charAt(0).toUpperCase()}`;
 			}
 			return acc;
 		}, '');
-		return initials;
+		return initials || 'N/A';
 	};
 </script>
 
