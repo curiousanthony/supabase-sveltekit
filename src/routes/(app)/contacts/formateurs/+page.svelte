@@ -6,12 +6,15 @@
 	import { IconStarFilled } from '@tabler/icons-svelte';
 	import type { PageProps } from './$types';
 	import StarRating from '$lib/components/custom/starRating.svelte';
+	import { page } from '$app/state';
 
 	let { data }: PageProps = $props();
 	let { formateurs } = $derived(data);
 
 	// console.log('depuis formateurs/+page.svelte → formateurs: ', formateurs);
 </script>
+
+<p>Page name: {data.pageName}</p>
 
 <h1 class="text-2xl font-bold">Mes formateurs</h1>
 

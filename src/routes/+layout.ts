@@ -1,44 +1,29 @@
-import { createBrowserClient, createServerClient, isBrowser } from '@supabase/ssr'
-import { PUBLIC_SUPABASE_PUBLISHABLE_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public'
-import type { LayoutLoad } from './$types'
+import type { LayoutLoad } from './$types'; 
+import { createBrowserClient } from '@supabase/ssr';
+// Assume $env imports are correctly configured
+import { PUBLIC_SUPABASE_PUBLISHABLE_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
 
+/**
+ * Global Load Function (Public Context)
+ * Provides the bare minimum required by the root +layout.svelte to run the global auth listener.
+ * This is client-side only and will be OVERRIDDEN by the (app) group's server load during SSR.
+ */
+export const load: LayoutLoad = async ({ fetch }) => {
+    // 1. Create the browser client only
+    const supabase = createBrowserClient(
+        PUBLIC_SUPABASE_URL,
+        PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+        {
+            global: { fetch },
+        }
+    );
 
-export const load: LayoutLoad = async ({ data, depends, fetch }) => {
-  /**
-   * Declare a dependency so the layout can be invalidated, for example, on
-   * session refresh.
-   */
-  depends('supabase:auth')
+    // 2. Get the current session (will be null if unauthenticated)
+    const { data: { session } } = await supabase.auth.getSession();
 
-  const supabase = isBrowser()
-    ? createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
-        global: {
-          fetch,
-        },
-      })
-    : createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
-        global: {
-          fetch,
-        },
-        cookies: {
-          getAll() {
-            return data.cookies
-          },
-        },
-      })
-
-  /**
-   * It's fine to use `getSession` here, because on the client, `getSession` is
-   * safe, and on the server, it reads `session` from the `LayoutData`, which
-   * safely checked the session using `safeGetSession`.
-   */
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  return { session, supabase, user }
-}
+    return {
+        // Return the client instance and session to prevent the root layout from crashing
+        supabase,
+        session: session,
+    };
+};

@@ -2,7 +2,7 @@
 	import type { PageProps } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
-	import BackButton from '../../../../lib/components/custom/backButton.svelte';
+	import BackButton from '$lib/components/custom/backButton.svelte';
 
 	let { data }: PageProps = $props();
 	let { formation } = $derived(data);

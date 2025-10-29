@@ -21,5 +21,7 @@ export const load = (async ({params}) => {
             modules: true
         }
     });
-    return { formation };
+
+    const pageName = formation?.name ?? "Formation";
+    return { formation, pageName };
 }) satisfies PageServerLoad;

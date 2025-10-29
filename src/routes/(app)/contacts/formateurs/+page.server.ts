@@ -32,7 +32,7 @@ export const load = (async () => {
         // });
 
         // console.log("from formateurs/+page.server.ts → formateurs:\n", formateurs);
-        return { formateurs };
+        return { formateurs, pageName: "Formateurs" };
     } catch (error) {
         console.error("Error in contacts/formateurs/+page.server.ts → load:\n", error);
         throw error;
