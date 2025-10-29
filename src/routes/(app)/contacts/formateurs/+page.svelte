@@ -5,6 +5,7 @@
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { IconStarFilled } from '@tabler/icons-svelte';
 	import type { PageProps } from './$types';
+	import StarRating from '$lib/components/custom/starRating.svelte';
 
 	let { data }: PageProps = $props();
 	let { formateurs } = $derived(data);
@@ -74,10 +75,11 @@
 					</Card.Action>
 
 					<!-- Formateur Rating section within header -->
-					<div class="flex items-center gap-1">
+					<!-- <div class="flex items-center gap-1">
 						<IconStarFilled size={16} class="text-yellow-500" />
 						<span class="text-[.95em]">{formateur.rating}</span>
-					</div>
+					</div> -->
+					<StarRating ratingValue={Number(formateur.rating)} size={16} />
 				</Card.Header>
 				<Card.Content class="flex grow flex-col justify-between gap-4">
 					<Card.Description>{formateur.description}</Card.Description>
