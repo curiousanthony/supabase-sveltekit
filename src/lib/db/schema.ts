@@ -217,4 +217,5 @@ export const formateursThematiques = pgTable("formateurs_thematiques", {
 			foreignColumns: [formateurs.id],
 			name: "formateurs_thematiques_formateur_id_fkey"
 		}).onUpdate("cascade").onDelete("cascade"),
+	unique("unique_formateur_thematique").on(table.thematiqueId, table.formateurId),
 ]);
