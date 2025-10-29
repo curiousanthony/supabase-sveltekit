@@ -8,7 +8,7 @@
 	let { data }: PageProps = $props();
 	let { formateurs } = $derived(data);
 
-	// console.log('depuis formateurs/+page.svelte → formateurs: ', formateurs);
+	console.log('depuis formateurs/+page.svelte → formateurs: ', formateurs);
 </script>
 
 <h1 class="text-2xl font-bold">Mes formateurs</h1>
@@ -19,11 +19,11 @@
 	{/each}
 {/if} -->
 
-<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
 	{#if formateurs && formateurs.length > 0}
 		{#each formateurs as formateur}
-			<Card.Root class="justify-between">
-				<Card.Header>
+			<Card.Root class="h-full w-full max-w-sm gap-1">
+				<Card.Header class="mb-1">
 					<Card.Title>{formateur.user?.firstName ?? ''} {formateur.user?.lastName ?? ''}</Card.Title
 					>
 					<Card.Action>
@@ -54,21 +54,30 @@
 								</Tooltip.Trigger>
 								<Tooltip.Content>
 									{#if formateur.disponible7J}
-										<p>Ce formateur a confirmé être disponible ces 7 derniers jours.</p>
+										<p>
+											{formateur.user.firstName} a confirmé être disponible ces 7 derniers jours.
+										</p>
 									{:else}
-										<p>Ce formateur n'a pas confirmé être disponible ces 7 derniers jours.</p>
+										<p>
+											{formateur.user.firstName} n'a pas confirmé être disponible ces 7 derniers jours.
+										</p>
 									{/if}
 								</Tooltip.Content>
 							</Tooltip.Root>
 						</Tooltip.Provider>
 					</Card.Action>
 				</Card.Header>
-				<Card.Content>
+				<Card.Content class="flex grow flex-col gap-4">
 					<Card.Description>{formateur.description}</Card.Description>
-					<!-- <p>Card Content</p> -->
+
+					<div class="flex items-center gap-2">
+						{#each formateur.formateursThematiques as formateurThematique}
+							<Badge variant="secondary">{formateurThematique.thematique.name}</Badge>
+						{/each}
+					</div>
 				</Card.Content>
-				<Card.Footer>
-					<Button class="w-full" href="/contacts/formateurs/{formateur.id}"
+				<Card.Footer class="mt-4">
+					<Button class="w-full" href="/contacts/formateurs/{formateur.id}" disabled
 						>Consulter le profil</Button
 					>
 				</Card.Footer>

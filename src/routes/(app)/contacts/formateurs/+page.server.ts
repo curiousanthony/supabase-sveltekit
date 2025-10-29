@@ -6,7 +6,14 @@ export const load = (async () => {
         const formateurs = await db.query.formateurs.findMany({
             with: {
                 user: true,
-                formateursThematiques: true // To refactor, returns object object atm
+                formateursThematiques: {
+                    with: {
+                        thematique: {
+                            columns: {
+                                name: true
+                            }
+                        }
+                    }}
                 
             }
         })
