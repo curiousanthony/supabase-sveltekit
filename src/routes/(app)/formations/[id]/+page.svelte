@@ -1,18 +1,18 @@
 <script lang="ts">
+	import backButton from '../../../../lib/components/custom/backButton.svelte';
+
 	import type { PageProps } from './$types';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import ChevronLeft from '@tabler/icons-svelte/icons/chevron-left';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
+	import BackButton from '../../../../lib/components/custom/backButton.svelte';
 
 	let { data }: PageProps = $props();
 	let { formation } = $derived(data);
 </script>
 
-<Button variant="secondary" size="lg" class="w-fit text-sm" onclick={() => history.back()}>
-	<ChevronLeft />
-	Retour
-</Button>
+<BackButton />
 
 <!-- Page de la formation : {data.formation.name} -->
 Page de la formation (devra avoir data.formation.name ou id)

@@ -15,6 +15,7 @@
 	import { IconCardsFilled, IconHourglassFilled, IconManFilled } from '@tabler/icons-svelte';
 	import CardsFilled from '@tabler/icons-svelte/icons/cards-filled';
 	import FormationCard from '$lib/components/custom/formationCard.svelte';
+	import BackButton from '$lib/components/custom/backButton.svelte';
 
 	let { data }: PageProps = $props();
 	let { formations, pageName } = $derived(data);
@@ -28,7 +29,9 @@
 	<title>{pageName}</title>
 </svelte:head>
 
-<h1>Liste des formations</h1>
+<BackButton />
+
+<h1 class="text-2xl font-bold">Liste des formations</h1>
 
 <!-- Make a Kanban board with the formations status "En attente", "En cours", "Terminée" -->
 

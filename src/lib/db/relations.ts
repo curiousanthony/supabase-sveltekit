@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, clients, workspaces, workspacesUsers, thematiques, sousthematiques, modules, formations, apprenants, seances } from "./schema";
+import { users, clients, workspaces, workspacesUsers, thematiques, sousthematiques, modules, formations, apprenants, seances, formateurs, formateursThematiques } from "./schema";
 
 export const clientsRelations = relations(clients, ({one, many}) => ({
 	user: one(users, {
@@ -20,6 +20,7 @@ export const usersRelations = relations(users, ({many}) => ({
 		relationName: "seances_instructor_users_id"
 	}),
 	formations: many(formations),
+	formateurs: many(formateurs),
 }));
 
 export const workspacesUsersRelations = relations(workspacesUsers, ({one}) => ({
@@ -49,6 +50,7 @@ export const sousthematiquesRelations = relations(sousthematiques, ({one, many})
 export const thematiquesRelations = relations(thematiques, ({many}) => ({
 	sousthematiques: many(sousthematiques),
 	formations: many(formations),
+	formateursThematiques: many(formateursThematiques),
 }));
 
 export const modulesRelations = relations(modules, ({one, many}) => ({
@@ -104,5 +106,24 @@ export const seancesRelations = relations(seances, ({one}) => ({
 		fields: [seances.instructor],
 		references: [users.id],
 		relationName: "seances_instructor_users_id"
+	}),
+}));
+
+export const formateursRelations = relations(formateurs, ({one, many}) => ({
+	user: one(users, {
+		fields: [formateurs.userId],
+		references: [users.id]
+	}),
+	formateursThematiques: many(formateursThematiques),
+}));
+
+export const formateursThematiquesRelations = relations(formateursThematiques, ({one}) => ({
+	thematique: one(thematiques, {
+		fields: [formateursThematiques.thematiqueId],
+		references: [thematiques.id]
+	}),
+	formateur: one(formateurs, {
+		fields: [formateursThematiques.formateurId],
+		references: [formateurs.id]
 	}),
 }));

@@ -11,6 +11,7 @@
 
 	const { data } = $props();
 	const { user, pageName } = $derived(data);
+	// console.log(user?.user_metadata.full_name);
 
 	//const { userProfile } = $derived(data);
 
@@ -30,6 +31,17 @@
 	// });
 
 	const debug = false;
+
+	const getInitials = (fullName: string = user?.user_metadata.full_name) => {
+		const allNames = fullName.trim().split(' ');
+		const initials = allNames.reduce((acc, curr, index) => {
+			if (index === 0 || index === allNames.length - 1) {
+				acc = `${acc}${curr.charAt(0).toUpperCase()}`;
+			}
+			return acc;
+		}, '');
+		return initials;
+	};
 </script>
 
 <svelte:head>
@@ -50,7 +62,7 @@
 			{#if user.user_metadata.avatar_url}
 				<Avatar.Root>
 					<Avatar.Image src={user.user_metadata.avatar_url} alt="Profile image" />
-					<Avatar.Fallback>N/A</Avatar.Fallback>
+					<Avatar.Fallback>{getInitials(user.user_metadata.full_name)}</Avatar.Fallback>
 				</Avatar.Root>
 			{/if}
 			<p class="text-muted-foreground">

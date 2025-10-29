@@ -44,7 +44,7 @@
 			{side}
 		>
 			<Sheet.Header class="sr-only">
-				<Sheet.Title>Sidebar</Sheet.Title>
+				<Sheet.Title>Barre latérale</Sheet.Title>
 				<Sheet.Description>Affiche la barre latérale pour mobile.</Sheet.Description>
 			</Sheet.Header>
 			<div class="flex h-full w-full flex-col">

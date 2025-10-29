@@ -36,19 +36,27 @@
 			{#each items as item (item.title)}
 				<Sidebar.MenuItem>
 					<Sidebar.MenuButton tooltipContent={item.title} isActive={page.url.pathname === item.url}>
-						{#if item.url}
-							<a href={item.url} class="flex w-full items-center gap-2">
+						{#snippet child({ props })}
+							{#if item.url}
+								<a href={item.url} {...props}>
+									{#if item.icon}
+										{#if page.url.pathname === item.url}
+											<!-- Add a Filled variant of item.icon -->
+											<item.icon class="text-primary" />
+											<span class="text-[1.1em] text-primary">{item.title}</span>
+										{:else}
+											<item.icon />
+											<span class="text-[1.1em]">{item.title}</span>
+										{/if}
+									{/if}
+								</a>
+							{:else}
 								{#if item.icon}
 									<item.icon />
 								{/if}
 								<span>{item.title}</span>
-							</a>
-						{:else}
-							{#if item.icon}
-								<item.icon />
 							{/if}
-							<span>{item.title}</span>
-						{/if}
+						{/snippet}
 					</Sidebar.MenuButton>
 				</Sidebar.MenuItem>
 			{/each}
