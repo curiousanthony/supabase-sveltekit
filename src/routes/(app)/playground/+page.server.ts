@@ -28,7 +28,7 @@ export const load = (async () => {
                 icon: "plus",
                 text: 'Nouvel élément',
                 href: 'https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard',
-                variant: 'primary',
+                variant: 'secondary',
             },
         ]
     }

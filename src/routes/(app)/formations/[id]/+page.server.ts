@@ -1,7 +1,5 @@
 import { db } from '$lib/db';
 import type { PageServerLoad } from './$types';
-import Button from '$lib/components/ui/button/button.svelte';
-import Badge from '$lib/components/ui/badge/badge.svelte';
 
 export const load = (async ({params}) => {
 
@@ -32,37 +30,14 @@ export const load = (async ({params}) => {
 
     // console.log("from formations/[id]/+page.server.ts → formation:\n", formation);
 
-    // const header = {
-    //     actions: {
-    //         label: "Modifier la formation",
-    //         href: `/formations/modifier/${formation.id}`
-    //     }
-    // }
+    const header = {
+        pageName: formation.name,
+        actions: [
+            {
 
-    // const header = {
-    //     actions: [
-    //         {
-    //             label: "Modifier la formation",
-    //             href: `/formations/modifier/${formation.id}`,
-    //             component: Button
-    //         },
-    //         {
-    //             label: "Modifier la formation",
-    //             href: `/formations/modifier/${formation.id}`,
-    //             component: Badge
-    //         },
-    //         {
-    //         label: "Modifier la formation",
-    //         href: `/formations/modifier/${formation.id}`,
-    //         component: {
-    //         name: "Button",
-    //         props: {
-    //             color: "primary"
-    //         }
-    //     }
-    // }
-    //     ]
-    // }
+            }
+        ]
+    }
 
-    return { formation, pageName };
+    return { formation, pageName, header };
 }) satisfies PageServerLoad;
