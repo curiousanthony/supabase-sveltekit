@@ -51,3 +51,7 @@
 		<FormationCard {formation} />
 	{/each}
 </div> -->
+
+{#snippet actions()}
+	<p>Actions depuis +page.svelte</p>
+{/snippet}

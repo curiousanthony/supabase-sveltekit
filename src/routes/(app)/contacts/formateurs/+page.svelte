@@ -6,6 +6,8 @@
 	import { IconStarFilled } from '@tabler/icons-svelte';
 	import type { PageProps } from './$types';
 	import StarRating from '$lib/components/custom/starRating.svelte';
+	import * as Empty from '$lib/components/ui/empty/index.js';
+	import FolderCodeIcon from '@tabler/icons-svelte/icons/folder-code';
 	import { page } from '$app/state';
 
 	let { data }: PageProps = $props();
@@ -14,7 +16,7 @@
 	// console.log('depuis formateurs/+page.svelte → formateurs: ', formateurs);
 </script>
 
-<p>Page name: {data.pageName}</p>
+<!-- <p>Page name: {data.pageName}</p> -->
 
 <h1 class="text-2xl font-bold">Mes formateurs</h1>
 
@@ -116,6 +118,18 @@
 		{/each}
 	{:else}
 		<p>Aucun formateur dans la base. Trouve ton premier formateur !</p>
+		<Empty.Root>
+			<Empty.Header>
+				<Empty.Media variant="icon">
+					<FolderCodeIcon />
+				</Empty.Media>
+				<Empty.Title>No data</Empty.Title>
+				<Empty.Description>No data found</Empty.Description>
+			</Empty.Header>
+			<Empty.Content>
+				<Button>Add data</Button>
+			</Empty.Content>
+		</Empty.Root>
 	{/if}
 </div>
 

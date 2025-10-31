@@ -17,22 +17,17 @@ export const load = (async () => {
                 
             }
         })
-        // const formateurs = await db.query.formateurs.findMany({
-        //     // 💡 Use the 'with' option to fetch related data
-        //     with: {
-        //         formateursThematiques: {
-        //             columns: {
-        //                 name: true
-        //             }
-        //         }         
-        //      },
-        //     orderBy: (formations, {desc}) => [
-        //         desc(formations.idInWorkspace)
-        //     ]
-        // });
 
         // console.log("from formateurs/+page.server.ts → formateurs:\n", formateurs);
-        return { formateurs, pageName: "Formateurs" };
+
+        const header = {
+            actions: {
+                label: "Ajouter un formateur",
+                href: "/contacts/formateurs/ajouter"
+            }
+        }
+
+        return { formateurs, pageName: "Formateurs", header };
     } catch (error) {
         console.error("Error in contacts/formateurs/+page.server.ts → load:\n", error);
         throw error;

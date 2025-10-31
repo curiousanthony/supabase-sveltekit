@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	// import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
-	import { sitemap } from '$lib/settings/config';
+	// import { sitemap } from '$lib/settings/config';
 
-	let { pageName = 'Default Page Name' } = $props();
+	let { pageName = 'Default Page Name', header = null } = $props();
 </script>
 
 <header
@@ -27,5 +27,21 @@
 				GitHub
 			</Button>
 		</div> -->
+
+		<!-- Right Side: Dynamic Content Slot (Actions Area) -->
+		<!-- <div class="flex items-center space-x-4">
+			{@render $slots.actions()}
+		</div> -->
+		{#if header.actions}
+			{@render actions?.()}
+		{/if}
 	</div>
 </header>
+
+{#snippet actions()}
+	<!-- Default empty area if parent doesn’t override -->
+	<div class="ml-auto flex items-center gap-2">
+		<!-- <p>Default actions from site-header.svelte</p> -->
+		<Button href={header.actions.href}>{header.actions.label}</Button>
+	</div>
+{/snippet}
