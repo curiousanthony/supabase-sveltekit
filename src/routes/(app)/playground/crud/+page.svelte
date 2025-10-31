@@ -1,15 +1,19 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
+	import BackButton from '$lib/components/custom/backButton.svelte';
+	import { page } from '$app/state';
 
 	let { data }: PageProps = $props();
-	let { pageName, users } = $derived(data);
+	let { header, users } = $derived(data);
 
 	$inspect(users);
 </script>
 
 <svelte:head>
-	<title>{pageName}</title>
+	<title>{header.pageName}</title>
 </svelte:head>
+
+<BackButton />
 
 {#each users as user}
 	<p>

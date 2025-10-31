@@ -17,12 +17,18 @@
 
 	// The page title is now derived ONLY from the data prop,
 	// forcing every page's load function to provide a title.
-	const pageTitle = $derived(page.data?.pageName ?? 'Titre de page manquant !');
+	const pageTitle = $derived(
+		page.data?.header?.pageName ?? page.data?.pageName ?? 'Titre de page manquant'
+	);
 
 	// Test for headerActions based on page.data
 	// const headeractions = $derived(page.data?.headerActions ?? null);
 	const header = $derived(page.data?.header ?? null);
 </script>
+
+<svelte:head>
+	<title>{header?.pageName ?? pageTitle}</title>
+</svelte:head>
 
 <ModeWatcher />
 

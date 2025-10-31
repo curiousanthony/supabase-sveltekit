@@ -23,8 +23,15 @@ export const load = (async () => {
             ]
         });
 
+        const header = {
+            actions: {
+                label: "Ajouter une formation",
+                href: "/formations/ajouter"
+            }
+        }
+
         // console.log("from crud/+page.server.ts → formations:\n", formations);
-        return { formations, pageName: "Formations" };
+        return { formations, pageName: "Formations", header };
     } catch (error) {
         console.error("Error in crud/+page.server.ts → load:\n", error);
         throw error;

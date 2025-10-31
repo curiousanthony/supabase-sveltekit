@@ -17,6 +17,33 @@ declare global {
     }
     // interface PageState {}
     // interface Platform {}
+
+    /* -- Header Types returned by each +page.server.ts -- */
+    type HeaderAction =
+| {
+    type: 'badge';
+    icon?: string;
+    text: string;
+    className?: string;
+    variant?: 'default' | 'destructive' | 'outline' | 'secondary' | undefined;
+}
+| {
+    type: 'button';
+    icon?: string;
+    text: string;
+    className?: string;
+    href?: string;
+    variant?: "link" | 'default' | 'destructive' | 'outline' | 'secondary' | "ghost" | undefined;
+}
+| {
+    type: 'separator';
+    orientation?: 'vertical';
+};
+
+   type Header = {
+    pageName: string;
+    actions: HeaderAction[];
+}; 
   }
 }
 

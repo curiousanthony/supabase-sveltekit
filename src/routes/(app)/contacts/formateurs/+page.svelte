@@ -27,8 +27,9 @@
 {/if} -->
 
 <!-- --- Formateurs Cards Grid --- -->
-<div class="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-	{#if formateurs && formateurs.length > 0}
+{#if formateurs && formateurs.length > 0}
+	<!-- {#if false} -->
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 		{#each formateurs as formateur}
 			<!-- Card container -->
 			<Card.Root class="h-full w-full max-w-sm gap-1 overflow-hidden pt-0">
@@ -116,22 +117,23 @@
 				</Card.Footer>
 			</Card.Root>
 		{/each}
-	{:else}
-		<p>Aucun formateur dans la base. Trouve ton premier formateur !</p>
-		<Empty.Root>
-			<Empty.Header>
-				<Empty.Media variant="icon">
-					<FolderCodeIcon />
-				</Empty.Media>
-				<Empty.Title>No data</Empty.Title>
-				<Empty.Description>No data found</Empty.Description>
-			</Empty.Header>
-			<Empty.Content>
-				<Button>Add data</Button>
-			</Empty.Content>
-		</Empty.Root>
-	{/if}
-</div>
+	</div>
+{:else}
+	<!-- <p>Aucun formateur dans la base. Trouve ton premier formateur !</p> -->
+	<Empty.Root>
+		<Empty.Header>
+			<Empty.Media variant="icon">
+				<FolderCodeIcon />
+			</Empty.Media>
+			<Empty.Title>Tu n'as pas encore ajouté de formateurs.</Empty.Title>
+			<!-- <Empty.Description>No data found</Empty.Description> -->
+		</Empty.Header>
+		<Empty.Content>
+			<Button href="/contacts/formateurs/inviter">Inviter un formateur</Button>
+			<Button href="/contacts/formateurs/rechercher">Trouver un formateur</Button>
+		</Empty.Content>
+	</Empty.Root>
+{/if}
 
 <!-- <pre>
     {JSON.stringify(formateurs, null, 2)}
