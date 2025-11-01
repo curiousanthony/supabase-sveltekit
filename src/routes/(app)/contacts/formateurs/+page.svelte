@@ -3,7 +3,13 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { IconStarFilled } from '@tabler/icons-svelte';
+	import {
+		IconChalkboardTeacher,
+		IconSearch,
+		IconStarFilled,
+		IconUserSearch,
+		IconUserShare
+	} from '@tabler/icons-svelte';
 	import type { PageProps } from './$types';
 	import StarRating from '$lib/components/custom/starRating.svelte';
 	import * as Empty from '$lib/components/ui/empty/index.js';
@@ -30,6 +36,41 @@
 {#if formateurs && formateurs.length > 0}
 	<!-- {#if false} -->
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+		<!-- CTA formateurs card -->
+		<!-- <Card.Root class="my-auto h-full w-full max-w-sm items-center gap-1 overflow-hidden">
+			<Card.Header>
+				<Card.Title>Inviter un formateur</Card.Title>
+				<Card.Description>Rechercher un formateur.</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<div class="flex items-center justify-center">
+					<Button href="/contacts/formateurs/inviter">Inviter un formateur</Button>
+				</div>
+			</Card.Content>
+		</Card.Root> -->
+
+		<Empty.Root>
+			<Empty.Header>
+				<Empty.Media variant="icon">
+					<IconChalkboardTeacher />
+					<!-- <FolderCodeIcon /> -->
+				</Empty.Media>
+				<Empty.Title>Tu n'as pas encore ajouté de formateurs.</Empty.Title>
+				<!-- <Empty.Description>No data found</Empty.Description> -->
+			</Empty.Header>
+			<Empty.Content>
+				<Button href="/contacts/formateurs/inviter" class="w-full">
+					<IconUserShare />
+					Inviter un formateur</Button
+				>
+				<Button href="/contacts/formateurs/rechercher" class="w-full">
+					<!-- <IconSearch /> -->
+					<IconUserSearch />
+					Trouver un formateur
+				</Button>
+			</Empty.Content>
+		</Empty.Root>
+
 		{#each formateurs as formateur}
 			<!-- Card container -->
 			<Card.Root class="h-full w-full max-w-sm gap-1 overflow-hidden pt-0">

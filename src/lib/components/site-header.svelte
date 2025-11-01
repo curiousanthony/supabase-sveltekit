@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
-	import { IconCircleFilled, IconExternalLink, IconPlus } from '@tabler/icons-svelte';
+	import { IconCircleFilled, IconExternalLink, IconPlus, IconSearch } from '@tabler/icons-svelte';
 	import Badge from './ui/badge/badge.svelte';
 	// import { sitemap } from '$lib/settings/config';
 
@@ -80,5 +80,7 @@
 		<IconExternalLink />
 	{:else if action?.icon === 'circle'}
 		<IconCircleFilled />
+	{:else if action?.icon === 'search'}
+		<IconSearch />
 	{/if}
 {/snippet}

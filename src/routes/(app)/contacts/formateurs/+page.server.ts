@@ -21,10 +21,24 @@ export const load = (async () => {
         // console.log("from formateurs/+page.server.ts → formateurs:\n", formateurs);
 
         const header = {
-            actions: {
-                label: "Ajouter un formateur",
-                href: "/contacts/formateurs/ajouter"
-            }
+            actions: [
+                {
+                    type: 'button',
+                    icon: "plus",
+                    text: 'Inviter un formateur',
+                    href: '/contacts/formateurs/ajouter',
+                    // className: 'bg-primary text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground',
+                    variant: 'default',
+                },
+                {
+                    type: 'button',
+                    icon: "search",
+                    text: 'Trouver un formateur',
+                    href: '/contacts/formateurs/rechercher',
+                    // className: 'bg-primary text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground',
+                    variant: 'default',
+                }
+            ]
         }
 
         return { formateurs, pageName: "Formateurs", header };

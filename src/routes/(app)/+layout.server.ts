@@ -15,7 +15,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession }, cooki
       // If authenticated, the layout and pages can load and access the session data
 
       const header = {
-        pageName: url.pathname.split("/").pop(),
+        pageName: url.pathname.split("/").pop()?.charAt(0).toUpperCase() + url.pathname.split("/").pop()?.slice(1) || 'Tableau de bord',
         actions: [],
       }
 
