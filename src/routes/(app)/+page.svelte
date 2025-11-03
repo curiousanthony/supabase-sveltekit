@@ -62,7 +62,7 @@
 
 	<Card>
 		<CardHeader>
-			<h1 class="text-2xl font-bold">Hello {user.user_metadata.name}</h1>
+			<h1 class="text-2xl font-bold">Bonjour {user.user_metadata.name}</h1>
 		</CardHeader>
 		<CardContent>
 			{#if user.user_metadata.avatar_url}
@@ -72,10 +72,10 @@
 				</Avatar.Root>
 			{/if}
 			<p class="text-muted-foreground">
-				You are logged in with <span class="font-semibold capitalize"
+				Tu es connecté avec <span class="font-semibold capitalize"
 					>{user.app_metadata.provider}</span
 				>
-				as
+				en tant que
 				<span>{user.email}</span>
 			</p>
 			<Button href="/auth/logout" class="mt-4" variant="secondary">Se déconnecter</Button>

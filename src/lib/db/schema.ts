@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm"
 export const modalites = pgEnum("modalites", ['Distanciel', 'Présentiel', 'Hybride', 'E-Learning'])
 export const statutsFormation = pgEnum("statuts_formation", ['En attente', 'En cours', 'Terminée'])
 export const typeClient = pgEnum("type_client", ['Entreprise', 'Particulier'])
+export const typesFinancement = pgEnum("types_financement", ['CPF', 'OPCO', 'Inter', 'Intra'])
 
 
 export const clients = pgTable("clients", {
@@ -80,6 +81,45 @@ export const workspaces = pgTable("workspaces", {
 	unique("workspaces_id2_key").on(table.id),
 ]);
 
+export const formations = pgTable("formations", {
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	createdBy: uuid("created_by").notNull(),
+	name: text(),
+	description: text(),
+	workspaceId: uuid("workspace_id").notNull(),
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	topicId: uuid("topic_id"),
+	subtopicsIds: uuid("subtopics_ids"),
+	duree: integer(),
+	modalite: modalites(),
+	codeRncp: text("code_rncp"),
+	idInWorkspace: integer("id_in_workspace"),
+	statut: statutsFormation().default('En attente').notNull(),
+	typeFinancement: typesFinancement("type_financement"),
+}, (table) => [
+	foreignKey({
+			columns: [table.workspaceId],
+			foreignColumns: [workspaces.id],
+			name: "courses_workspace_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [users.id],
+			name: "courses_created_by_fkey"
+		}),
+	foreignKey({
+			columns: [table.subtopicsIds],
+			foreignColumns: [sousthematiques.id],
+			name: "courses_subtopics_ids_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+			columns: [table.topicId],
+			foreignColumns: [thematiques.id],
+			name: "formations_topic_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	unique("courses_id2_key").on(table.id),
+]);
+
 export const modules = pgTable("modules", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -142,44 +182,6 @@ export const seances = pgTable("seances", {
 			foreignColumns: [users.id],
 			name: "seances_instructor_fkey"
 		}),
-]);
-
-export const formations = pgTable("formations", {
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	createdBy: uuid("created_by").notNull(),
-	name: text(),
-	description: text(),
-	workspaceId: uuid("workspace_id").notNull(),
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	topicId: uuid("topic_id"),
-	subtopicsIds: uuid("subtopics_ids"),
-	duree: integer(),
-	modalite: modalites(),
-	codeRncp: text("code_rncp"),
-	idInWorkspace: integer("id_in_workspace"),
-	statut: statutsFormation().default('En attente').notNull(),
-}, (table) => [
-	foreignKey({
-			columns: [table.workspaceId],
-			foreignColumns: [workspaces.id],
-			name: "courses_workspace_id_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
-	foreignKey({
-			columns: [table.createdBy],
-			foreignColumns: [users.id],
-			name: "courses_created_by_fkey"
-		}),
-	foreignKey({
-			columns: [table.subtopicsIds],
-			foreignColumns: [sousthematiques.id],
-			name: "courses_subtopics_ids_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
-	foreignKey({
-			columns: [table.topicId],
-			foreignColumns: [thematiques.id],
-			name: "formations_topic_id_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
-	unique("courses_id2_key").on(table.id),
 ]);
 
 export const formateurs = pgTable("formateurs", {

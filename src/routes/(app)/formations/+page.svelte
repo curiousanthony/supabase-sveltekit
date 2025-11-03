@@ -18,16 +18,16 @@
 	// import BackButton from '$lib/components/custom/backButton.svelte';
 
 	let { data }: PageProps = $props();
-	let { formations, pageName } = $derived(data);
+	let { formations } = $derived(data);
 
 	function filterFormationsByStatus(status: string) {
 		return formations.filter((formation) => formation.statut === status);
 	}
 </script>
 
-<svelte:head>
+<!-- <svelte:head>
 	<title>{pageName}</title>
-</svelte:head>
+</svelte:head> -->
 
 <!-- <BackButton /> -->
 

@@ -5,6 +5,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import { IconCircleFilled, IconExternalLink, IconPlus, IconSearch } from '@tabler/icons-svelte';
 	import Badge from './ui/badge/badge.svelte';
+	import BackButton from './custom/backButton.svelte';
 	// import { sitemap } from '$lib/settings/config';
 
 	let { pageName = 'Default Page Name', header = null } = $props();
@@ -14,8 +15,12 @@
 	class="sticky top-0 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
 >
 	<div class="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-		<Sidebar.Trigger class="-ml-1" />
-		<Separator orientation="vertical" class="mx-2 data-[orientation=vertical]:h-4" />
+		<!-- Sidebar trigger to replace with mobile bottom nav later -->
+		<!-- <Sidebar.Trigger class="-ml-1" /> -->
+		{#if header?.backButton}
+			<BackButton />
+			<!-- <Separator orientation="vertical" class="mx-2 data-[orientation=vertical]:h-4" /> -->
+		{/if}
 		<h1 class="text-base font-medium">{pageName}</h1>
 		<!-- <div class="ml-auto flex items-center gap-2">
 			<Button

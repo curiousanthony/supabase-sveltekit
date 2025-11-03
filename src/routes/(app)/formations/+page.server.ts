@@ -24,14 +24,21 @@ export const load = (async () => {
         });
 
         const header = {
-            actions: {
-                label: "Ajouter une formation",
-                href: "/formations/ajouter"
-            }
+            pageName: "Formations",
+            actions: [
+                {
+                    type: 'button',
+                    icon: "plus",
+                    text: 'Créer une formation',
+                    href: '/formations/ajouter',
+                    // className: 'bg-primary text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground',
+                    variant: 'default',
+                }
+            ]
         }
 
         // console.log("from crud/+page.server.ts → formations:\n", formations);
-        return { formations, pageName: "Formations", header };
+        return { formations, header };
     } catch (error) {
         console.error("Error in crud/+page.server.ts → load:\n", error);
         throw error;

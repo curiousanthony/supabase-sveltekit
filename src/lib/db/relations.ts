@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, clients, workspaces, workspacesUsers, thematiques, sousthematiques, modules, formations, apprenants, seances, formateurs, formateursThematiques } from "./schema";
+import { users, clients, workspaces, workspacesUsers, thematiques, sousthematiques, formations, modules, apprenants, seances, formateurs, formateursThematiques } from "./schema";
 
 export const clientsRelations = relations(clients, ({one, many}) => ({
 	user: one(users, {
@@ -12,6 +12,7 @@ export const clientsRelations = relations(clients, ({one, many}) => ({
 export const usersRelations = relations(users, ({many}) => ({
 	clients: many(clients),
 	workspacesUsers: many(workspacesUsers),
+	formations: many(formations),
 	modules: many(modules),
 	seances_createdBy: many(seances, {
 		relationName: "seances_createdBy_users_id"
@@ -19,7 +20,6 @@ export const usersRelations = relations(users, ({many}) => ({
 	seances_instructor: many(seances, {
 		relationName: "seances_instructor_users_id"
 	}),
-	formations: many(formations),
 	formateurs: many(formateurs),
 }));
 
@@ -53,20 +53,7 @@ export const thematiquesRelations = relations(thematiques, ({many}) => ({
 	formateursThematiques: many(formateursThematiques),
 }));
 
-export const modulesRelations = relations(modules, ({one, many}) => ({
-	user: one(users, {
-		fields: [modules.createdBy],
-		references: [users.id]
-	}),
-	formation: one(formations, {
-		fields: [modules.courseId],
-		references: [formations.id]
-	}),
-	seances: many(seances),
-}));
-
 export const formationsRelations = relations(formations, ({one, many}) => ({
-	modules: many(modules),
 	workspace: one(workspaces, {
 		fields: [formations.workspaceId],
 		references: [workspaces.id]
@@ -83,6 +70,19 @@ export const formationsRelations = relations(formations, ({one, many}) => ({
 		fields: [formations.topicId],
 		references: [thematiques.id]
 	}),
+	modules: many(modules),
+}));
+
+export const modulesRelations = relations(modules, ({one, many}) => ({
+	user: one(users, {
+		fields: [modules.createdBy],
+		references: [users.id]
+	}),
+	formation: one(formations, {
+		fields: [modules.courseId],
+		references: [formations.id]
+	}),
+	seances: many(seances),
 }));
 
 export const apprenantsRelations = relations(apprenants, ({one}) => ({
