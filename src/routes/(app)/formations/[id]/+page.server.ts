@@ -42,12 +42,12 @@ export const load = (async ({params}) => {
                 icon: "circle",
                 text: formation.statut,
                 variant: 'outline',
-                className: statutBadgeClass
+                className: statutBadgeClass + " select-none"
             },
             {
                 type: 'button',
-                icon: "edit",
-                text: 'Modifier la formation',
+                icon: "search",
+                text: 'Trouver un formateur',
                 href: `/formations/${formation.id}/modifier`,
                 // className: 'bg-primary text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground',
                 variant: 'default',
