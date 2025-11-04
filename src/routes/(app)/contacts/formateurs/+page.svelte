@@ -152,7 +152,7 @@
 					</div>
 				</Card.Content>
 				<Card.Footer class="mt-3">
-					<Button class="w-full" href="/contacts/formateurs/{formateur.id}" disabled
+					<Button class="w-full" href="/contacts/formateurs/{formateur.id}"
 						>Consulter le profil</Button
 					>
 				</Card.Footer>
