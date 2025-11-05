@@ -12,6 +12,7 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Kbd } from '$lib/components/ui/kbd/index.js';
 	import { IconArrowBack, IconSettings } from '@tabler/icons-svelte';
+	import Badge from '$lib/components/ui/badge/badge.svelte';
 
 	let { data, children } = $props();
 
@@ -113,9 +114,15 @@
 						href={`/formations/${formation.id}`}
 						onSelect={() => (open = false)}
 						class="cursor-pointer"
+						value={formation.id}
 					>
 						<!-- <FormationIcon /> -->
-						<span>{formation.name}</span>
+						<div class="flex items-center gap-2">
+							<span>{formation.name}</span>
+							<Badge variant="secondary" class="ml-auto">
+								{formation.statut}
+							</Badge>
+						</div>
 						<!-- Revert the letter spacing to normal in the class of the element below -->
 						<Command.Shortcut class="tracking-wide">{formation.thematique?.name}</Command.Shortcut>
 					</Command.LinkItem>
@@ -135,7 +142,7 @@
 				{/if}
 			{/each}
 		</Command.Group>
-		<Command.Separator />
+		<!-- <Command.Separator /> -->
 		<Command.Group heading="Autre">
 			<Command.LinkItem href="/parametres" onSelect={() => (open = false)} class="cursor-pointer">
 				<IconSettings />
