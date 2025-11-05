@@ -128,7 +128,7 @@
 					</Command.LinkItem>
 				{/each}
 			</Command.Group>
-			<Command.Separator />
+			<!-- <Command.Separator /> -->
 		{/if}
 		<Command.Group heading="Principal">
 			<!-- <Command.LinkItem href="/formations">Formations</Command.LinkItem> -->
