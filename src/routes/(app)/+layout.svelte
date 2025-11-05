@@ -28,9 +28,35 @@
 	// Test for headerActions based on page.data
 	// const headeractions = $derived(page.data?.headerActions ?? null);
 	const header = $derived(page.data?.header ?? null);
+	const formations = $derived(page.data?.formations ?? []);
+
+	const RECENT_FORMATIONS_COUNT = 3;
+
+	const recentFormations = $derived((): any[] => {
+		// If there are no formations, return an empty array
+		if (!formations) return [];
+
+		// Formations are pre-sorted by the server. Return the last N.
+		return formations.slice(0, RECENT_FORMATIONS_COUNT);
+	});
 
 	// Command palette
 	let open = $state(false);
+
+	// Create a derived variable for recent formations. This is reactive and more performant.
+	// const recentFormations = $derived.by(() => {
+	// 	if (!page.data?.formations) return [];
+
+	// 	const thirtyDaysAgo = new Date();
+	// 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+	// 	// thirtyDaysAgo.setHours(0, 0, 0, 0);
+	// 	const cutoffTime = thirtyDaysAgo.getTime();
+
+	// 	return page.data.formations.filter(
+	// 		(formation: { createdAt: string }) =>
+	// 			new Date(formation.createdAt.replace(' ', 'T')).getTime() >= cutoffTime
+	// 	);
+	// });
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -43,10 +69,10 @@
 		// 	open = false;
 		// }
 		// Close the command palette when pressing Return (Enter)
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			open = false;
-		}
+		// if (e.key === 'Enter') {
+		// 	// e.preventDefault();
+		// 	open = false;
+		// }
 	}
 </script>
 
@@ -75,16 +101,34 @@
 	</main>
 </Sidebar.Provider>
 
-<Command.Dialog bind:open>
+<Command.Dialog bind:open loop={true}>
 	<Command.Input placeholder="Tapez où vous souhaitez naviguer..." />
 	<Command.List>
 		<Command.Empty>Aucun résultat trouvé.</Command.Empty>
+		<!-- Add dynamic command group with command linkitems for each item returned in page data that is "formations" -->
+		{#if recentFormations().length > 0}
+			<Command.Group heading="Formations récentes">
+				{#each recentFormations() as formation (formation.id)}
+					<Command.LinkItem
+						href={`/formations/${formation.id}`}
+						onSelect={() => (open = false)}
+						class="cursor-pointer"
+					>
+						<!-- <FormationIcon /> -->
+						<span>{formation.name}</span>
+						<!-- Revert the letter spacing to normal in the class of the element below -->
+						<Command.Shortcut class="tracking-wide">{formation.thematique?.name}</Command.Shortcut>
+					</Command.LinkItem>
+				{/each}
+			</Command.Group>
+			<Command.Separator />
+		{/if}
 		<Command.Group heading="Principal">
 			<!-- <Command.LinkItem href="/formations">Formations</Command.LinkItem> -->
 			{#each sitemap as item (item.url)}
 				<!-- Render below link item if url pathname is NOT the same as the current page's pathname-->
 				{#if item.url !== page.url.pathname}
-					<Command.LinkItem href={item.url}>
+					<Command.LinkItem href={item.url} onSelect={() => (open = false)} class="cursor-pointer">
 						<item.icon />
 						{item.title}
 					</Command.LinkItem>
@@ -93,17 +137,17 @@
 		</Command.Group>
 		<Command.Separator />
 		<Command.Group heading="Autre">
-			<Command.LinkItem href="/parametres">
+			<Command.LinkItem href="/parametres" onSelect={() => (open = false)} class="cursor-pointer">
 				<IconSettings />
 				Paramètres
 			</Command.LinkItem>
 		</Command.Group>
 	</Command.List>
 	<!-- <span>Footer</span> -->
-	<div class="flex items-center gap-2 bg-muted/60 px-4 py-3">
+	<div class="flex items-center justify-end gap-2 bg-muted/60 px-4 py-3">
+		<span class="text-sm text-muted-foreground">Aller à la page</span>
 		<Kbd>
 			<IconArrowBack class="size-4" />
 		</Kbd>
-		<span class="text-sm text-muted-foreground">Aller à la page</span>
 	</div>
 </Command.Dialog>
