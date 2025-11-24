@@ -1,24 +1,46 @@
 {
-  "deno.enablePaths": [
-    "supabase/functions"
-  ],
-  "deno.lint": true,
-  "deno.unstable": [
-    "bare-node-builtins",
-    "byonm",
-    "sloppy-imports",
-    "unsafe-proto",
-    "webgpu",
-    "broadcast-channel",
-    "worker-options",
-    "cron",
-    "kv",
-    "ffi",
-    "fs",
-    "http",
-    "net"
-  ],
-  "[typescript]": {
-    "editor.defaultFormatter": "denoland.vscode-deno"
-  }
+	"workbench.colorTheme": "Atom One Dark",
+	"svelte.enable-ts-plugin": true,
+	"editor.minimap.enabled": false,
+	"editor.wordWrap": "on",
+	"[svelte]": {
+		"editor.defaultFormatter": "svelte.svelte-vscode",
+		"editor.formatOnSave": true
+	},
+	"[html]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"workbench.editor.labelFormat": "short",
+	"explorer.compactFolders": false,
+	"workbench.iconTheme": "material-icon-theme",
+	"material-icon-theme.folders.color": "#43a047",
+	"workbench.tree.indent": 12,
+	"prettier.semi": false,
+	"prettier.useTabs": true,
+	"editor.mouseWheelZoom": true,
+	"editor.formatOnSave": true,
+	"[typescript]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"i18n-ally.enabledFrameworks": ["svelte"],
+	"i18n-ally.enabledParsers": ["json", "ts", "js"],
+	"i18n-ally.extract.autoDetect": true,
+	"i18n-ally.tabStyle": "tab",
+	"i18n-ally.extract.ignoredByFiles": {},
+	"i18n-ally.localesPaths": ["src/lib/i18n"],
+	"editor.maxTokenizationLineLength": 300000,
+	"[javascript]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"python.defaultInterpreterPath": "/usr/local/bin/python3.14",
+	"git.autofetch": true,
+	"editor.autoIndentOnPaste": true,
+	"workbench.tree.renderIndentGuides": "always",
+	"diffEditor.codeLens": true
 }
