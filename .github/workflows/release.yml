@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write # to create release, tag, and push package.json updates
+  issues: write # to comment on released issues
+  pull-requests: write # to comment on released PRs
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for commit analysis
+          persist-credentials: false # We use a token for pushing
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Semantic Release
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          # GITHUB_TOKEN is sufficient for tagging and releasing.
+          # If you have branch protection rules on 'main', you might need a PAT (Personal Access Token)
+          # stored in secrets.SEMANTIC_RELEASE_TOKEN instead.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/git

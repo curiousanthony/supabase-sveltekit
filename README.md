@@ -1,38 +1,65 @@
-# sv
+# Mentore Manager
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+[🇫🇷 Version Française](./README.fr.md)
 
-## Creating a project
 
-If you're seeing this, you've probably already done this step. Congrats!
+**The simplest SaaS for French training centers to digitize their administrative workflows.**
 
-```sh
-# create a new project in the current directory
-npx sv create
+Mentore Manager helps training organizations ("Organismes de Formation") streamline their daily operations, ensure **Qualiopi** compliance, and access a vast network of qualified independent trainers.
 
-# create a new project in my-app
-npx sv create my-app
-```
+Built on top of [Mentore.fr](https://mentore.fr), the leading matchmaking platform for professional trainers.
 
-## Developing
+## 🚀 Key Features
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+-   **Administrative Simplification**: Automate the generation of "Conventions", "Feuilles d'émargement", and other mandatory French training documents.
+-   **Qualiopi Compliance**: Built-in quality assurance workflows to ensure you meet all regulatory criteria effortlessly.
+-   **Trainer Matchmaking** (Coming Soon): Directly find and book qualified independent trainers from the Mentore network within the app.
+-   **Multi-Tenant Workspaces**: Manage multiple training centers or departments from a single account.
 
-```sh
-npm run dev
+## 🛠 Tech Stack
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+-   **Framework**: [SvelteKit](https://kit.svelte.dev/)
+-   **Database**: [Supabase](https://supabase.com/) (PostgreSQL)
+-   **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
+-   **Styling**: TailwindCSS (inferred)
 
-## Building
+## 📖 Documentation
+
+-   [Database Workflow](./docs/database.md) - **Read this first** before making schema changes.
+-   [Git & GitHub Workflow](./docs/git-workflow.md) - Branching, commits, and release standards.
+
+## 💻 Developing
+
+### Prerequisites
+
+-   Node.js
+-   Supabase CLI (`brew install supabase/tap/supabase`)
+
+### Getting Started
+
+1.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+
+2.  **Start the development server**:
+    ```bash
+    npm run dev
+    ```
+
+3.  **Open the app**:
+    Navigate to [http://localhost:5173](http://localhost:5173).
+
+### Database Management
+
+We use a **DB-First** workflow. Please refer to the [Database Workflow](./docs/database.md) guide for detailed instructions on how to make schema changes using the Supabase Dashboard and Drizzle.
+
+## 🏗 Building
 
 To create a production version of your app:
 
-```sh
+```bash
 npm run build
 ```
 
 You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

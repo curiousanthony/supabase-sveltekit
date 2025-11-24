@@ -5,6 +5,9 @@ export default defineConfig({
   schema: "./src/lib/db/schema.ts",
   // schema: "./db/migrations/schema.ts",
   out: "./supabase/migrations",
+  migrations: {
+    prefix: "timestamp",
+  },
   dbCredentials: {
     url: process.env.DATABASE_URL!
   }
