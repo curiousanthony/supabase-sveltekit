@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.1.0...v1.1.1) (2025-11-24)
+
+
+### Bug Fixes
+
+* Update VS Code extensions and settings to remove Deno configurations and add comprehensive Svelte-focused development tools and formatting. ([318ead4](https://github.com/curiousanthony/supabase-sveltekit/commit/318ead460f95734e5501dacebb7ca52d3c75b6c7))
+
 # [1.1.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.0.0...v1.1.0) (2025-11-24)
 
 
