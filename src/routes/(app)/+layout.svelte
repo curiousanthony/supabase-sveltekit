@@ -2,6 +2,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import AppSidebar from '$lib/components/app-sidebar.svelte';
 	import SiteHeader from '$lib/components/site-header.svelte';
+	import { Toaster } from 'svelte-sonner';
 	import * as Command from '$lib/components/ui/command/index.js';
 	import { sitemap } from '$lib/settings/config';
 	// import { page } from '$app/state';
@@ -158,3 +159,5 @@
 		</Kbd>
 	</div>
 </Command.Dialog>
+
+<Toaster richColors position="top-right" />
