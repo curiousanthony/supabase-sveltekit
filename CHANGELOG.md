@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.0.0...v1.1.0) (2025-11-24)
+
+
+### Features
+
+* Add agent workflows, agent rules, and documentation for shadcn-svelte and Svelte 5 runes. ([8aa3784](https://github.com/curiousanthony/supabase-sveltekit/commit/8aa37849d69ef2c379bf70a6f10087d9025dfbd6))
+
 # 1.0.0 (2025-11-24)
 
 
