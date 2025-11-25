@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.1.1...v1.2.0) (2025-11-25)
+
+
+### Features
+
+* Add multi-step formation creation page with new radio group UI component and refactor user profile handling to use Drizzle ORM. ([153d9fd](https://github.com/curiousanthony/supabase-sveltekit/commit/153d9fd5f3c6fc46537c0d14727af43374e81b09))
+
 ## [1.1.1](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.1.0...v1.1.1) (2025-11-24)
 
 
