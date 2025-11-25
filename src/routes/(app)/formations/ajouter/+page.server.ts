@@ -12,7 +12,12 @@ const formationSchema = z.object({
 	topicId: z.string().uuid().optional().nullable(),
 	modalite: z.enum(['Distanciel', 'Présentiel', 'Hybride', 'E-Learning']).optional().nullable(),
 	typeFinancement: z.enum(['CPF', 'OPCO', 'Inter', 'Intra']).optional().nullable(),
-	duree: z.coerce.number().int().positive().optional().nullable()
+	duree: z
+		.preprocess(
+			(val) => (val === null || val === '' ? null : val),
+			z.number().int().positive().nullable()
+		)
+		.optional()
 });
 
 export const load = (async ({ locals }) => {

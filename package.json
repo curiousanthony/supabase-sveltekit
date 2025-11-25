@@ -66,11 +66,16 @@
 	"dependencies": {
 		"@supabase/ssr": "^0.7.0",
 		"@supabase/supabase-js": "^2.75.1",
+		"debug": "^4.4.3",
 		"drizzle-orm": "^0.44.6",
 		"mode-watcher": "^1.1.0",
 		"postgres": "^3.4.7",
 		"zod": "^3.25.64",
 		"zod-form-data": "^3.0.1"
+	},
+	"optionalDependencies": {
+		"@rollup/rollup-darwin-arm64": "4.34.9",
+		"@rollup/rollup-darwin-x64": "4.34.9"
 	},
 	"release": {
 		"branches": [
