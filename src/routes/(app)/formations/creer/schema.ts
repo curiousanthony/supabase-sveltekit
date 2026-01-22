@@ -14,4 +14,4 @@ export const formationSchema = z.object({
 	codeRncp: z.string().optional()
 });
 
-export type FormationSchema = typeof formationSchema;
+export type FormationSchema = z.infer<typeof formationSchema>;
