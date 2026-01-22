@@ -5,7 +5,7 @@
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import type { Component } from 'svelte';
 	import {
-		CALD_CHECKBOX_GROUP_CONTEXT,
+		CARD_CHECKBOX_GROUP_CONTEXT,
 		type CardCheckboxGroupContext
 	} from './card-checkbox-group.svelte';
 
@@ -25,7 +25,7 @@
 		value?: any;
 	} = $props();
 
-	const group = getContext<CardCheckboxGroupContext | undefined>(CALD_CHECKBOX_GROUP_CONTEXT);
+	const group = getContext<CardCheckboxGroupContext | undefined>(CARD_CHECKBOX_GROUP_CONTEXT);
 
 	const isChecked = $derived(
 		group && value !== undefined ? group.values().includes(value) : checked
@@ -45,6 +45,7 @@
 	checked={isChecked}
 	onCheckedChange={handleCheckedChange}
 	{value}
+	aria-label={title}
 	class={cn(
 		'group relative flex flex-col gap-4 rounded-xl border p-4 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
 		'border-input bg-card text-card-foreground hover:border-accent-foreground/20',
@@ -64,13 +65,11 @@
 			>
 				<Icon class="size-5" />
 			</div>
-		{:else}
-			<div></div>
 		{/if}
 
 		<div
 			class={cn(
-				'flex size-5 items-center justify-center rounded-full border transition-all',
+				'ml-auto flex size-5 items-center justify-center rounded-full border transition-all',
 				'border-muted-foreground/30',
 				'group-data-[state=checked]:border-primary group-data-[state=checked]:bg-primary group-data-[state=checked]:text-primary-foreground'
 			)}

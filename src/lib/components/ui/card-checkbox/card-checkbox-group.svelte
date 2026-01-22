@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	export const CALD_CHECKBOX_GROUP_CONTEXT = Symbol('CARD_CHECKBOX_GROUP_CONTEXT');
+	export const CARD_CHECKBOX_GROUP_CONTEXT = Symbol('CARD_CHECKBOX_GROUP_CONTEXT');
 
 	export type CardCheckboxGroupContext = {
 		values: () => (string | number)[];
@@ -23,7 +23,7 @@
 		value?: (string | number)[];
 	} = $props();
 
-	setContext<CardCheckboxGroupContext>(CALD_CHECKBOX_GROUP_CONTEXT, {
+	setContext<CardCheckboxGroupContext>(CARD_CHECKBOX_GROUP_CONTEXT, {
 		values: () => value,
 		toggle: (v) => {
 			if (value.includes(v)) {
