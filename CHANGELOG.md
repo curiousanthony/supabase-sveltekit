@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.3.0...v1.4.0) (2026-01-22)
+
+
+### Features
+
+* Add a test page for CardCheckbox and CardCheckboxGroup components, and update dependencies. ([0161cb5](https://github.com/curiousanthony/supabase-sveltekit/commit/0161cb594821bbe8c5b1276525c29c5ae924eebc))
+
 # [1.3.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.2.0...v1.3.0) (2026-01-22)
 
 
