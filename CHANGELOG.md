@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.4.0...v1.5.0) (2026-01-22)
+
+
+### Features
+
+* Implement single and multiple selection modes for `CardCheckboxGroup`, add a dedicated test page, and update documentation with testing rules. ([d48c697](https://github.com/curiousanthony/supabase-sveltekit/commit/d48c6979cf285b87df5e5acd1dbbc2a01b8b1e81))
+
 # [1.4.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.3.0...v1.4.0) (2026-01-22)
 
 
