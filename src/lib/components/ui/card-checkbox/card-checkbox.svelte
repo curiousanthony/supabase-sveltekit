@@ -50,6 +50,7 @@
 		'group relative flex flex-col gap-4 rounded-xl border p-4 text-left transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
 		'border-input bg-card text-card-foreground hover:border-accent-foreground/20',
 		'data-[state=checked]:border-primary data-[state=checked]:bg-primary/5',
+		'cursor-pointer',
 		className
 	)}
 	{...restProps}
@@ -67,17 +68,19 @@
 			</div>
 		{/if}
 
-		<div
-			class={cn(
-				'ml-auto flex size-5 items-center justify-center rounded-full border transition-all',
-				'border-muted-foreground/30',
-				'group-data-[state=checked]:border-primary group-data-[state=checked]:bg-primary group-data-[state=checked]:text-primary-foreground'
-			)}
-		>
-			{#if isChecked}
-				<CheckIcon class="size-3" />
-			{/if}
-		</div>
+		{#if !group || group.multiple()}
+			<div
+				class={cn(
+					'ml-auto flex size-5 items-center justify-center rounded-full border transition-all',
+					'border-muted-foreground/30',
+					'group-data-[state=checked]:border-primary group-data-[state=checked]:bg-primary group-data-[state=checked]:text-primary-foreground'
+				)}
+			>
+				{#if isChecked}
+					<CheckIcon class="size-3" />
+				{/if}
+			</div>
+		{/if}
 	</div>
 
 	<div class="flex flex-col gap-1">

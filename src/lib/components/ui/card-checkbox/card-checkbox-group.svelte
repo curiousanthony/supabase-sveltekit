@@ -4,6 +4,7 @@
 	export type CardCheckboxGroupContext = {
 		values: () => (string | number)[];
 		toggle: (value: string | number) => void;
+		multiple: () => boolean;
 	};
 </script>
 
@@ -16,20 +17,31 @@
 	let {
 		ref = $bindable(null),
 		value = $bindable([]),
+		multiple = true,
 		class: className,
 		children,
 		...restProps
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & {
 		value?: (string | number)[];
+		multiple?: boolean;
 	} = $props();
 
 	setContext<CardCheckboxGroupContext>(CARD_CHECKBOX_GROUP_CONTEXT, {
 		values: () => value,
+		multiple: () => multiple,
 		toggle: (v) => {
-			if (value.includes(v)) {
-				value = value.filter((i) => i !== v);
+			if (multiple) {
+				if (value.includes(v)) {
+					value = value.filter((i) => i !== v);
+				} else {
+					value = [...value, v];
+				}
 			} else {
-				value = [...value, v];
+				if (value.includes(v)) {
+					value = [];
+				} else {
+					value = [v];
+				}
 			}
 		}
 	});
