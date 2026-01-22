@@ -1,3 +1,11 @@
+# [1.3.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.2.0...v1.3.0) (2026-01-22)
+
+
+### Features
+
+* add card-checkbox component and group ([b0e2695](https://github.com/curiousanthony/supabase-sveltekit/commit/b0e2695725b5b6ab39591223b7e71d5cd6fa1cac))
+* Add new UI form components and refactor formation creation route from `/ajouter` to `/creer`. ([8524c90](https://github.com/curiousanthony/supabase-sveltekit/commit/8524c90ca907e1aafe03e4b6795a937b9b479875))
+
 # [1.2.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.1.1...v1.2.0) (2025-11-25)
 
 
