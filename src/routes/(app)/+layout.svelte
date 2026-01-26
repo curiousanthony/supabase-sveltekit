@@ -14,6 +14,7 @@
 	import { Kbd } from '$lib/components/ui/kbd/index.js';
 	import { IconArrowBack, IconSettings } from '@tabler/icons-svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
+	import { headerTitleSnippet, headerTitleText } from '$lib/stores/header-store';
 
 	let { data, children } = $props();
 
@@ -91,7 +92,7 @@
 >
 	<AppSidebar variant="inset" userObject={data?.user} />
 	<main class="flex h-screen w-full flex-col bg-background">
-		<SiteHeader pageName={pageTitle} {header}>
+		<SiteHeader pageName={$headerTitleText || pageTitle} {header} title={$headerTitleSnippet}>
 			<!-- {#snippet actions()}
 				<p>Default Actions in (app) +layout.svelte</p>
 			{/snippet} -->

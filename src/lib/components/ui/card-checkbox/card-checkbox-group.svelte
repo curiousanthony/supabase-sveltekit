@@ -18,12 +18,14 @@
 		ref = $bindable(null),
 		value = $bindable([]),
 		multiple = true,
+		disallowEmpty = false,
 		class: className,
 		children,
 		...restProps
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & {
 		value?: (string | number)[];
 		multiple?: boolean;
+		disallowEmpty?: boolean;
 	} = $props();
 
 	setContext<CardCheckboxGroupContext>(CARD_CHECKBOX_GROUP_CONTEXT, {
@@ -32,12 +34,14 @@
 		toggle: (v) => {
 			if (multiple) {
 				if (value.includes(v)) {
+					if (disallowEmpty && value.length === 1) return;
 					value = value.filter((i) => i !== v);
 				} else {
 					value = [...value, v];
 				}
 			} else {
 				if (value.includes(v)) {
+					if (disallowEmpty) return;
 					value = [];
 				} else {
 					value = [v];

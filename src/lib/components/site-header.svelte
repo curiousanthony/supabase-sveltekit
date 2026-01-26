@@ -8,11 +8,11 @@
 	import BackButton from './custom/backButton.svelte';
 	// import { sitemap } from '$lib/settings/config';
 
-	let { pageName = 'Default Page Name', header = null } = $props();
+	let { pageName = 'Default Page Name', header = null, title } = $props();
 </script>
 
 <header
-	class="sticky top-0 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
+	class="sticky top-0 z-50 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
 >
 	<div class="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
 		<!-- Sidebar trigger to replace with mobile bottom nav later -->
@@ -21,7 +21,16 @@
 			<BackButton />
 			<!-- <Separator orientation="vertical" class="mx-2 data-[orientation=vertical]:h-4" /> -->
 		{/if}
-		<h1 class="text-base font-medium">{pageName}</h1>
+		<div class="flex items-center gap-2">
+			{#if header?.idInWorkspace}
+				<Badge variant="outline" class="text-xs font-mono text-muted-foreground">#{header.idInWorkspace}</Badge>
+			{/if}
+			{#if title}
+				{@render title()}
+			{:else}
+				<h1 class="text-base font-medium">{pageName}</h1>
+			{/if}
+		</div>
 		<!-- <div class="ml-auto flex items-center gap-2">
 			<Button
 				href="https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard"
