@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.5.0...v1.6.0) (2026-01-27)
+
+
+### Features
+
+* Implement multi-step formation creation form, introducing Popover, Textarea, and Qualiopi advise components. ([b0248cc](https://github.com/curiousanthony/supabase-sveltekit/commit/b0248cc718701666d7d78f905c42b5bc4da44777))
+
 # [1.5.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.4.0...v1.5.0) (2026-01-22)
 
 
