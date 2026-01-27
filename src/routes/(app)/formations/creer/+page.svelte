@@ -10,11 +10,26 @@
 	import { zodClient } from 'sveltekit-superforms/adapters';
 	import { formationSchema } from './schema';
 	import { toast } from 'svelte-sonner';
-	import { 
-		Check, ChevronRight, ChevronLeft, Plus, Trash2, Clock, Target, 
-		ShieldCheck, School, Monitor, Shuffle, GraduationCap, ChevronsUpDown,
-		Search, X, Sparkles
-	} from '@lucide/svelte';
+	import Check from '@lucide/svelte/icons/check';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import Clock from '@lucide/svelte/icons/clock';
+	import Target from '@lucide/svelte/icons/target';
+	import ShieldCheck from '@lucide/svelte/icons/shield-check';
+	import School from '@lucide/svelte/icons/school';
+	import Monitor from '@lucide/svelte/icons/monitor';
+	import Shuffle from '@lucide/svelte/icons/shuffle';
+	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
+	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
+	import X from '@lucide/svelte/icons/x';
+	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import ClipboardList from '@lucide/svelte/icons/clipboard-list';
+	import BookOpen from '@lucide/svelte/icons/book-open';
+	import MessageCircle from '@lucide/svelte/icons/message-circle';
+	import FileSignature from '@lucide/svelte/icons/file-signature';
+	import Smartphone from '@lucide/svelte/icons/smartphone';
 	import { headerTitleSnippet, headerTitleText } from '$lib/stores/header-store';
 	import EditableTitle from '$lib/components/editable-title.svelte';
 	import QualiopiAdvise from '$lib/components/qualiopi-advise.svelte';
@@ -22,8 +37,9 @@
 	import CardCheckbox from '$lib/components/ui/card-checkbox/card-checkbox.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { onMount, tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import { cn } from '$lib/utils';
+	import { Stepper } from '$lib/components/ui/stepper';
 
 	import type { FormationSchema } from './schema';
 
@@ -49,12 +65,25 @@
 	];
 
 	// Header Title Sync and Cleanup
+	// Important: keep effects idempotent to avoid invalidation loops.
+	let lastAutoModule0Title = $state<string | null>(null);
 	$effect(() => {
 		headerTitleText.set($formData.name);
 		
 		// Requirement: Default first module title matches Formation title
+		// Only auto-sync when it would not overwrite a user-edited title.
 		if ($formData.modules.length > 0 && currentStep === 1) {
-			$formData.modules[0].title = $formData.name;
+			const desired = ($formData.name ?? '').trim();
+			const current = ($formData.modules[0]?.title ?? '').trim();
+			const canAutoUpdate = current === '' || current === (lastAutoModule0Title ?? '');
+
+			if (desired && canAutoUpdate && current !== desired) {
+				$formData.modules[0].title = desired;
+				lastAutoModule0Title = desired;
+			} else if (current === desired && desired) {
+				// Keep in sync without re-writing.
+				lastAutoModule0Title = desired;
+			}
 		}
 	});
 
@@ -76,9 +105,9 @@
 	// Modality handling (Sync local array with form string)
 	let modalityArray = $state([$formData.modalite]);
 	$effect(() => {
-		if (modalityArray.length > 0) {
-			$formData.modalite = modalityArray[0] as any;
-		} else {
+		const next = modalityArray[0];
+		if (next && $formData.modalite !== next) $formData.modalite = next as any;
+		if ((!next || modalityArray.length === 0) && $formData.modalite && modalityArray[0] !== $formData.modalite) {
 			modalityArray = [$formData.modalite];
 		}
 	});
@@ -86,18 +115,18 @@
 	// Step 3 state sync (Evaluation and Attendance)
 	let evaluationArray = $state([$formData.evaluationMode]);
 	$effect(() => {
-		if (evaluationArray.length > 0) {
-			$formData.evaluationMode = evaluationArray[0] as any;
-		} else {
+		const next = evaluationArray[0];
+		if (next && $formData.evaluationMode !== next) $formData.evaluationMode = next as any;
+		if ((!next || evaluationArray.length === 0) && $formData.evaluationMode && evaluationArray[0] !== $formData.evaluationMode) {
 			evaluationArray = [$formData.evaluationMode];
 		}
 	});
 
 	let suiviArray = $state([$formData.suiviAssiduite]);
 	$effect(() => {
-		if (suiviArray.length > 0) {
-			$formData.suiviAssiduite = suiviArray[0] as any;
-		} else {
+		const next = suiviArray[0];
+		if (next && $formData.suiviAssiduite !== next) $formData.suiviAssiduite = next as any;
+		if ((!next || suiviArray.length === 0) && $formData.suiviAssiduite && suiviArray[0] !== $formData.suiviAssiduite) {
 			suiviArray = [$formData.suiviAssiduite];
 		}
 	});
@@ -170,7 +199,6 @@
 		} else {
 			$formData.customTopic = '';
 		}
-		openTopicPopover = false;
 	}
 
 	// Prerequisites Logic
@@ -215,11 +243,11 @@
 {/snippet}
 
 <div class="flex flex-col min-h-[calc(100vh-var(--header-height))] bg-muted/20">
-	<div class="flex-grow flex items-center justify-center p-4 py-8">
-		<div class="w-full max-w-3xl">
+	<main class="flex-1 overflow-y-auto overflow-x-hidden py-4 px-4 pb-32">
+		<div class="w-full max-w-5xl mx-auto">
 			<Card.Root class="overflow-hidden border-none shadow-xl ring-1 ring-border/50 bg-card">
-				<Card.Content class="p-8">
-					<form method="POST" use:enhance class="space-y-8">
+				<Card.Content class="p-6 pb-4">
+					<form id="create-formation-form" method="POST" use:enhance class="space-y-8">
 						<!-- Step 1: Informations de base -->
 						{#if currentStep === 1}
 							<div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -230,7 +258,7 @@
 
 								<div class="grid gap-8">
 									<!-- Row 1: Client and Thématique -->
-									<div class="grid sm:grid-cols-2 gap-8">
+									<div class="grid sm:grid-cols-2 gap-6">
 										<!-- Searchable Client Selector -->
 										<div class="space-y-3">
 											<label for="clientId" class="text-sm font-bold flex items-center gap-2">
@@ -238,16 +266,14 @@
 											</label>
 											
 											<Popover.Root bind:open={openClientPopover}>
-												<Popover.Trigger class="w-full h-12">
-													<Button
-														variant="outline"
-														role="combobox"
-														aria-expanded={openClientPopover}
-														class="w-full justify-between h-12 text-left font-normal"
-													>
-														{selectedClient ? selectedClient.legalName : "Choisir un client..."}
-														<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
-													</Button>
+												<Popover.Trigger
+													type="button"
+													role="combobox"
+													aria-expanded={openClientPopover}
+													class="inline-flex h-12 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-4 py-2 text-left text-sm font-normal shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+												>
+													<span class="truncate">{selectedClient ? selectedClient.legalName : "Choisir un client..."}</span>
+													<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
 												</Popover.Trigger>
 												<Popover.Content class="w-[--bits-popover-anchor-width] p-0" align="start">
 													<Command.Root>
@@ -285,15 +311,17 @@
 
 										<!-- Searchable Thématique Selector -->
 										<div class="space-y-3">
-											<label for="topicId" class="text-sm font-bold">Thématique</label>
+											<label for="topicId" class="text-sm font-bold flex items-center gap-2">
+												Thématique
+											</label>
 											<Popover.Root bind:open={openTopicPopover}>
-												<Popover.Trigger class="w-full h-12">
-													<Button
-														variant="outline"
-														role="combobox"
-														aria-expanded={openTopicPopover}
-														class="w-full justify-between h-12 text-left font-normal"
-													>
+												<Popover.Trigger
+													type="button"
+													role="combobox"
+													aria-expanded={openTopicPopover}
+													class="inline-flex h-12 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-4 py-2 text-left text-sm font-normal shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+												>
+													<span class="truncate">
 														{#if selectedTopic}
 															{selectedTopic.name}
 														{:else if $formData.customTopic}
@@ -301,27 +329,37 @@
 														{:else}
 															Choisir une thématique...
 														{/if}
-														<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
-													</Button>
+													</span>
+													<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
 												</Popover.Trigger>
 												<Popover.Content class="w-[--bits-popover-anchor-width] p-0" align="start">
 													<Command.Root>
 														<Command.Input placeholder="Chercher ou créer..." class="h-10" bind:value={topicSearchValue} />
 														<Command.List>
 															<Command.Empty class="p-0">
-																<button 
-																	type="button"
-																	class="flex w-full items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-accent transition-colors"
-																	onclick={() => handleTopicSelect('custom', topicSearchValue)}
-																>
-																	<Plus class="size-4" /> Créer "{topicSearchValue}"
-																</button>
+{#if topicSearchValue.trim()}
+<button 
+type="button"
+class="flex w-full items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-accent transition-colors"
+onclick={() => {
+handleTopicSelect('custom', topicSearchValue);
+openTopicPopover = false;
+}}
+>
+<Plus class="size-4" /> Créer "{topicSearchValue}"
+</button>
+{:else}
+<p class="px-3 py-6 text-center text-sm text-muted-foreground">Aucune thématique trouvée.</p>
+{/if}
 															</Command.Empty>
 															<Command.Group>
 																{#each data.topics as topic}
 																	<Command.Item
 																		value={topic.name}
-																		onSelect={() => handleTopicSelect(topic.id, topic.name)}
+																		onSelect={() => {
+																			handleTopicSelect(topic.id, topic.name);
+																			openTopicPopover = false;
+																		}}
 																	>
 																		<Check
 																			class={cn(
@@ -347,9 +385,15 @@
 										<label for="duree" class="text-sm font-bold flex items-center gap-2">
 											Durée totale de la formation (heures) <span class="text-destructive">*</span>
 										</label>
-										<div class="relative">
-											<Clock class="absolute left-3 top-3.5 size-5 text-muted-foreground" />
-											<Input id="duree" name="duree" type="number" bind:value={$formData.duree} class="h-12 pl-10 text-lg font-mono" min="1" />
+										<div class="relative inline-flex items-center">
+											<Clock class="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
+											<Stepper
+												id="duree"
+												name="duree"
+												bind:value={$formData.duree}
+												min={1}
+												class="pl-8 h-12"
+											/>
 										</div>
 										{#if $errors.duree}
 											<p class="text-sm font-medium text-destructive">{$errors.duree}</p>
@@ -357,10 +401,10 @@
 									</div>
 
 									<!-- Row 3: Modality (New Line) -->
-									<div class="space-y-3">
-										<label class="text-sm font-bold flex items-center gap-2">
-											Modalité <span class="text-destructive">*</span>
-										</label>
+										<div class="space-y-3">
+									<label class="text-sm font-bold flex items-center gap-2">
+										Modalité <span class="text-destructive">*</span>
+									</label>
 										<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={modalityArray} class="grid-cols-2 sm:grid-cols-4 gap-4">
 											<CardCheckbox value="Présentiel" title="Présentiel" subtitle="En salle" icon={School} />
 											<CardCheckbox value="Distanciel" title="Distanciel" subtitle="En ligne" icon={Monitor} />
@@ -379,7 +423,7 @@
 												<button
 													type="button"
 													onclick={() => toggleTargetPublic(tp.id)}
-													class="rounded-full px-4 py-1.5 text-sm font-medium transition-all
+													class="rounded-full px-4 py-1.5 text-sm font-medium transition-all cursor-pointer
 													{$formData.targetPublicIds.includes(tp.id)
 														? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
 														: 'bg-muted hover:bg-muted/80'}"
@@ -423,7 +467,11 @@
 													</div>
 													<span class="text-sm font-medium">{cp}</span>
 												</div>
-												<button type="button" onclick={() => removeCustomPrerequisite(i)} class="text-muted-foreground hover:text-destructive">
+												<button
+													type="button"
+													onclick={() => removeCustomPrerequisite(i)}
+													class="cursor-pointer text-muted-foreground hover:text-destructive"
+												>
 													<X class="size-4" />
 												</button>
 											</div>
@@ -473,49 +521,64 @@
 								<Card.Root class="relative border hover:shadow-md transition-shadow group overflow-hidden">
 									<div class="absolute top-0 left-0 w-1 h-full bg-primary/20 group-hover:bg-primary transition-colors"></div>
 									<Card.Content class="p-6 pt-8 space-y-4">
-										<button 
-											type="button" 
-											class="absolute top-2 right-2 p-2 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-											onclick={() => removeModule(i)}
-											disabled={$formData.modules.length <= 1}
-										>
-											<Trash2 class="size-4" />
-										</button>
+										{#if i > 0}
+											<button
+												type="button"
+												class="absolute top-2 right-2 p-2 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+												onclick={() => removeModule(i)}
+											>
+												<Trash2 class="size-4" />
+											</button>
+										{/if}
 
 										<div class="grid sm:grid-cols-4 gap-4">
 											<div class="sm:col-span-2 space-y-2">
-												<label class="text-sm font-bold">Titre du module</label>
+												<label class="text-sm font-bold flex items-center gap-2">
+													Titre du module <span class="text-destructive">*</span>
+												</label>
 												<Input bind:value={module.title} placeholder="Ex: Introduction aux fondamentaux" />
 											</div>
 											<div class="sm:col-span-2 space-y-2">
-												<label class="text-sm font-bold">Durée (h)</label>
-												<div class="flex gap-2">
-													<Input type="number" bind:value={module.durationHours} min="0.5" step="0.5" class="w-24 font-mono" />
-													<Button 
-														variant="outline" 
-														size="sm" 
-														class="text-[10px] px-2 h-10 border-dashed"
-														onclick={() => assignTime(i, 'half')}
-														disabled={remainingDuration <= 0}
-													>
-														1/2 Reste
-													</Button>
-													<Button 
-														variant="outline" 
-														size="sm" 
-														class="text-[10px] px-2 h-10 border-dashed"
-														onclick={() => assignTime(i, 'all')}
-														disabled={remainingDuration <= 0}
-													>
-														Tout
-													</Button>
+												<label class="text-sm font-bold flex items-center gap-2">
+													Durée (h) <span class="text-destructive">*</span>
+												</label>
+												<div class="flex flex-wrap items-center gap-2">
+													<Stepper
+														bind:value={module.durationHours}
+														min={0.5}
+														class="h-10"
+													/>
+													<div class="flex gap-1">
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															class="h-9"
+															onclick={() => assignTime(i, 'half')}
+															disabled={remainingDuration <= 0}
+														>
+															1/2 du temps restant
+														</Button>
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															class="h-9"
+															onclick={() => assignTime(i, 'all')}
+															disabled={remainingDuration <= 0}
+														>
+															Tout le temps restant
+														</Button>
+													</div>
 												</div>
 											</div>
 										</div>
 
 										<div class="space-y-2">
 											<label class="text-sm font-bold flex items-center justify-between">
-												Objectifs pédagogiques
+												<span class="flex items-center gap-1">
+													Objectifs pédagogiques <span class="text-destructive">*</span>
+												</span>
 												<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20">Requis Qualiopi</Badge>
 											</label>
 											<Textarea bind:value={module.objectifs} placeholder="À la fin de ce module, l'apprenant sera capable de..." class="resize-none min-h-[80px]" />
@@ -549,30 +612,36 @@
 							<!-- Evaluation Mode -->
 							<div class="space-y-4">
 								<div class="flex items-center justify-between">
-									<label class="text-sm font-bold">Comment évaluez-vous les acquis ?</label>
+									<label class="text-sm font-bold flex items-center gap-2">
+										Comment évaluez-vous les acquis ? <span class="text-destructive">*</span>
+									</label>
 									<p class="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Indicateur 11</p>
 								</div>
 								
 								<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={evaluationArray} class="grid-cols-1 sm:grid-cols-2 gap-4">
-									<CardCheckbox value="QCM de fin de formation" title="QCM" subtitle="Vérification rapide des connaissances" icon={X} />
-									<CardCheckbox value="Mise en situation pratique" title="Pratique" subtitle="Mise en œuvre réelle ou simulée" icon={ShieldCheck} />
-									<CardCheckbox value="Étude de cas complexe" title="Étude de cas" subtitle="Analyse de situations concrètes" icon={Search} />
-									<CardCheckbox value="Entretien avec le formateur" title="Entretien" subtitle="Dialogue direct de validation" icon={Monitor} />
+									<CardCheckbox value="QCM de fin de formation" title="QCM" subtitle="Vérification rapide des connaissances" icon={ClipboardList} />
+									<CardCheckbox value="Mise en situation pratique" title="Pratique" subtitle="Mise en œuvre réelle ou simulée" icon={Target} />
+									<CardCheckbox value="Étude de cas complexe" title="Étude de cas" subtitle="Analyse de situations concrètes" icon={BookOpen} />
+									<CardCheckbox value="Entretien avec le formateur" title="Entretien" subtitle="Dialogue direct de validation" icon={MessageCircle} />
 								</CardCheckboxGroup>
 							</div>
 
 							<!-- Attendance Tracking -->
 							<div class="space-y-4">
-								<label class="text-sm font-bold">Suivi de l'assiduité</label>
+								<label class="text-sm font-bold flex items-center gap-2">
+									Suivi de l'assiduité <span class="text-destructive">*</span>
+								</label>
 								<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={suiviArray} class="grid-cols-1 sm:grid-cols-3 gap-4">
-									<CardCheckbox value="Feuille d'émargement signée par demi-journée" title="Papier" subtitle="Émargement classique" icon={School} />
-									<CardCheckbox value="Émargement numérique via l'application" title="Numérique" subtitle="Signature sur tablette ou mobile" icon={Monitor} />
-									<CardCheckbox value="Logs de connexion (pour distanciel)" title="Logs" subtitle="Suivi automatique en ligne" icon={Shuffle} />
+									<CardCheckbox value="Feuille d'émargement signée par demi-journée" title="Papier" subtitle="Émargement classique" icon={FileSignature} />
+									<CardCheckbox value="Émargement numérique via l'application" title="Numérique" subtitle="Signature sur tablette ou mobile" icon={Smartphone} />
+									<CardCheckbox value="Logs de connexion (pour distanciel)" title="Logs" subtitle="Suivi automatique en ligne" icon={Monitor} />
 								</CardCheckboxGroup>
 							</div>
 
 							<div class="space-y-3">
-								<label for="description" class="text-sm font-bold">Description synthétique (Optionnel)</label>
+								<label for="description" class="text-sm font-bold">
+									Description synthétique (Optionnel)
+								</label>
 								<Textarea bind:value={$formData.description} placeholder="Une brève introduction pour vos catalogues ou devis..." class="min-h-[120px]" />
 							</div>
 
@@ -589,23 +658,30 @@
 					</div>
 				{/if}
 				
-				<!-- Bottom Navigation with Progress -->
-				<div class="pt-8 border-t flex flex-col gap-8">
-					<div class="flex justify-between items-center w-full">
-						<Button
-							variant="ghost"
-							type="button"
-							onclick={prevStep}
-							disabled={currentStep === 1 || $submitting}
-							class={cn("flex-shrink-0 transition-opacity", currentStep === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100')}
+			</form>
+		</Card.Content>
+	</Card.Root>
+
+		</div>
+	</main>
+
+	<!-- Bottom Navigation with Progress (Fixed Footer) -->
+	<footer class="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border/50 px-4 py-4 shadow-lg z-50">
+		<div class="flex justify-between items-center w-full max-w-5xl mx-auto gap-8">
+					<Button
+						variant="ghost"
+						type="button"
+						onclick={prevStep}
+						disabled={currentStep === 1 || $submitting}
+						class={cn("shrink-0 transition-opacity", currentStep === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100')}
 						>
 							<ChevronLeft class="mr-2 h-5 w-5" />
 							Précédent
 						</Button>
 
-						<!-- Progress Stepper (Moved to Footer) -->
-						<div class="hidden md:flex flex-grow justify-center px-8">
-							<div class="flex items-center gap-10">
+					<!-- Progress Stepper (Moved to Footer) -->
+					<div class="hidden md:flex grow justify-center px-8">
+						<div class="flex items-center gap-10">
 								{#each steps as step}
 									<div class="flex items-center gap-3">
 										<div
@@ -635,15 +711,16 @@
 							</div>
 						</div>
 
-						<div class="flex gap-3 flex-shrink-0">
-							{#if currentStep < steps.length}
-								<Button type="button" onclick={nextStep} class="px-8 h-12 text-base font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-px active:translate-y-0">
+					<div class="flex gap-3 shrink-0">
+						{#if currentStep < steps.length}
+							<Button type="button" onclick={nextStep} class="px-8 h-12 text-base font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-px active:translate-y-0">
 									Continuer
 									<ChevronRight class="ml-2 h-5 w-5" />
 								</Button>
 							{:else}
 								<Button 
-									type="submit" 
+									type="submit"
+									form="create-formation-form"
 									disabled={$submitting || remainingDuration !== 0} 
 									class="px-10 h-12 text-base font-bold shadow-lg shadow-primary/30 transition-all hover:-translate-y-px active:translate-y-0"
 								>
@@ -657,22 +734,17 @@
 						</div>
 					</div>
 
-					{#if currentStep === steps.length && remainingDuration !== 0}
-						<div class="flex justify-end animate-bounce">
-							<Badge variant="destructive" class="px-4 py-2 gap-2">
-								<Clock class="size-4" />
-								{remainingDuration > 0 
-									? `Il manque ${remainingDuration}h à affecter dans vos modules.` 
-									: `Vos modules dépassent la durée totale de ${-remainingDuration}h.`}
-							</Badge>
-						</div>
-					{/if}
+			{#if currentStep === steps.length && remainingDuration !== 0}
+				<div class="flex justify-end animate-bounce mt-4">
+					<Badge variant="destructive" class="px-4 py-2 gap-2">
+						<Clock class="size-4" />
+						{remainingDuration > 0 
+							? `Il manque ${remainingDuration}h à affecter dans vos modules.` 
+							: `Vos modules dépassent la durée totale de ${-remainingDuration}h.`}
+					</Badge>
 				</div>
-			</form>
-		</Card.Content>
-	</Card.Root>
-		</div>
-	</div>
+			{/if}
+		</footer>
 </div>
 
 <style>

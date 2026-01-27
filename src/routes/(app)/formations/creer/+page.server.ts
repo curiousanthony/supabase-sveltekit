@@ -36,7 +36,7 @@ export const load = (async () => {
 
 	const form = await superValidate(zod(formationSchema), {
 		defaults: {
-			name: 'Nouvelle Formation',
+			name: 'Titre de la formation',
 			clientId: '',
 			duree: 7,
 			modalite: 'Présentiel',
