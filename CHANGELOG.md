@@ -1,3 +1,10 @@
+## [1.7.2](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.7.1...v1.7.2) (2026-01-27)
+
+
+### Bug Fixes
+
+* Restore Sidebar.Trigger component in site header and adjust styles in workspace switcher and sidebar menu button for better responsiveness ([9abf9db](https://github.com/curiousanthony/supabase-sveltekit/commit/9abf9dbde9983b872b8ec0925b321adf61bfda13))
+
 ## [1.7.1](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.7.0...v1.7.1) (2026-01-27)
 
 
