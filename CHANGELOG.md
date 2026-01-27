@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.7.0...v1.7.1) (2026-01-27)
+
+
+### Bug Fixes
+
+* Update progress calculation in formation creation form and add redirect path validation in auth callback to enhance security ([77ab57a](https://github.com/curiousanthony/supabase-sveltekit/commit/77ab57ade7fd680aa70105be5191e081a43fb64c))
+
 # [1.7.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.6.0...v1.7.0) (2026-01-27)
 
 
