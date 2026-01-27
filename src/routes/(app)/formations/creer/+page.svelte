@@ -672,12 +672,13 @@ openTopicPopover = false;
 								</CardCheckboxGroup>
 							</div>
 
-							<div class="space-y-3">
+							<!-- Description synthétique -->
+							<!-- <div class="space-y-3">
 								<label for="description" class="text-sm font-bold">
 									Description synthétique (Optionnel)
 								</label>
 								<Textarea bind:value={$formData.description} placeholder="Une brève introduction pour vos catalogues ou devis..." class="min-h-[120px]" />
-							</div>
+							</div> -->
 
 							<div class="rounded-xl bg-primary/5 p-6 border border-primary/10 flex gap-4">
 								<div class="size-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
