@@ -813,7 +813,7 @@ openTopicPopover = false;
 				<div class="w-full max-w-lg space-y-3">
 					<div class="relative">
 						<Progress 
-							value={(currentStep / steps.length) * 100} 
+							value={steps.length <= 1 ? (currentStep >= steps.length ? 100 : 0) : ((currentStep - 1) / (steps.length - 1)) * 100} 
 							max={100}
 							class="h-2"
 						/>
