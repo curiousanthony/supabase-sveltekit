@@ -36,7 +36,7 @@ export const load = (async () => {
 
 	const form = await superValidate(zod(formationSchema), {
 		defaults: {
-			name: 'Titre de la formation',
+			name: 'Formation sans titre',
 			clientId: '',
 			duree: 7,
 			modalite: 'Présentiel',
@@ -47,7 +47,7 @@ export const load = (async () => {
 			customPrerequisites: [],
 			modules: [
 				{
-					title: 'Module 1',
+					title: 'Formation sans titre',
 					durationHours: 7,
 					objectifs: 'Objectifs du premier module'
 				}

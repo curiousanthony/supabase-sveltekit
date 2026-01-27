@@ -41,6 +41,9 @@
 	import { cn } from '$lib/utils';
 	import { Stepper } from '$lib/components/ui/stepper';
 	import { ButtonGroup } from '$lib/components/ui/button-group';
+	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { Progress } from '$lib/components/ui/progress';
 
 	import type { FormationSchema } from './schema';
 
@@ -57,6 +60,7 @@
 	});
 
 	const { form: formData, enhance, validate, errors, submitting } = form;
+	const sidebar = useSidebar();
 
 	let currentStep = $state(1);
 	const steps = [
@@ -68,15 +72,16 @@
 	// Header Title Sync and Cleanup
 	// Important: keep effects idempotent to avoid invalidation loops.
 	let lastAutoModule0Title = $state<string | null>(null);
+	let module1WasManuallyEdited = $state(false);
 	$effect(() => {
 		headerTitleText.set($formData.name);
 		
 		// Requirement: Default first module title matches Formation title
 		// Only auto-sync when it would not overwrite a user-edited title.
-		if ($formData.modules.length > 0 && currentStep === 1) {
+		if ($formData.modules.length > 0 && currentStep === 1 && !module1WasManuallyEdited) {
 			const desired = ($formData.name ?? '').trim();
 			const current = ($formData.modules[0]?.title ?? '').trim();
-			const canAutoUpdate = current === '' || current === (lastAutoModule0Title ?? '');
+			const canAutoUpdate = current === '' || current === (lastAutoModule0Title ?? '') || current === 'Module 1' || current === 'Formation sans titre';
 
 			if (desired && canAutoUpdate && current !== desired) {
 				$formData.modules[0].title = desired;
@@ -90,11 +95,22 @@
 
 	onMount(() => {
 		headerTitleSnippet.set(headerSnippet);
+		// Hide sidebar for full-screen experience
+		sidebar.setOpen(false);
 		// Reset on unmount
 		return () => {
 			headerTitleSnippet.set(null);
 			headerTitleText.set('');
+			sidebar.setOpen(true);
 		};
+	});
+
+	// Update browser tab title when formation title changes
+	$effect(() => {
+		const title = $formData.name && $formData.name !== 'Formation sans titre' 
+			? $formData.name 
+			: 'Créer une formation';
+		document.title = title;
 	});
 
 	// Calculated Duration logic
@@ -409,11 +425,11 @@ openTopicPopover = false;
 											</div>
 
 											<ButtonGroup class="h-12">
-												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 7)}>7h</Button>
-												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 14)}>14h</Button>
-												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 21)}>21h</Button>
-												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 35)}>35h</Button>
-												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 70)}>70h</Button>
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-6" onclick={() => ($formData.duree = 7)}>7h</Button>
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-6" onclick={() => ($formData.duree = 14)}>14h</Button>
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-6" onclick={() => ($formData.duree = 21)}>21h</Button>
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-6" onclick={() => ($formData.duree = 35)}>35h</Button>
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-6" onclick={() => ($formData.duree = 70)}>70h</Button>
 											</ButtonGroup>
 										</div>
 										{#if $errors.duree}
@@ -425,6 +441,16 @@ openTopicPopover = false;
 									<div class="space-y-3">
 									<div class="text-sm font-bold flex items-center gap-2">
 										Modalité <span class="text-destructive">*</span>
+										<Tooltip.Root>
+											<Tooltip.Trigger>
+												<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20 cursor-help ml-auto">
+													Indicateur 3
+												</Badge>
+											</Tooltip.Trigger>
+											<Tooltip.Content>
+												<p class="max-w-xs">Indicateur 3 : La modalité de formation (présentiel, distanciel, hybride, e-learning) doit être clairement définie pour assurer la traçabilité et la conformité Qualiopi.</p>
+											</Tooltip.Content>
+										</Tooltip.Root>
 									</div>
 										<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={modalityArray} class="grid-cols-2 sm:grid-cols-4 gap-4">
 											<CardCheckbox value="Présentiel" title="Présentiel" subtitle="En salle" icon={School} />
@@ -438,6 +464,16 @@ openTopicPopover = false;
 									<div class="space-y-3">
 										<div class="text-sm font-bold flex items-center gap-2">
 											<Target class="size-4" /> Public cible
+											<Tooltip.Root>
+												<Tooltip.Trigger>
+													<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20 cursor-help ml-auto">
+														Indicateur 2
+													</Badge>
+												</Tooltip.Trigger>
+												<Tooltip.Content>
+													<p class="max-w-xs">Indicateur 2 : Définir précisément le public cible permet de vérifier que les stagiaires ont le profil adapté à la formation, un point clé pour la certification Qualiopi.</p>
+												</Tooltip.Content>
+											</Tooltip.Root>
 										</div>
 										<div class="flex flex-wrap gap-2">
 											{#each data.targetPublics as tp}
@@ -471,6 +507,16 @@ openTopicPopover = false;
 							<div class="space-y-3">
 								<div class="text-sm font-bold flex items-center gap-2">
 									<ShieldCheck class="size-4" /> Prérequis
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20 cursor-help ml-auto">
+												Indicateur 2
+											</Badge>
+										</Tooltip.Trigger>
+										<Tooltip.Content>
+											<p class="max-w-xs">Indicateur 2 : Les prérequis garantissent que les stagiaires ont les compétences nécessaires pour suivre la formation, essentiel pour la conformité Qualiopi.</p>
+										</Tooltip.Content>
+									</Tooltip.Root>
 								</div>
 								<div class="space-y-4">
 									<div class="divide-y rounded-xl border bg-muted/30 overflow-hidden">
@@ -543,7 +589,7 @@ openTopicPopover = false;
 							</div>
 							<div class="text-right">
 								<div class="text-sm font-bold mb-1">Temps à affecter</div>
-								<Badge variant={remainingDuration === 0 ? 'secondary' : remainingDuration < 0 ? 'destructive' : 'outline'} class="text-lg px-3 py-1">
+								<Badge variant={remainingDuration === 0 ? 'default' : remainingDuration < 0 ? 'destructive' : 'outline'} class={cn("text-lg px-3 py-1", remainingDuration === 0 && "bg-green-500 text-white border-green-600")}>
 									{remainingDuration}h / {$formData.duree}h
 								</Badge>
 							</div>
@@ -569,7 +615,16 @@ openTopicPopover = false;
 												<label for={`module-title-${i}`} class="text-sm font-bold flex items-center gap-2">
 													Titre du module <span class="text-destructive">*</span>
 												</label>
-												<Input id={`module-title-${i}`} bind:value={module.title} placeholder="Ex: Introduction aux fondamentaux" />
+												<Input 
+													id={`module-title-${i}`} 
+													bind:value={module.title} 
+													placeholder="Ex: Introduction aux fondamentaux"
+													oninput={() => {
+														if (i === 0) {
+															module1WasManuallyEdited = true;
+														}
+													}}
+												/>
 											</div>
 											<div class="sm:col-span-2 space-y-2">
 												<label for={`module-duration-${i}`} class="text-sm font-bold flex items-center gap-2">
@@ -609,11 +664,20 @@ openTopicPopover = false;
 										</div>
 
 										<div class="space-y-2">
-											<label for={`module-objectifs-${i}`} class="text-sm font-bold flex items-center justify-between">
+											<label for={`module-objectifs-${i}`} class="text-sm font-bold flex items-center gap-2">
 												<span class="flex items-center gap-1">
 													Objectifs pédagogiques <span class="text-destructive">*</span>
 												</span>
-												<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20">Requis Qualiopi</Badge>
+												<Tooltip.Root>
+													<Tooltip.Trigger>
+														<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20 cursor-help">
+															Indicateur 6
+														</Badge>
+													</Tooltip.Trigger>
+													<Tooltip.Content>
+														<p class="max-w-xs">Indicateur 6 : Les objectifs pédagogiques doivent être mesurables et évaluables. Utilisez des verbes d'action (comprendre, appliquer, analyser) pour faciliter l'évaluation de fin de formation.</p>
+													</Tooltip.Content>
+												</Tooltip.Root>
 											</label>
 											<Textarea id={`module-objectifs-${i}`} bind:value={module.objectifs} placeholder="À la fin de ce module, l'apprenant sera capable de..." class="resize-none min-h-[80px]" />
 										</div>
@@ -649,7 +713,16 @@ openTopicPopover = false;
 									<div class="text-sm font-bold flex items-center gap-2">
 										Comment évaluez-vous les acquis ? <span class="text-destructive">*</span>
 									</div>
-									<p class="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Indicateur 11</p>
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20 cursor-help">
+												Indicateur 11
+											</Badge>
+										</Tooltip.Trigger>
+										<Tooltip.Content>
+											<p class="max-w-xs">Indicateur 11 : Le mode d'évaluation doit permettre de vérifier l'acquisition des compétences visées. Il doit être adapté aux objectifs pédagogiques et permettre une traçabilité pour Qualiopi.</p>
+										</Tooltip.Content>
+									</Tooltip.Root>
 								</div>
 								
 								<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={evaluationArray} class="grid-cols-1 sm:grid-cols-2 gap-4">
@@ -664,6 +737,16 @@ openTopicPopover = false;
 							<div class="space-y-4">
 								<div class="text-sm font-bold flex items-center gap-2">
 									Suivi de l'assiduité <span class="text-destructive">*</span>
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20 cursor-help ml-auto">
+												Indicateur 4
+											</Badge>
+										</Tooltip.Trigger>
+										<Tooltip.Content>
+											<p class="max-w-xs">Indicateur 4 : Le suivi de l'assiduité est obligatoire pour Qualiopi. Il permet de tracer la présence effective des stagiaires et de justifier la délivrance de la certification.</p>
+										</Tooltip.Content>
+									</Tooltip.Root>
 								</div>
 								<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={suiviArray} class="grid-cols-1 sm:grid-cols-3 gap-4">
 									<CardCheckbox value="Feuille d'émargement signée par demi-journée" title="Papier" subtitle="Émargement classique" icon={FileSignature} />
@@ -680,14 +763,22 @@ openTopicPopover = false;
 								<Textarea bind:value={$formData.description} placeholder="Une brève introduction pour vos catalogues ou devis..." class="min-h-[120px]" />
 							</div> -->
 
-							<div class="rounded-xl bg-primary/5 p-6 border border-primary/10 flex gap-4">
-								<div class="size-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-									<Sparkles class="size-5 text-primary" />
-								</div>
-								<div>
-									<p class="font-bold text-primary mb-1">Bravo ! Vous êtes en règle.</p>
-									<p class="text-sm text-primary/80">En complétant ces sections, vous validez les exigences clés de Qualiopi pour la conception.</p>
-								</div>
+							<div class="space-y-4">
+								<QualiopiAdvise 
+									variant="info"
+									title="Conseil : Mode d'évaluation"
+									message="Choisissez un mode d'évaluation adapté à vos objectifs pédagogiques. Le QCM convient pour vérifier les connaissances théoriques, tandis que la mise en situation pratique permet d'évaluer les compétences opérationnelles."
+								/>
+								<QualiopiAdvise 
+									variant="info"
+									title="Conseil : Suivi de l'assiduité"
+									message="Pour le présentiel, privilégiez l'émargement papier ou numérique. Pour le distanciel, les logs de connexion sont automatiquement enregistrés. L'hybride nécessite un suivi combiné des deux modalités."
+								/>
+								<QualiopiAdvise 
+									variant="playful"
+									title="Astuce Qualiopi 💡"
+									message="Tous ces éléments sont essentiels pour votre certification. En les complétant correctement, vous vous assurez que votre formation répond aux exigences Qualiopi dès la conception."
+								/>
 							</div>
 						</div>
 					</div>
@@ -703,73 +794,82 @@ openTopicPopover = false;
 	<!-- Bottom Navigation with Progress (Fixed Footer) -->
 	<footer class="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border/50 px-4 py-4 shadow-lg z-50">
 		<div class="flex justify-between items-center w-full max-w-5xl mx-auto gap-8">
-					{#if currentStep > 1}
-						<Button
-							variant="ghost"
-							type="button"
-							onclick={prevStep}
-							disabled={$submitting}
-							class="shrink-0"
-						>
-							<ChevronLeft class="mr-2 h-5 w-5" />
-							Précédent
-						</Button>
-					{/if}
+			<div class="shrink-0">
+				{#if currentStep > 1}
+					<Button
+						variant="ghost"
+						type="button"
+						onclick={prevStep}
+						disabled={$submitting}
+					>
+						<ChevronLeft class="mr-2 h-5 w-5" />
+						Précédent
+					</Button>
+				{/if}
+			</div>
 
-					<!-- Progress Stepper (Moved to Footer) -->
-					<div class="hidden md:flex grow justify-center px-8">
-						<div class="flex items-center gap-10">
-								{#each steps as step}
-									<div class="flex items-center gap-3">
-										<div
-											class={cn(
-												"size-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500",
-												currentStep > step.id ? "bg-primary text-primary-foreground" : 
-												currentStep === step.id ? "bg-primary/20 text-primary ring-2 ring-primary" : "bg-muted text-muted-foreground"
-											)}
-										>
-											{#if currentStep > step.id}
-												<Check class="size-4" />
-											{:else}
-												{step.id}
-											{/if}
-										</div>
-										<span class={cn(
-											"text-xs font-bold uppercase tracking-widest transition-colors",
-											currentStep >= step.id ? "text-foreground" : "text-muted-foreground"
-										)}>
-											{step.title}
-										</span>
-										{#if step.id < steps.length}
-											<div class="w-8 h-px bg-muted ml-3"></div>
-										{/if}
-									</div>
-								{/each}
-							</div>
-						</div>
-
-					<div class="flex gap-3 shrink-0">
-						{#if currentStep < steps.length}
-							<Button type="button" onclick={nextStep} class="px-8 h-12 text-base font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-px active:translate-y-0">
-									Continuer
-									<ChevronRight class="ml-2 h-5 w-5" />
-								</Button>
-							{:else}
-								<Button 
-									type="submit"
-									form="create-formation-form"
-									disabled={$submitting || remainingDuration !== 0} 
-									class="px-10 h-12 text-base font-bold shadow-lg shadow-primary/30 transition-all hover:-translate-y-px active:translate-y-0"
+			<!-- Progress Stepper (Centered) -->
+			<div class="hidden md:flex flex-1 justify-center px-8">
+				<div class="w-full max-w-lg space-y-3">
+					<div class="relative">
+						<Progress 
+							value={(currentStep / steps.length) * 100} 
+							max={100}
+							class="h-2"
+						/>
+						<div class="absolute inset-0 flex items-center justify-between px-1">
+							{#each steps as step}
+								<div
+									class={cn(
+										"size-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 relative z-10",
+										currentStep > step.id ? "bg-primary text-primary-foreground" : 
+										currentStep === step.id ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2" : "bg-muted text-muted-foreground"
+									)}
 								>
-									{#if $submitting}
-										Enregistrement...
+									{#if currentStep > step.id}
+										<Check class="size-3.5" />
 									{:else}
-										Créer la formation 🚀
+										{step.id}
 									{/if}
-								</Button>
-							{/if}
+								</div>
+							{/each}
 						</div>
 					</div>
+					<div class="flex items-center justify-between px-1">
+						{#each steps as step}
+							<span class={cn(
+								"text-xs font-bold uppercase tracking-wider transition-colors text-center flex-1",
+								currentStep >= step.id ? "text-foreground" : "text-muted-foreground"
+							)}>
+								{step.title}
+							</span>
+						{/each}
+					</div>
+				</div>
+			</div>
+
+			<div class="shrink-0">
+				{#if currentStep < steps.length}
+					<Button type="button" onclick={nextStep} class="px-8 h-12 text-base font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-px active:translate-y-0">
+						Continuer
+						<ChevronRight class="ml-2 h-5 w-5" />
+					</Button>
+				{:else}
+					<Button 
+						type="submit"
+						form="create-formation-form"
+						disabled={$submitting || remainingDuration !== 0} 
+						class="px-10 h-12 text-base font-bold shadow-lg shadow-primary/30 transition-all hover:-translate-y-px active:translate-y-0"
+					>
+						{#if $submitting}
+							Enregistrement...
+						{:else}
+							Créer la formation 🚀
+						{/if}
+					</Button>
+				{/if}
+			</div>
+		</div>
 
 			{#if currentStep === steps.length && remainingDuration !== 0}
 				<div class="flex justify-end animate-bounce mt-4">

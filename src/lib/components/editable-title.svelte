@@ -9,6 +9,7 @@
 	let isEditing = $state(false);
 	let isHovered = $state(false);
 	let inputElement: HTMLInputElement | null = $state(null);
+	let hasBeenEdited = $state(false);
 
 	async function startEditing() {
 		isEditing = true;
@@ -19,6 +20,9 @@
 
 	function stopEditing() {
 		isEditing = false;
+		if (value && value.trim() && value !== 'Formation sans titre') {
+			hasBeenEdited = true;
+		}
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -51,7 +55,10 @@
 		<div class="relative flex items-center group">
 			<h1
 				onclick={startEditing}
-				class="cursor-text rounded-md px-2 py-1 text-lg font-bold transition-all duration-200 hover:bg-accent/80 active:scale-95 flex items-center gap-3"
+				class={cn(
+					"cursor-text rounded-md px-2 py-1 text-lg font-bold transition-all duration-200 hover:bg-accent/80 active:scale-95 flex items-center gap-3",
+					!hasBeenEdited && (!value || value === 'Formation sans titre') ? "text-muted-foreground" : "text-foreground"
+				)}
 			>
 				{value || 'Sans titre'}
 				<Pencil class="size-4 opacity-0 group-hover:opacity-40 transition-opacity" />

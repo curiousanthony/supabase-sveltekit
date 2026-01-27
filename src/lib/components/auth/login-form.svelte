@@ -56,7 +56,7 @@
 					<Field>
 						<div class="flex items-center">
 							<FieldLabel for="password-{id}">Mot de passe</FieldLabel>
-							<a href="##" class="ml-auto text-sm underline-offset-4 hover:underline">
+							<a href="javascript:void(0)" class="ml-auto text-sm underline-offset-4 hover:underline">
 								Mot de passe oublié ?
 							</a>
 						</div>
@@ -73,7 +73,7 @@
 		</Card.Content>
 	</Card.Root>
 	<FieldDescription class="px-6 text-center">
-		En cliquant sur "Connexion", vous acceptez nos <a href="#">Terms of Service</a> et
-		<a href="#">Politique de confidentialité</a>.
+		En cliquant sur "Connexion", vous acceptez nos <a href="javascript:void(0)">Terms of Service</a> et
+		<a href="javascript:void(0)">Politique de confidentialité</a>.
 	</FieldDescription>
 </div>
