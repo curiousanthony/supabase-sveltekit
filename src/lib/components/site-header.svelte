@@ -16,7 +16,7 @@
 >
 	<div class="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
 		<!-- Sidebar trigger to replace with mobile bottom nav later -->
-		<!-- <Sidebar.Trigger class="-ml-1" /> -->
+		<Sidebar.Trigger class="-ml-1" />
 		{#if header?.backButton}
 			<BackButton href={header?.backButtonHref} label={header?.backButtonLabel} />
 			<!-- <Separator orientation="vertical" class="mx-2 data-[orientation=vertical]:h-4" /> -->
