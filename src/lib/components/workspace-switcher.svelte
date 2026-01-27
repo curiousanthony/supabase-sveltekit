@@ -26,7 +26,7 @@
 						</div>
 						<div class="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
 							<span class="font-medium">Espace de travail</span>
-							<span class="">{selectedWorkspace}</span>
+							<span>{selectedWorkspace}</span>
 						</div>
 						<ChevronsUpDownIcon class="ml-auto group-data-[collapsible=icon]:hidden" />
 					</Sidebar.MenuButton>

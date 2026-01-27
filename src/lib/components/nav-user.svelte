@@ -40,13 +40,13 @@
 							<Avatar.Image src={user.avatar_url} alt={user.name} />
 							<Avatar.Fallback class="rounded-lg">{getInitials(user.name)}</Avatar.Fallback>
 						</Avatar.Root>
-						<div class="grid flex-1 text-left text-sm leading-tight">
+						<div class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
 							<span class="truncate font-medium">{user.name}</span>
 							<span class="truncate text-xs text-muted-foreground">
 								{user.email}
 							</span>
 						</div>
-						<DotsVerticalIcon class="ml-auto size-4" />
+						<DotsVerticalIcon class="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
 					</Sidebar.MenuButton>
 				{/snippet}
 			</DropdownMenu.Trigger>

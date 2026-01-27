@@ -792,7 +792,7 @@ openTopicPopover = false;
 	</main>
 
 	<!-- Bottom Navigation with Progress (Fixed Footer) -->
-	<footer class="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border/50 px-4 py-4 shadow-lg z-50">
+	<footer class="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border/50 px-4 py-4 shadow-lg z-9">
 		<div class="flex justify-between items-center w-full max-w-5xl mx-auto gap-8">
 			<div class="shrink-0">
 				{#if currentStep > 1}
