@@ -18,7 +18,7 @@
 		<!-- Sidebar trigger to replace with mobile bottom nav later -->
 		<!-- <Sidebar.Trigger class="-ml-1" /> -->
 		{#if header?.backButton}
-			<BackButton />
+			<BackButton href={header?.backButtonHref} label={header?.backButtonLabel} />
 			<!-- <Separator orientation="vertical" class="mx-2 data-[orientation=vertical]:h-4" /> -->
 		{/if}
 		<div class="flex items-center gap-2">

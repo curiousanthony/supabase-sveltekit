@@ -40,13 +40,14 @@
 	import { onMount } from 'svelte';
 	import { cn } from '$lib/utils';
 	import { Stepper } from '$lib/components/ui/stepper';
+	import { ButtonGroup } from '$lib/components/ui/button-group';
 
 	import type { FormationSchema } from './schema';
 
 	let { data } = $props();
 
 	const form = superForm<FormationSchema>(data.form as any, {
-		validators: zodClient(formationSchema),
+		validators: zodClient(formationSchema as any),
 		dataType: 'json',
 		onResult: ({ result }) => {
 			if (result.type === 'redirect') {
@@ -233,6 +234,14 @@
 	let openClientPopover = $state(false);
 	let clientSearchValue = $state('');
 	const selectedClient = $derived(data.clients.find(c => c.id === $formData.clientId));
+
+	$effect(() => {
+		if (!openClientPopover) clientSearchValue = '';
+	});
+
+	$effect(() => {
+		if (!openTopicPopover) topicSearchValue = '';
+	});
 </script>
 
 {#snippet headerSnippet()}
@@ -259,6 +268,77 @@
 								<div class="grid gap-8">
 									<!-- Row 1: Client and Thématique -->
 									<div class="grid sm:grid-cols-2 gap-6">
+										<!-- Searchable Thématique Selector -->
+										<div class="space-y-3">
+											<label for="topicId" class="text-sm font-bold flex items-center gap-2">
+												Thématique
+											</label>
+											<Popover.Root bind:open={openTopicPopover}>
+												<Popover.Trigger
+													type="button"
+													role="combobox"
+													aria-expanded={openTopicPopover}
+													class="inline-flex h-12 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-background px-4 py-2 text-left text-sm font-normal shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+												>
+													<span class="truncate">
+														{#if selectedTopic}
+															{selectedTopic.name}
+														{:else if $formData.customTopic}
+															{$formData.customTopic} (Custom)
+														{:else}
+															Choisir une thématique...
+														{/if}
+													</span>
+													<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+												</Popover.Trigger>
+												<Popover.Content class="w-[--bits-popover-anchor-width] p-0" align="start">
+													<Command.Root>
+														<Command.Input placeholder="Chercher ou créer..." class="h-10" bind:value={topicSearchValue} />
+														<Command.List>
+															<Command.Empty class="p-0">
+{#if topicSearchValue.trim()}
+<button 
+type="button"
+class="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-accent transition-colors"
+onclick={() => {
+handleTopicSelect('custom', topicSearchValue);
+openTopicPopover = false;
+}}
+>
+<Plus class="size-4" /> Créer "{topicSearchValue}"
+</button>
+{:else}
+<p class="px-3 py-6 text-center text-sm text-muted-foreground">Aucune thématique trouvée.</p>
+{/if}
+															</Command.Empty>
+															<Command.Group>
+																{#each data.topics as topic}
+																	<Command.Item
+																		value={topic.name}
+																		class="cursor-pointer"
+																		onSelect={() => {
+																			handleTopicSelect(topic.id, topic.name);
+																			openTopicPopover = false;
+																		}}
+																	>
+																		<Check
+																			class={cn(
+																				"mr-2 h-4 w-4",
+																				$formData.topicId !== topic.id && "text-transparent"
+																			)}
+																		/>
+																		{topic.name}
+																	</Command.Item>
+																{/each}
+															</Command.Group>
+														</Command.List>
+													</Command.Root>
+												</Popover.Content>
+											</Popover.Root>
+											<input type="hidden" name="topicId" bind:value={$formData.topicId} />
+											<input type="hidden" name="customTopic" bind:value={$formData.customTopic} />
+										</div>
+
 										<!-- Searchable Client Selector -->
 										<div class="space-y-3">
 											<label for="clientId" class="text-sm font-bold flex items-center gap-2">
@@ -270,7 +350,7 @@
 													type="button"
 													role="combobox"
 													aria-expanded={openClientPopover}
-													class="inline-flex h-12 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-4 py-2 text-left text-sm font-normal shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+													class="inline-flex h-12 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-background px-4 py-2 text-left text-sm font-normal shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
 												>
 													<span class="truncate">{selectedClient ? selectedClient.legalName : "Choisir un client..."}</span>
 													<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -284,6 +364,7 @@
 																{#each data.clients as client}
 																	<Command.Item
 																		value={client.legalName}
+																		class="cursor-pointer"
 																		onSelect={() => {
 																			$formData.clientId = client.id;
 																			openClientPopover = false;
@@ -308,76 +389,6 @@
 												<p class="text-sm font-medium text-destructive">{$errors.clientId}</p>
 											{/if}
 										</div>
-
-										<!-- Searchable Thématique Selector -->
-										<div class="space-y-3">
-											<label for="topicId" class="text-sm font-bold flex items-center gap-2">
-												Thématique
-											</label>
-											<Popover.Root bind:open={openTopicPopover}>
-												<Popover.Trigger
-													type="button"
-													role="combobox"
-													aria-expanded={openTopicPopover}
-													class="inline-flex h-12 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-4 py-2 text-left text-sm font-normal shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
-												>
-													<span class="truncate">
-														{#if selectedTopic}
-															{selectedTopic.name}
-														{:else if $formData.customTopic}
-															{$formData.customTopic} (Custom)
-														{:else}
-															Choisir une thématique...
-														{/if}
-													</span>
-													<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
-												</Popover.Trigger>
-												<Popover.Content class="w-[--bits-popover-anchor-width] p-0" align="start">
-													<Command.Root>
-														<Command.Input placeholder="Chercher ou créer..." class="h-10" bind:value={topicSearchValue} />
-														<Command.List>
-															<Command.Empty class="p-0">
-{#if topicSearchValue.trim()}
-<button 
-type="button"
-class="flex w-full items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-accent transition-colors"
-onclick={() => {
-handleTopicSelect('custom', topicSearchValue);
-openTopicPopover = false;
-}}
->
-<Plus class="size-4" /> Créer "{topicSearchValue}"
-</button>
-{:else}
-<p class="px-3 py-6 text-center text-sm text-muted-foreground">Aucune thématique trouvée.</p>
-{/if}
-															</Command.Empty>
-															<Command.Group>
-																{#each data.topics as topic}
-																	<Command.Item
-																		value={topic.name}
-																		onSelect={() => {
-																			handleTopicSelect(topic.id, topic.name);
-																			openTopicPopover = false;
-																		}}
-																	>
-																		<Check
-																			class={cn(
-																				"mr-2 h-4 w-4",
-																				$formData.topicId !== topic.id && "text-transparent"
-																			)}
-																		/>
-																		{topic.name}
-																	</Command.Item>
-																{/each}
-															</Command.Group>
-														</Command.List>
-													</Command.Root>
-												</Popover.Content>
-											</Popover.Root>
-											<input type="hidden" name="topicId" bind:value={$formData.topicId} />
-											<input type="hidden" name="customTopic" bind:value={$formData.customTopic} />
-										</div>
 									</div>
 
 									<!-- Row 2: Duration -->
@@ -385,7 +396,8 @@ openTopicPopover = false;
 										<label for="duree" class="text-sm font-bold flex items-center gap-2">
 											Durée totale de la formation (heures) <span class="text-destructive">*</span>
 										</label>
-										<div class="relative inline-flex items-center">
+										<div class="flex flex-wrap items-center gap-2">
+											<div class="relative inline-flex items-center">
 											<Clock class="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
 											<Stepper
 												id="duree"
@@ -394,6 +406,15 @@ openTopicPopover = false;
 												min={1}
 												class="pl-8 h-12"
 											/>
+											</div>
+
+											<ButtonGroup class="h-12">
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 7)}>7h</Button>
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 14)}>14h</Button>
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 21)}>21h</Button>
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 35)}>35h</Button>
+												<Button type="button" variant="ghost" size="sm" class="h-12 px-3" onclick={() => ($formData.duree = 70)}>70h</Button>
+											</ButtonGroup>
 										</div>
 										{#if $errors.duree}
 											<p class="text-sm font-medium text-destructive">{$errors.duree}</p>
@@ -401,10 +422,10 @@ openTopicPopover = false;
 									</div>
 
 									<!-- Row 3: Modality (New Line) -->
-										<div class="space-y-3">
-									<label class="text-sm font-bold flex items-center gap-2">
+									<div class="space-y-3">
+									<div class="text-sm font-bold flex items-center gap-2">
 										Modalité <span class="text-destructive">*</span>
-									</label>
+									</div>
 										<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={modalityArray} class="grid-cols-2 sm:grid-cols-4 gap-4">
 											<CardCheckbox value="Présentiel" title="Présentiel" subtitle="En salle" icon={School} />
 											<CardCheckbox value="Distanciel" title="Distanciel" subtitle="En ligne" icon={Monitor} />
@@ -415,19 +436,31 @@ openTopicPopover = false;
 
 									<!-- Row 4: Public Cible -->
 									<div class="space-y-3">
-										<label class="text-sm font-bold flex items-center gap-2">
+										<div class="text-sm font-bold flex items-center gap-2">
 											<Target class="size-4" /> Public cible
-										</label>
+										</div>
 										<div class="flex flex-wrap gap-2">
 											{#each data.targetPublics as tp}
 												<button
 													type="button"
 													onclick={() => toggleTargetPublic(tp.id)}
-													class="rounded-full px-4 py-1.5 text-sm font-medium transition-all cursor-pointer
-													{$formData.targetPublicIds.includes(tp.id)
-														? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
-														: 'bg-muted hover:bg-muted/80'}"
+													class={cn(
+														"inline-flex items-center gap-3 rounded-full border px-4 py-2 text-sm font-medium transition-colors cursor-pointer hover:bg-accent/50",
+														$formData.targetPublicIds.includes(tp.id)
+															? "border-primary/30 bg-primary/5"
+															: "border-input bg-background"
+													)}
 												>
+													<div
+														class={cn(
+															"size-5 rounded border flex items-center justify-center transition-colors",
+															$formData.targetPublicIds.includes(tp.id)
+																? "bg-primary border-primary text-white"
+																: "border-input bg-background"
+														)}
+													>
+														{#if $formData.targetPublicIds.includes(tp.id)}<Check class="size-3.5" />{/if}
+													</div>
 													{tp.name}
 												</button>
 											{/each}
@@ -436,9 +469,9 @@ openTopicPopover = false;
 
 							<!-- List-style Prerequisites -->
 							<div class="space-y-3">
-								<label class="text-sm font-bold flex items-center gap-2">
+								<div class="text-sm font-bold flex items-center gap-2">
 									<ShieldCheck class="size-4" /> Prérequis
-								</label>
+								</div>
 								<div class="space-y-4">
 									<div class="divide-y rounded-xl border bg-muted/30 overflow-hidden">
 										{#each data.prerequisites as p}
@@ -533,17 +566,18 @@ openTopicPopover = false;
 
 										<div class="grid sm:grid-cols-4 gap-4">
 											<div class="sm:col-span-2 space-y-2">
-												<label class="text-sm font-bold flex items-center gap-2">
+												<label for={`module-title-${i}`} class="text-sm font-bold flex items-center gap-2">
 													Titre du module <span class="text-destructive">*</span>
 												</label>
-												<Input bind:value={module.title} placeholder="Ex: Introduction aux fondamentaux" />
+												<Input id={`module-title-${i}`} bind:value={module.title} placeholder="Ex: Introduction aux fondamentaux" />
 											</div>
 											<div class="sm:col-span-2 space-y-2">
-												<label class="text-sm font-bold flex items-center gap-2">
+												<label for={`module-duration-${i}`} class="text-sm font-bold flex items-center gap-2">
 													Durée (h) <span class="text-destructive">*</span>
 												</label>
 												<div class="flex flex-wrap items-center gap-2">
 													<Stepper
+														id={`module-duration-${i}`}
 														bind:value={module.durationHours}
 														min={0.5}
 														class="h-10"
@@ -575,13 +609,13 @@ openTopicPopover = false;
 										</div>
 
 										<div class="space-y-2">
-											<label class="text-sm font-bold flex items-center justify-between">
+											<label for={`module-objectifs-${i}`} class="text-sm font-bold flex items-center justify-between">
 												<span class="flex items-center gap-1">
 													Objectifs pédagogiques <span class="text-destructive">*</span>
 												</span>
 												<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20">Requis Qualiopi</Badge>
 											</label>
-											<Textarea bind:value={module.objectifs} placeholder="À la fin de ce module, l'apprenant sera capable de..." class="resize-none min-h-[80px]" />
+											<Textarea id={`module-objectifs-${i}`} bind:value={module.objectifs} placeholder="À la fin de ce module, l'apprenant sera capable de..." class="resize-none min-h-[80px]" />
 										</div>
 									</Card.Content>
 								</Card.Root>
@@ -612,9 +646,9 @@ openTopicPopover = false;
 							<!-- Evaluation Mode -->
 							<div class="space-y-4">
 								<div class="flex items-center justify-between">
-									<label class="text-sm font-bold flex items-center gap-2">
+									<div class="text-sm font-bold flex items-center gap-2">
 										Comment évaluez-vous les acquis ? <span class="text-destructive">*</span>
-									</label>
+									</div>
 									<p class="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Indicateur 11</p>
 								</div>
 								
@@ -628,9 +662,9 @@ openTopicPopover = false;
 
 							<!-- Attendance Tracking -->
 							<div class="space-y-4">
-								<label class="text-sm font-bold flex items-center gap-2">
+								<div class="text-sm font-bold flex items-center gap-2">
 									Suivi de l'assiduité <span class="text-destructive">*</span>
-								</label>
+								</div>
 								<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={suiviArray} class="grid-cols-1 sm:grid-cols-3 gap-4">
 									<CardCheckbox value="Feuille d'émargement signée par demi-journée" title="Papier" subtitle="Émargement classique" icon={FileSignature} />
 									<CardCheckbox value="Émargement numérique via l'application" title="Numérique" subtitle="Signature sur tablette ou mobile" icon={Smartphone} />
@@ -668,16 +702,18 @@ openTopicPopover = false;
 	<!-- Bottom Navigation with Progress (Fixed Footer) -->
 	<footer class="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border/50 px-4 py-4 shadow-lg z-50">
 		<div class="flex justify-between items-center w-full max-w-5xl mx-auto gap-8">
-					<Button
-						variant="ghost"
-						type="button"
-						onclick={prevStep}
-						disabled={currentStep === 1 || $submitting}
-						class={cn("shrink-0 transition-opacity", currentStep === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100')}
+					{#if currentStep > 1}
+						<Button
+							variant="ghost"
+							type="button"
+							onclick={prevStep}
+							disabled={$submitting}
+							class="shrink-0"
 						>
 							<ChevronLeft class="mr-2 h-5 w-5" />
 							Précédent
 						</Button>
+					{/if}
 
 					<!-- Progress Stepper (Moved to Footer) -->
 					<div class="hidden md:flex grow justify-center px-8">

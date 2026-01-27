@@ -65,7 +65,9 @@ export const load = (async () => {
 		topics: mockTopics,
 		header: {
 			pageName: 'Créer une formation',
-			backButton: true
+			backButton: true,
+			backButtonLabel: 'Formations',
+			backButtonHref: '/formations'
 		}
 	};
 }) satisfies PageServerLoad;

@@ -2,6 +2,8 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
 	import { cn } from "$lib/utils";
+	import Minus from "@lucide/svelte/icons/minus";
+	import Plus from "@lucide/svelte/icons/plus";
 
 	type Props = {
 		id?: string;
@@ -51,11 +53,11 @@
 		type="button"
 		variant="ghost"
 		size="icon"
-		class="h-full rounded-none border-r border-input text-lg font-bold"
+		class="h-full rounded-none border-r border-input"
 		onclick={(event) => handleStep(event, -1)}
 		disabled={disabled}
 	>
-		-
+		<Minus class="size-4" />
 	</Button>
 
 	<Input
@@ -74,11 +76,11 @@
 		type="button"
 		variant="ghost"
 		size="icon"
-		class="h-full rounded-none border-l border-input text-lg font-bold"
+		class="h-full rounded-none border-l border-input"
 		onclick={(event) => handleStep(event, 1)}
 		disabled={disabled}
 	>
-		+
+		<Plus class="size-4" />
 	</Button>
 </div>
 
