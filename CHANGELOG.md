@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.6.0...v1.7.0) (2026-01-27)
+
+
+### Features
+
+* Enhance formation creation process with improved cookie handling (Google login form), UI updates, and validation features ([8649df6](https://github.com/curiousanthony/supabase-sveltekit/commit/8649df63f405befbae71cb7f972ba614dde89ee0))
+
 # [1.6.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v1.5.0...v1.6.0) (2026-01-27)
 
 
