@@ -2,4 +2,4 @@
 
 ### Chore
 
-* Reset version to 0.2.0 for MVP; previous 1.x releases removed.
+- Reset version to 0.2.0 for MVP; previous 1.x releases removed.
