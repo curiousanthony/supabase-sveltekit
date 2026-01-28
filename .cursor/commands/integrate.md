@@ -1,0 +1,1 @@
+Follow the **integrate-to-develop** workflow in `.agent/workflows/integrate-to-develop.md`. Push the current branch, merge into `develop` (direct merge or PR), push `develop`, and optionally delete the feature branch. Run only after the user has said "Integrate" or "Merge to develop".

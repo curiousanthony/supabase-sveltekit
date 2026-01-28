@@ -1,0 +1,1 @@
+Follow the **commit-work** workflow in `.agent/workflows/commit-work.md`. Stage changes, write a Conventional Commit message (`type: description`), and commit. When fix/chore/docs are part of current work, commit on the current branch (no new branch).

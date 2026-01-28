@@ -1,0 +1,1 @@
+Follow the **release-to-main** workflow in `.agent/workflows/release-to-main.md`. Merge `develop` → `main` (use merge, not squash), push `main`. Semantic Release runs on `main`. Run only after the user has said "Release" or "Ship to prod".

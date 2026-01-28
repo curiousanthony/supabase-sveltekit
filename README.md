@@ -26,7 +26,7 @@ Built on top of [Mentore.fr](https://mentore.fr), the leading matchmaking platfo
 ## 📖 Documentation
 
 -   [Database Workflow](./docs/database.md) - **Read this first** before making schema changes.
--   [Git & GitHub Workflow](./docs/git-workflow.md) - Branching, commits, and release standards.
+-   [Git & GitHub Workflow](./docs/git-workflow.md) - Branching, commits, and release standards. Production deploys from `main`; integration happens on `develop`; feature branches are short-lived.
 
 ## 💻 Developing
 

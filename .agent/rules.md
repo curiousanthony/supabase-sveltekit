@@ -26,10 +26,11 @@
 
 ## 4. Git & Version Control
 
+- **Base branch for features**: `develop` (not `main`). Create all feature branches from `develop`.
 - **Commits**: Follow **Conventional Commits** (`feat:`, `fix:`, `chore:`).
-- **Branches**: Use `type/description` (e.g., `feat/user-auth`).
-- **PRs**: All changes to `main` must go through a PR.
-- **Versioning**: Automated via Semantic Release. Do not manually bump versions.
+- **Branches**: Use `type/description` (e.g. `feat/user-auth`, `fix/login-error`).
+- **PRs**: Optional for solo dev. PRs to `main` are only for releases (when merging `develop` → `main`). Day-to-day integration is into `develop`.
+- **Versioning**: Automated via Semantic Release on `main`. Do not manually bump versions.
 
 ## 5. Documentation
 

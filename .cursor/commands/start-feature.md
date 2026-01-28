@@ -1,0 +1,1 @@
+Follow the **start-feature** workflow in `.agent/workflows/start-feature.md`. Base branch is `develop` (not `main`). Checkout `develop`, pull, then create a new branch `type/short-description` (e.g. `feat/...`, `fix/...`, `chore/...`, `docs/...`). For new standalone fix/chore/docs tasks, use the appropriate type.

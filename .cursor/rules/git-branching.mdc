@@ -1,0 +1,22 @@
+---
+description: Git branching strategy (main/develop/feature), Conventional Commits, and when to branch vs commit
+alwaysApply: true
+---
+
+# Git Branching & Version Control
+
+- **`main`**: Production only. Never commit directly to `main`.
+- **`develop`**: Integration branch. All feature work merges here first.
+- **Feature branches**: Always create from `develop`, format `type/short-description` (kebab-case):
+  - `feat/`: New features
+  - `fix/`: Bug fixes
+  - `chore/`: Maintenance/config
+  - `docs/`: Documentation
+- **Conventional Commits**: Use `feat:`, `fix:`, `chore:`, `docs:`, etc. in commit messages.
+- **Short-lived branches**: Integrate to `develop` when the logical unit of work is done.
+- **Fix/chore/docs**:
+  - **New standalone task** (e.g. "fix login error", "update deps") → Create a new branch from `develop` (`fix/...`, `chore/...`, `docs/...`).
+  - **Part of current work** (e.g. small fix while on `feat/forms`) → Commit on the current branch; use `fix:`, `chore:`, or `docs:` in the message.
+- **Agent safety**: Never run `git push` or `git merge` unless the user explicitly said "Integrate", "Merge to develop", "Release", or "Ship to prod".
+
+See [docs/git-workflow.md](../docs/git-workflow.md) for full details.

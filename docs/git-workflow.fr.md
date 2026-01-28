@@ -2,101 +2,86 @@
 
 Ce guide définit les standards de gestion de version, de collaboration et de gestion des releases pour Mentore Manager.
 
-[🇺🇸 English Version](./git-workflow.md)
+[🇺🇸 Version anglaise](./git-workflow.md)
 
-## 1. Stratégie de Branches
-Nous utilisons un **Workflow de Branches de Fonctionnalités** (Trunk-Based Development).
+## 1. Stratégie de branches
 
-*   **`main`** : La source unique de vérité. Toujours déployable. Représente la Production.
-*   **Branches de Fonctionnalités** : Créées depuis `main` pour chaque nouvelle tâche.
+Nous utilisons un workflow **main / develop / feature**.
 
-### Comment Créer une Branche
-Partez toujours de la dernière version de `main`.
+- **`main`** : Production uniquement. Toujours déployable. Pas de développement direct. Mis à jour seulement lors des releases.
+- **`develop`** : Branche d’intégration. Tout le travail de feature fusionne ici d’abord. Preview / staging.
+- **Branches de fonctionnalité** (`feat/*`, `fix/*`, `chore/*`, `docs/*`) : Courtes durées. Toujours créées depuis `develop`.
+
+### Créer une branche
+
+Toujours partir de la dernière version de `develop`.
 
 ```bash
-# 1. Basculer sur main et récupérer les derniers changements
-git checkout main
-git pull origin main
+# 1. Basculer sur develop et récupérer les derniers changements
+git checkout develop
+git pull origin develop
 
 # 2. Créer et basculer sur une nouvelle branche
 git checkout -b feat/ma-nouvelle-fonctionnalite
 ```
 
-**Convention de Nommage** :
-*   `feat/` : Nouvelles fonctionnalités (ex: `feat/trainer-matchmaking`)
-*   `fix/` : Corrections de bugs (ex: `fix/login-error`)
-*   `chore/` : Maintenance (ex: `chore/update-deps`)
-*   `docs/` : Documentation (ex: `docs/update-readme`)
+**Convention de nommage** :
+- `feat/` : Nouvelles fonctionnalités (ex. `feat/trainer-matchmaking`)
+- `fix/` : Corrections de bugs (ex. `fix/login-error`)
+- `chore/` : Maintenance (ex. `chore/update-deps`)
+- `docs/` : Documentation (ex. `docs/update-readme`)
+
+**Fix / chore / docs** :
+- **Nouvelle tâche distincte** (ex. « corriger le login », « mettre à jour les deps ») → Créer une nouvelle branche depuis `develop` (`fix/...`, `chore/...`, `docs/...`).
+- **Partie du travail en cours** (ex. petit fix sur `feat/forms`) → Commiter sur la branche actuelle ; utiliser `fix:`, `chore:` ou `docs:` dans le message.
 
 ## 2. Commits
-Nous suivons la spécification **[Conventional Commits](https://www.conventionalcommits.org/)**.
 
-### Comment Commiter
+Nous suivons **[Conventional Commits](https://www.conventionalcommits.org/)**.
+
+### Commiter
+
 ```bash
-# 1. Ajouter vos changements (Stage)
 git add .
-
-# 2. Commiter avec un message conventionnel
 git commit -m "feat: ajout de la mise en page login"
 ```
 
-### Types
-*   `feat` : Une nouvelle fonctionnalité
-*   `fix` : Une correction de bug
-*   `docs` : Documentation uniquement
-*   `style` : Formatage (espaces, etc.)
-*   `refactor` : Changement de code sans fix ni feature
-*   `perf` : Amélioration des performances
-*   `test` : Ajout/correction de tests
-*   `chore` : Build ou outils
+**Types** : `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`.
 
-## 3. Pull Requests (PRs)
-Tous les changements vers `main` doivent passer par une Pull Request.
+## 3. Intégrer (fusionner dans develop)
 
-### Comment Pousser & Créer une PR
-1.  **Pousser votre branche** :
-    ```bash
-    git push -u origin feat/ma-nouvelle-fonctionnalite
-    ```
-2.  **Ouvrir la PR** : Allez sur l'URL du dépôt GitHub. GitHub affiche généralement une bannière "Compare & pull request". Cliquez dessus.
-3.  **Remplir les détails** : Donnez un titre clair (ex: "feat: Ajout Page Login") et décrivez les changements.
+Les branches de feature sont fusionnées dans `develop` (merge direct ou PR vers `develop`). Les PR vers `main` sont réservées aux releases (voir ci‑dessous).
 
-### Comment Fusionner (Merge)
-1.  **Revue** : Attendez l'approbation (ou relisez-vous).
-2.  **Fusionner** : Cliquez sur **"Squash and merge"** sur GitHub.
-    *   *Pourquoi Squash ?* Cela combine tous vos petits commits en un seul commit propre sur `main`.
-3.  **Supprimer la branche** : GitHub proposera de supprimer la branche après la fusion. Faites-le pour garder le dépôt propre.
+1. Pousser la branche : `git push -u origin feat/ma-feature`
+2. Fusionner dans `develop` (local ou via PR vers `develop`), puis pousser `develop`.
+3. Optionnel : supprimer la branche de feature.
 
-## 4. Versioning & Releases
-Nous suivons le **[Semantic Versioning](https://semver.org/)** (`vX.Y.Z`).
+**PR (solo)** : Optionnel. Merge direct vers `develop` suffit ; utiliser une PR quand vous voulez une trace.
 
-*   **Majeur (`X.0.0`)** : Changements cassants.
-*   **Mineur (`0.X.0`)** : Nouvelles fonctionnalités.
-*   **Patch (`0.0.X`)** : Corrections de bugs.
+## 4. Release (fusionner develop → main)
 
-### Processus de Release Automatisé
-Nous utilisons **Semantic Release** pour automatiser le versioning.
+La production déploie uniquement depuis `main`. Pour release :
 
-1.  **Fusionner vers Main** : Lorsqu'une PR est fusionnée dans `main`, une Action GitHub se lance automatiquement.
-2.  **Analyser les Commits** : Elle analyse vos messages de commit pour déterminer la prochaine version :
-    *   `fix: ...` -> Release Patch (v1.0.0 -> v1.0.1)
-    *   `feat: ...` -> Release Mineure (v1.0.0 -> v1.1.0)
-    *   `BREAKING CHANGE: ...` dans le corps -> Release Majeure (v1.0.0 -> v2.0.0)
-3.  **Publier** : Le bot effectue automatiquement :
-    *   Mise à jour de la version dans `package.json`.
-    *   Mise à jour de `CHANGELOG.md`.
-    *   Création d'un Tag Git.
-    *   Création d'une Release GitHub avec les notes de version.
+1. Fusionner `develop` dans `main` avec un **merge** (pas de squash), pour que Semantic Release voie les commits `feat`/`fix`.
+2. Pousser `main`. Semantic Release s’exécute via GitHub Actions : met à jour `package.json`, `CHANGELOG.md`, crée un tag et une Release GitHub.
+3. Optionnel : mettre à jour `develop` depuis `main`.
 
-**Note** : Vous n'avez PAS besoin de lancer `npm version` manuellement. Fusionnez simplement vers `main`.
+**Fréquence des releases** : Release quand un lot logique est validé en staging (Preview `develop`). Éviter d’accumuler des semaines de travail sur `develop`.
 
-## 5. Aide-Mémoire : Quand faire quoi ?
+**Note** : Vous n’avez pas besoin de lancer `npm version` (ou équivalent `bun`) manuellement. Il suffit de fusionner `develop` dans `main`.
 
-| Action | ✅ FAITES ceci quand... | ❌ NE FAITES PAS ceci quand... |
-| :--- | :--- | :--- |
-| **Créer une Branche** | Vous commencez **N'IMPORTE QUELLE** tâche (feature, bug, doc). | Vous voulez juste corriger une coquille directement sur `main` (ça brise l'historique). |
-| **Commit** | Vous avez fini une "unité logique" (ex: "stylisé le bouton", "ajouté la route API"). | Votre code ne compile pas (sauf pour une sauvegarde privée). |
-| **Push** | Vous voulez sauvegarder votre travail dans le cloud ou le partager. | Vous avez des secrets/clés API dans votre code. |
-| **Créer une PR** | Votre feature est prête ou vous voulez un avis sur un travail en cours (utilisez "Draft"). | Votre branche est vide ou vous n'avez pas testé localement. |
-| **Fusionner (Merge)** | La PR est approuvée et tous les tests passent. | Vous "pensez" que ça marche mais n'avez pas vérifié. |
+## 5. Vercel
 
+- **Production** : Branche `main`. Déploiement en Production à chaque push.
+- **Preview** : Toutes les branches sauf `main` (option A, recommandée) — `develop` et chaque `feat/*` ont une Preview. Optionnel : attacher un domaine de staging à `develop`.
+- **Option B** : Seulement `develop` → Preview. Utiliser [Vercel Ignored Build Step](https://vercel.com/guides/how-do-i-use-the-ignored-build-step-field-on-vercel) pour ne builder que `main` et `develop`.
+
+## 6. Aide‑mémoire
+
+| Action | ✅ Faire quand… | ❌ Ne pas faire quand… |
+|--------|------------------|-------------------------|
+| **Créer une branche** | Vous commencez une nouvelle tâche (feature, fix, chore, docs). | C’est un petit fix qui appartient à la feature en cours (commiter sur la branche actuelle). |
+| **Commit** | Vous avez fini une unité logique de travail. | Le code ne compile pas (sauf sauvegarde privée). |
+| **Push** | Vous voulez sauvegarder ou partager. | Vous avez des secrets dans le code. |
+| **Intégrer** | La feature est prête ; fusionner dans `develop`. | La branche est vide ou non testée. |
+| **Release** | Le staging est validé ; fusionner `develop` → `main`. | Vous n’avez pas vérifié sur le staging. |

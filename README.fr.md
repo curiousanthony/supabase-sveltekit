@@ -23,7 +23,7 @@ Construit sur [Mentore.fr](https://mentore.fr), la plateforme de mise en relatio
 ## 📖 Documentation
 
 -   [Workflow Base de Données](./docs/database.fr.md) - **À lire en premier** avant de modifier le schéma de la base de données.
--   [Workflow Git & GitHub](./docs/git-workflow.fr.md) - Standards pour les branches, commits et releases.
+-   [Workflow Git & GitHub](./docs/git-workflow.fr.md) - Standards pour les branches, commits et releases. La prod déploie depuis `main` ; l’intégration se fait sur `develop` ; les branches de feature sont de courte durée.
 
 ## 💻 Développement
 
