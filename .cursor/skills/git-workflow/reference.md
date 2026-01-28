@@ -1,6 +1,6 @@
 # Git Workflow Reference
 
-Concise reference for branch naming, commit types, and workflow details. See [docs/git-workflow.md](../../docs/git-workflow.md) for the full project guide.
+Concise reference for branch naming, commit types, and workflow details. See [docs/git-workflow.md](../../../docs/git-workflow.md) for the full project guide.
 
 ## Branch naming
 

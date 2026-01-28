@@ -120,4 +120,4 @@ If the user says "Work on #42" (or similar):
 
 ---
 
-For branch naming, commit types, and full workflow details, see [reference.md](reference.md) or [docs/git-workflow.md](../../docs/git-workflow.md).
+For branch naming, commit types, and full workflow details, see [reference.md](reference.md) or [docs/git-workflow.md](../../../docs/git-workflow.md).

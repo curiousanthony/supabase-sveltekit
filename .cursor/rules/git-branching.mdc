@@ -19,4 +19,4 @@ alwaysApply: true
   - **Part of current work** (e.g. small fix while on `feat/forms`) → Commit on the current branch; use `fix:`, `chore:`, or `docs:` in the message.
 - **Agent safety**: Never run `git push` or `git merge` unless the user explicitly said "Integrate", "Merge to develop", "Release", or "Ship to prod".
 
-See [docs/git-workflow.md](../docs/git-workflow.md) for full details.
+See [docs/git-workflow.md](../../docs/git-workflow.md) for full details.
