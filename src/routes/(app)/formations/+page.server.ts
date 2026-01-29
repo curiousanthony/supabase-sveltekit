@@ -1,5 +1,4 @@
 import { db } from '$lib/db';
-import { formations } from '$lib/db/schema';
 import type { PageServerLoad } from './$types';
 
 export const load = (async () => {
@@ -11,12 +10,15 @@ export const load = (async () => {
 		// });
 
 		const formationsData = await db.query.formations.findMany({
-			// 💡 Use the 'with' option to fetch related data
 			with: {
 				thematique: {
-					columns: {
-						name: true
-					}
+					columns: { name: true }
+				},
+				client: {
+					columns: { legalName: true }
+				},
+				modules: {
+					columns: { id: true }
 				}
 			},
 			orderBy: (formations, { desc }) => [desc(formations.idInWorkspace)]
