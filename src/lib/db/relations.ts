@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, clients, workspaces, workspacesUsers, thematiques, sousthematiques, formations, modules, apprenants, seances, formateurs, formateursThematiques } from "./schema";
+import { users, clients, workspaces, workspacesUsers, thematiques, sousthematiques, formations, formationWorkflowSteps, modules, apprenants, seances, formateurs, formateursThematiques, deals } from "./schema";
 
 export const clientsRelations = relations(clients, ({one, many}) => ({
 	user: one(users, {
@@ -7,6 +7,7 @@ export const clientsRelations = relations(clients, ({one, many}) => ({
 		references: [users.id]
 	}),
 	apprenants: many(apprenants),
+	deals: many(deals),
 }));
 
 export const usersRelations = relations(users, ({many}) => ({
@@ -21,6 +22,8 @@ export const usersRelations = relations(users, ({many}) => ({
 		relationName: "seances_instructor_users_id"
 	}),
 	formateurs: many(formateurs),
+	deals_owner: many(deals, { relationName: "deals_owner" }),
+	deals_createdBy: many(deals, { relationName: "deals_createdBy" }),
 }));
 
 export const workspacesUsersRelations = relations(workspacesUsers, ({one}) => ({
@@ -37,6 +40,7 @@ export const workspacesUsersRelations = relations(workspacesUsers, ({one}) => ({
 export const workspacesRelations = relations(workspaces, ({many}) => ({
 	workspacesUsers: many(workspacesUsers),
 	formations: many(formations),
+	deals: many(deals),
 }));
 
 export const sousthematiquesRelations = relations(sousthematiques, ({one, many}) => ({
@@ -62,6 +66,10 @@ export const formationsRelations = relations(formations, ({one, many}) => ({
 		fields: [formations.createdBy],
 		references: [users.id]
 	}),
+	client: one(clients, {
+		fields: [formations.clientId],
+		references: [clients.id]
+	}),
 	sousthematique: one(sousthematiques, {
 		fields: [formations.subtopicsIds],
 		references: [sousthematiques.id]
@@ -71,6 +79,19 @@ export const formationsRelations = relations(formations, ({one, many}) => ({
 		references: [thematiques.id]
 	}),
 	modules: many(modules),
+	workflowSteps: many(formationWorkflowSteps),
+	dealsFromFormation: many(deals),
+}));
+
+export const formationWorkflowStepsRelations = relations(formationWorkflowSteps, ({ one }) => ({
+	formation: one(formations, {
+		fields: [formationWorkflowSteps.formationId],
+		references: [formations.id]
+	}),
+	completedByUser: one(users, {
+		fields: [formationWorkflowSteps.completedBy],
+		references: [users.id]
+	}),
 }));
 
 export const modulesRelations = relations(modules, ({one, many}) => ({
@@ -125,5 +146,30 @@ export const formateursThematiquesRelations = relations(formateursThematiques, (
 	formateur: one(formateurs, {
 		fields: [formateursThematiques.formateurId],
 		references: [formateurs.id]
+	}),
+}));
+
+export const dealsRelations = relations(deals, ({one}) => ({
+	workspace: one(workspaces, {
+		fields: [deals.workspaceId],
+		references: [workspaces.id]
+	}),
+	client: one(clients, {
+		fields: [deals.clientId],
+		references: [clients.id]
+	}),
+	owner: one(users, {
+		fields: [deals.ownerId],
+		references: [users.id],
+		relationName: "deals_owner"
+	}),
+	createdByUser: one(users, {
+		fields: [deals.createdBy],
+		references: [users.id],
+		relationName: "deals_createdBy"
+	}),
+	formation: one(formations, {
+		fields: [deals.formationId],
+		references: [formations.id]
 	}),
 }));
