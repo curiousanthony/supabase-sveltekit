@@ -52,7 +52,12 @@ const supabase: Handle = async ({ event, resolve }) => {
 
     const {
       data: { session },
+      error: sessionError,
     } = await event.locals.supabase.auth.getSession()
+    if (sessionError) {
+      console.error('[Hooks] getSession error:', sessionError.message)
+      return { session: null, user: null }
+    }
     if (!session) {
       return { session: null, user: null }
     }
