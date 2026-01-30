@@ -39,7 +39,13 @@ export const load = (async ({ locals }) => {
 	const header = {
 		pageName: 'Deals',
 		actions: [
-			{ type: 'button' as const, icon: 'plus', text: 'Créer un deal', href: '/deals/creer', variant: 'default' as const }
+			{
+				type: 'button' as const,
+				icon: 'plus',
+				text: 'Créer un deal',
+				href: '/deals/creer',
+				variant: 'default' as const
+			}
 		]
 	};
 
