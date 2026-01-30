@@ -14,15 +14,20 @@
 - **TypeScript**: Strict mode. No `any`. Define interfaces/types for all data structures.
 - **Components**: Use functional components. Keep logic inside the component or in `*.svelte.ts` modules.
 
-## 3. Database Workflow
+## 3. Database Workflow (Agents)
 
-- **Source of Truth**: The local Supabase database is the source of truth for schema.
-- **Process**:
-  1. Edit schema in Supabase Dashboard (`local`).
-  2. Run `npm run db:pull`.
-  3. Run `npm run db:generate`.
-  4. Run `supabase db push` (to deploy).
-- **Forbidden**: NEVER use `drizzle-kit push` or `drizzle-kit migrate`.
+**Agents** must use the **schema-first** workflow so that the local database and Drizzle schema stay in sync and features work on first run. Follow [.agent/workflows/database-migration.md](workflows/database-migration.md).
+
+- **Process for agents**:
+  1. Edit `src/lib/db/schema.ts` (tables, columns, relations).
+  2. Run `npm run db:generate`.
+  3. Run `supabase db reset` (required: applies the new migration locally so the app works).
+  4. Run `supabase db push` only when deploying to remote (e.g. when integrating or releasing).
+- **Never assume** the local database has the latest migrations without running `supabase db reset` after adding or pulling migrations.
+- **DATABASE_URL**: For local dev, must point to local Supabase (e.g. `postgresql://postgres:postgres@127.0.0.1:54322/supabase`) so `db:generate` works. See [docs/database.md](../docs/database.md).
+- **Forbidden**: NEVER use `npm run db:push` or `npm run db:migrate`.
+
+**Human / solo workflow** (edit in Dashboard → `db:pull` → `db:generate` → deploy) is documented in [docs/database.md](../docs/database.md); agents do not use that flow.
 
 ## 4. Git & Version Control
 

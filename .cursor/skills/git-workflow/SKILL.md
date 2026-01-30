@@ -30,6 +30,7 @@ Follow these workflows for branching, committing, integrating, and releasing. Ba
    git checkout -b feat/my-feature
    ```
    Use `fix/...`, `chore/...`, or `docs/...` for standalone fixes, chores, or docs work.
+4. **If the feature will touch the database**: Run `supabase db reset` so the local DB matches the branch’s migrations. When adding new migrations on the branch, run `supabase db reset` after `npm run db:generate` so the app works on first run. Follow [.agent/workflows/database-migration.md](../../../.agent/workflows/database-migration.md).
 
 ---
 

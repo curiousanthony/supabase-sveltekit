@@ -18,5 +18,6 @@ alwaysApply: true
   - **New standalone task** (e.g. "fix login error", "update deps") → Create a new branch from `develop` (`fix/...`, `chore/...`, `docs/...`).
   - **Part of current work** (e.g. small fix while on `feat/forms`) → Commit on the current branch; use `fix:`, `chore:`, or `docs:` in the message.
 - **Agent safety**: Never run `git push` or `git merge` unless the user explicitly said "Integrate", "Merge to develop", "Release", or "Ship to prod".
+- **Database migrations**: When a feature adds database migrations, apply them locally (e.g. `supabase db reset`) so the app runs correctly on the branch; see [.agent/workflows/database-migration.md](../../.agent/workflows/database-migration.md).
 
 See [docs/git-workflow.md](../../docs/git-workflow.md) for full details.

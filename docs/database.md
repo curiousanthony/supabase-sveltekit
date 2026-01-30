@@ -40,6 +40,24 @@ supabase db push
 
 ## Important Notes
 
+### Applying migrations locally
+If you have **new migration files** (e.g. after `db:generate` or after pulling a branch with new migrations), run:
+
+```bash
+supabase db reset
+```
+
+This applies all migrations in `supabase/migrations/` to your local database so the app runs correctly. Your local DB already matches after step 1 (Edit Database) in the workflow above; use `supabase db reset` when you've added or pulled migration files from elsewhere.
+
+### Local development: `DATABASE_URL`
+For `db:pull` and `db:generate` to work, `DATABASE_URL` must point to your **local** Supabase Postgres. With `supabase start`, the direct Postgres URL is typically:
+
+```
+postgresql://postgres:postgres@127.0.0.1:54322/supabase
+```
+
+Set this in `.env` or `.env.local` (and ensure the file is in `.gitignore`).
+
 ### 🚫 Do NOT use `db:push` or `db:migrate`
 We have disabled `npm run db:push` and `npm run db:migrate`.
 - **Reason:** These commands bypass Supabase's migration history tracking, which leads to "relation already exists" conflicts when you try to deploy later.
@@ -49,3 +67,6 @@ We have disabled `npm run db:push` and `npm run db:migrate`.
 If you encounter **"relation already exists"** errors during `supabase db push`:
 1.  This usually means the migration was already applied (perhaps manually or via UI) but Supabase doesn't know about it.
 2.  Use `supabase migration repair` to mark the conflicting migration as "applied".
+
+### Note for AI agents
+AI agents working on this codebase must follow the **schema-first** workflow and apply migrations locally; see [.agent/workflows/database-migration.md](../.agent/workflows/database-migration.md). The DB-first workflow above is for human/solo development.
