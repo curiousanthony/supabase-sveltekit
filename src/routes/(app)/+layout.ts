@@ -25,16 +25,15 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
             },
         })
 
-    // 2. Get session and user data from the robust client
-    const { data: { session } } = await supabase.auth.getSession()
-    const { data: { user } } = await supabase.auth.getUser()
+    // 2. Use session and user from server (validated via getUser() in safeGetSession); avoid getSession() here
+    const session = data.session ?? null
+    const user = data.user ?? null
 
     // 3. Return the merged data
     return { 
         supabase, 
         session, 
         user, 
-        // CRITICAL FIX: Forward all data from the child page (which includes pageName)
         ...data 
     }
 }

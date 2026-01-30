@@ -18,12 +18,11 @@ export const load: LayoutLoad = async ({ fetch }) => {
         }
     );
 
-    // 2. Get the current session (will be null if unauthenticated)
-    const { data: { session } } = await supabase.auth.getSession();
+    // 2. Get the current user (validated via Auth server; do not use getSession().user)
+    const { data: { user } } = await supabase.auth.getUser();
 
     return {
-        // Return the client instance and session to prevent the root layout from crashing
         supabase,
-        session: session,
+        user,
     };
 };

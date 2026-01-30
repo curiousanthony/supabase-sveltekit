@@ -45,9 +45,8 @@ export const GET = async (event) => {
 		);
 
 		if (!error && data?.session) {
-			// Force a session refresh to ensure cookies are set
-			// This triggers the storage mechanism to persist the session
-			await supabase.auth.getSession();
+			// Validate user via Auth server so cookies/session are fully established
+			await supabase.auth.getUser();
 
 			// Small delay to ensure async cookie operations complete
 			await new Promise((resolve) => setTimeout(resolve, 10));
@@ -68,21 +67,21 @@ export const GET = async (event) => {
 				supabaseCookies.map((c) => `${c.name} (${c.value ? 'has value' : 'empty'})`).join(', ')
 			);
 
-			// Double-check session is available - this should read from the cookies we just set
+			// Verify user (validated via Auth server; do not use getSession() for user)
 			const {
-				data: { session: verifySession },
-				error: sessionError
-			} = await supabase.auth.getSession();
+				data: { user: verifyUser },
+				error: userError
+			} = await supabase.auth.getUser();
 			console.log(
-				'[Auth Callback] Session verification after exchange:',
-				verifySession ? 'found' : 'NOT FOUND',
+				'[Auth Callback] User verification after exchange:',
+				verifyUser ? 'found' : 'NOT FOUND',
 				'error:',
-				sessionError?.message
+				userError?.message
 			);
 
-			if (!verifySession) {
+			if (!verifyUser) {
 				console.log(
-					'[Auth Callback] WARNING: Session not found after exchange, but exchange succeeded. This suggests cookies may not be set correctly.'
+					'[Auth Callback] WARNING: User not found after exchange, but exchange succeeded. This suggests cookies may not be set correctly.'
 				);
 				// Still try to redirect - the client might be able to read the cookies
 			}
