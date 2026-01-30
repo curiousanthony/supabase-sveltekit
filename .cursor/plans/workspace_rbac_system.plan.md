@@ -190,10 +190,16 @@ Create `src/lib/server/guards.ts`:
 - Update `app-sidebar.svelte` and `sitemap` with role-based visibility
 - Show/hide nav items based on permission
 
+### Phase 9: RLS Migration & Scoped DB
+
+- Create migration with RLS policies (see Section 7)
+- Create `src/lib/db/scoped.ts` and migrate all workspace-scoped queries to use it
+
 ---
 
 ## 5. Files to Create
 
+- `src/lib/db/scoped.ts` – Scoped DB wrapper for RLS (injects `auth.uid()` before queries)
 - `src/lib/server/workspace.ts` – Workspace context
 - `src/lib/server/guards.ts` – RBAC guards
 - `src/lib/server/permissions.ts` – Permission definitions
@@ -202,8 +208,86 @@ Create `src/lib/server/guards.ts`:
 - `src/routes/(app)/parametres/workspace/+page.svelte` – Workspace settings / Team
 - `src/routes/(app)/parametres/workspace/+page.server.ts`
 
-## 6. Files to Modify
+---
 
+## 6. Row-Level Security (RLS) & Defense in Depth
+
+**Current situation:** The app uses **Drizzle + direct Postgres connection** (`DATABASE_URL`). All tables have `isRLSEnabled: false`. There is no database-level enforcement — security relies entirely on application code.
+
+**Risk:** A bug in app-layer filtering, or future use of Supabase client/realtime from the frontend, could expose cross-workspace data.
+
+### 6.1 Strategy
+
+**Defense in depth:** Application guards + RLS. The app continues to filter by workspace and check roles. RLS adds a second layer so the database rejects rows the user must not see.
+
+### 6.2 Making RLS Work with Drizzle
+
+Drizzle uses a direct Postgres connection (no JWT). Supabase RLS policies use `auth.uid()`, which reads `request.jwt.claim.sub`. We must inject that before each request:
+
+1. **Create a scoped DB helper** that wraps queries with `set_config`:
+
+- At the start of each request/transaction: `SELECT set_config('request.jwt.claim.sub', '${userId}', true)`
+- Run the Drizzle queries
+- RLS policies using `auth.uid()` will then apply
+
+1. **Pattern** (from [drizzle-supabase-rls](https://github.com/rphlmr/drizzle-supabase-rls)):
+
+- `db.withUser(userId, () => db.query.deals.findMany(...))` or
+- A transaction wrapper that sets the JWT claims before executing
+
+1. **Implementation:** Create `src/lib/db/scoped.ts` — a function that runs a callback inside a transaction after setting `request.jwt.claim.sub` and `request.jwt.claims` from the session. All page loaders that query workspace-scoped data must use this scoped client.
+
+### 6.3 RLS Policies to Create
+
+Create a migration that:
+
+1. **Helper function** (optional but cleaner):
+
+```sql
+ CREATE OR REPLACE FUNCTION user_workspace_ids(p_user_id uuid)
+ RETURNS SETOF uuid AS $$
+   SELECT workspace_id FROM workspaces_users WHERE user_id = p_user_id;
+ $$ LANGUAGE sql SECURITY DEFINER STABLE;
+```
+
+1. **Enable RLS** on: `workspaces`, `workspaces_users`, `deals`, `formations`, `clients`, `workspace_formateurs`, `conversations`, `conversation_participants`, `messages`
+2. **Policies per table** (workspace-scoped tables):
+
+- **deals**: `workspace_id IN (SELECT * FROM user_workspace_ids(auth.uid()))`
+- **formations**: same
+- **clients**: same (once `workspace_id` added)
+- **workspace_formateurs**: `workspace_id IN (SELECT * FROM user_workspace_ids(auth.uid()))`
+- **conversations**: same
+- **messages**: via `conversation_id` → `conversations.workspace_id` (join in policy)
+
+1. **workspaces**: `id IN (SELECT workspace_id FROM workspaces_users WHERE user_id = auth.uid())`
+2. **workspaces_users**: Users can SELECT rows where `workspace_id` is in their workspaces; only owner/admin can INSERT/UPDATE/DELETE (policy with role check).
+3. **Related tables** (modules, seances, formation_workflow_steps, apprenants): Policies that join through parent to workspace, or restrict via `created_by = auth.uid()` where appropriate. (Some may need `SECURITY DEFINER` helpers.)
+
+### 6.4 Tables Needing Special Handling
+
+- **modules** → via `course_id` → formations.workspace_id
+- **seances** → via module_id → formations.workspace_id
+- **formation_workflow_steps** → via formation_id → formations.workspace_id
+- **apprenants** → via `is_trainee_of` → clients.workspace_id
+- **thematiques**, **sousthematiques** → reference data, may stay readable by all authenticated users or get workspace-scoped if needed
+
+### 6.5 Implementation Order
+
+1. Add the `user_workspace_ids` helper (or inline subqueries)
+2. Enable RLS + policies on workspace-scoped tables
+3. Create the scoped DB wrapper and migrate page loaders to use it
+4. Test: queries without proper user context should return no rows
+
+### 6.6 Supabase Client / Realtime (Future)
+
+If the app later uses Supabase client from the frontend (e.g. realtime subscriptions), RLS will protect those requests automatically — no extra work once policies are in place.
+
+---
+
+## 7. Files to Modify
+
+- `src/lib/db/index.ts` – Export scoped helper or integrate with existing db
 - `src/lib/db/schema.ts`
 - `src/routes/(app)/+layout.server.ts`
 - `src/lib/components/app-sidebar.svelte`
