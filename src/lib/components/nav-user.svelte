@@ -9,8 +9,32 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import Settings from '@tabler/icons-svelte/icons/settings';
 	import ArrowUp from '@tabler/icons-svelte/icons/arrow-up';
+	import { setMode } from 'mode-watcher';
+	import Monitor from '@lucide/svelte/icons/monitor';
+	import Sun from '@lucide/svelte/icons/sun';
+	import Moon from '@lucide/svelte/icons/moon';
+	import { onMount } from 'svelte';
+	import { ButtonGroup } from '$lib/components/ui/button-group';
+	import * as Button from '$lib/components/ui/button/index.js';
+
+	type ThemeMode = 'system' | 'light' | 'dark';
+	const MODE_STORAGE_KEY = 'mode-watcher-mode';
 
 	let { user }: { user: { name: string; email: string; avatar_url: string } } = $props();
+
+	let themePreference = $state<ThemeMode>('system');
+
+	onMount(() => {
+		const stored = localStorage.getItem(MODE_STORAGE_KEY);
+		if (stored === 'light' || stored === 'dark' || stored === 'system') {
+			themePreference = stored;
+		}
+	});
+
+	function handleThemeChange(value: ThemeMode) {
+		themePreference = value;
+		setMode(value);
+	}
 
 	const getInitials = (fullName: string = user.name) => {
 		const allNames = fullName.trim().split(' ');
@@ -51,7 +75,7 @@
 				{/snippet}
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Content
-				class="w-(--bits-dropdown-menu-anchor-width) min-w-56 rounded-lg"
+				class="w-(--bits-dropdown-menu-anchor-width) min-w-64 rounded-lg overflow-x-auto"
 				side={sidebar.isMobile ? 'bottom' : 'right'}
 				align="end"
 				sideOffset={4}
@@ -70,6 +94,44 @@
 						</div>
 					</div>
 				</DropdownMenu.Label>
+				<DropdownMenu.Separator />
+				<DropdownMenu.Group>
+					<DropdownMenu.Label class="text-xs text-muted-foreground">Thème</DropdownMenu.Label>
+					<div class="py-1 w-full min-w-0">
+						<ButtonGroup class="w-full min-w-0">
+							<Button.Root
+								type="button"
+								variant={themePreference === 'system' ? 'secondary' : 'ghost'}
+								size="sm"
+								class="flex-1 min-w-0 gap-1.5 text-sm"
+								onclick={() => handleThemeChange('system')}
+							>
+								<Monitor class="size-4 shrink-0" />
+								Système
+							</Button.Root>
+							<Button.Root
+								type="button"
+								variant={themePreference === 'light' ? 'secondary' : 'ghost'}
+								size="sm"
+								class="flex-1 min-w-0 gap-1.5 text-sm"
+								onclick={() => handleThemeChange('light')}
+							>
+								<Sun class="size-4 shrink-0" />
+								Clair
+							</Button.Root>
+							<Button.Root
+								type="button"
+								variant={themePreference === 'dark' ? 'secondary' : 'ghost'}
+								size="sm"
+								class="flex-1 min-w-0 gap-1.5 text-sm"
+								onclick={() => handleThemeChange('dark')}
+							>
+								<Moon class="size-4 shrink-0" />
+								Sombre
+							</Button.Root>
+						</ButtonGroup>
+					</div>
+				</DropdownMenu.Group>
 				<DropdownMenu.Separator />
 				<DropdownMenu.Group>
 					<DropdownMenu.Item>
