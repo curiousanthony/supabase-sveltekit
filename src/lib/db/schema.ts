@@ -6,7 +6,7 @@ export const statutsFormation = pgEnum("statuts_formation", ['En attente', 'En c
 export const typeClient = pgEnum("type_client", ['Entreprise', 'Particulier'])
 export const typesFinancement = pgEnum("types_financement", ['CPF', 'OPCO', 'Inter', 'Intra'])
 export const dealStage = pgEnum("deal_stage", ['Lead', 'Qualification', 'Proposition', 'Négociation', 'Gagné', 'Perdu'])
-export const workspaceRole = pgEnum("workspace_role", ['owner', 'admin', 'sales'])
+export const workspaceRole = pgEnum("workspace_role", ['owner', 'admin', 'sales', 'secretary'])
 
 
 export const clients = pgTable("clients", {
@@ -17,12 +17,18 @@ export const clients = pgTable("clients", {
 	email: text(),
 	siret: integer(),
 	legalName: text("legal_name"),
+	workspaceId: uuid("workspace_id"),
 }, (table) => [
 	foreignKey({
 			columns: [table.createdBy],
 			foreignColumns: [users.id],
 			name: "clients_created_by_fkey"
 		}),
+	foreignKey({
+			columns: [table.workspaceId],
+			foreignColumns: [workspaces.id],
+			name: "clients_workspace_id_fkey"
+		}).onUpdate("cascade").onDelete("set null"),
 ]);
 
 export const workspacesUsers = pgTable("workspaces_users", {
@@ -65,9 +71,15 @@ export const users = pgTable("users", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	avatarUrl: text("avatar_url"),
+	lastActiveWorkspaceId: uuid("last_active_workspace_id"),
 }, (table) => [
 	uniqueIndex("email_idx").using("btree", table.email.asc().nullsLast().op("text_ops")),
 	unique("users_id2_key").on(table.id),
+	foreignKey({
+		columns: [table.lastActiveWorkspaceId],
+		foreignColumns: [workspaces.id],
+		name: "users_last_active_workspace_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
 ]);
 
 export const thematiques = pgTable("thematiques", {
@@ -265,6 +277,25 @@ export const formateursThematiques = pgTable("formateurs_thematiques", {
 			name: "formateurs_thematiques_formateur_id_fkey"
 		}).onUpdate("cascade").onDelete("cascade"),
 	unique("unique_formateur_thematique").on(table.thematiqueId, table.formateurId),
+]);
+
+export const workspaceFormateurs = pgTable("workspace_formateurs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	workspaceId: uuid("workspace_id").notNull(),
+	formateurId: uuid("formateur_id").notNull(),
+}, (table) => [
+	foreignKey({
+		columns: [table.workspaceId],
+		foreignColumns: [workspaces.id],
+		name: "workspace_formateurs_workspace_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.formateurId],
+		foreignColumns: [formateurs.id],
+		name: "workspace_formateurs_formateur_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	unique("unique_workspace_formateur").on(table.workspaceId, table.formateurId),
 ]);
 
 export const deals = pgTable("deals", {

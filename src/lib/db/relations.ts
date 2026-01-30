@@ -1,16 +1,24 @@
 import { relations } from "drizzle-orm/relations";
-import { users, clients, workspaces, workspacesUsers, thematiques, sousthematiques, formations, formationWorkflowSteps, modules, apprenants, seances, formateurs, formateursThematiques, deals } from "./schema";
+import { users, clients, workspaces, workspacesUsers, thematiques, sousthematiques, formations, formationWorkflowSteps, modules, apprenants, seances, formateurs, formateursThematiques, workspaceFormateurs, deals } from "./schema";
 
 export const clientsRelations = relations(clients, ({one, many}) => ({
 	user: one(users, {
 		fields: [clients.createdBy],
 		references: [users.id]
 	}),
+	workspace: one(workspaces, {
+		fields: [clients.workspaceId],
+		references: [workspaces.id]
+	}),
 	apprenants: many(apprenants),
 	deals: many(deals),
 }));
 
-export const usersRelations = relations(users, ({many}) => ({
+export const usersRelations = relations(users, ({one, many}) => ({
+	lastActiveWorkspace: one(workspaces, {
+		fields: [users.lastActiveWorkspaceId],
+		references: [workspaces.id]
+	}),
 	clients: many(clients),
 	workspacesUsers: many(workspacesUsers),
 	formations: many(formations),
@@ -39,6 +47,7 @@ export const workspacesUsersRelations = relations(workspacesUsers, ({one}) => ({
 
 export const workspacesRelations = relations(workspaces, ({many}) => ({
 	workspacesUsers: many(workspacesUsers),
+	workspaceFormateurs: many(workspaceFormateurs),
 	formations: many(formations),
 	deals: many(deals),
 }));
@@ -136,6 +145,18 @@ export const formateursRelations = relations(formateurs, ({one, many}) => ({
 		references: [users.id]
 	}),
 	formateursThematiques: many(formateursThematiques),
+	workspaceFormateurs: many(workspaceFormateurs),
+}));
+
+export const workspaceFormateursRelations = relations(workspaceFormateurs, ({one}) => ({
+	workspace: one(workspaces, {
+		fields: [workspaceFormateurs.workspaceId],
+		references: [workspaces.id]
+	}),
+	formateur: one(formateurs, {
+		fields: [workspaceFormateurs.formateurId],
+		references: [formateurs.id]
+	}),
 }));
 
 export const formateursThematiquesRelations = relations(formateursThematiques, ({one}) => ({

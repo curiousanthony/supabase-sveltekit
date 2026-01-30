@@ -1,43 +1,33 @@
 import { db } from '$lib/db';
-import { deals } from '$lib/db/schema';
-import { getUserWorkspace } from '$lib/auth';
-import { redirect, fail } from '@sveltejs/kit';
+import { deals, clients } from '$lib/db/schema';
+import { requireRole } from '$lib/server/guards';
+import { eq, asc } from 'drizzle-orm';
+import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
 const STAGES = ['Lead', 'Qualification', 'Proposition', 'Négociation', 'Gagné', 'Perdu'] as const;
 
-export const load = (async ({ locals }) => {
-	const { user } = await locals.safeGetSession();
-	if (!user) throw redirect(303, '/auth/login');
+export const load = (async ({ locals, url }) => {
+	const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'deals');
 
-	const workspaceId = await getUserWorkspace(locals);
-	if (!workspaceId) {
-		return {
-			clients: [],
-			workspaceId: null,
-			header: { pageName: 'Créer un deal', backButton: true, backButtonLabel: 'Deals', backButtonHref: '/deals' }
-		};
-	}
-
-	const clients = await db.query.clients.findMany({
+	const clientsData = await db.query.clients.findMany({
+		where: eq(clients.workspaceId, workspaceId),
 		columns: { id: true, legalName: true },
-		orderBy: (c, { asc }) => [asc(c.legalName)]
+		orderBy: [asc(clients.legalName)]
 	});
 
 	return {
-		clients,
+		clients: clientsData,
 		workspaceId,
 		header: { pageName: 'Créer un deal', backButton: true, backButtonLabel: 'Deals', backButtonHref: '/deals' }
 	};
 }) satisfies PageServerLoad;
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
+	default: async ({ request, locals, url }) => {
+		const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'deals');
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
-
-		const workspaceId = await getUserWorkspace(locals);
-		if (!workspaceId) return fail(400, { message: 'Aucun workspace associé' });
 
 		const fd = await request.formData();
 		const name = (fd.get('name') as string)?.trim();

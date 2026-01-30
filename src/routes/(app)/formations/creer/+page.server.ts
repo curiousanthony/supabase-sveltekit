@@ -1,13 +1,21 @@
 import { db } from '$lib/db';
-import { formations, workspacesUsers } from '$lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { formations, clients } from '$lib/db/schema';
+import { eq, asc } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms/server';
 import { zod } from 'sveltekit-superforms/adapters';
 import { formationSchema } from './schema';
+import { requireRole } from '$lib/server/guards';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load = (async () => {
+export const load = (async ({ locals, url }) => {
+	const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'formations');
+
+	const clientsData = await db.query.clients.findMany({
+		where: eq(clients.workspaceId, workspaceId),
+		columns: { id: true, legalName: true },
+		orderBy: [asc(clients.legalName)]
+	});
 	// Mock data for the UI-first approach
 	const mockClients = [
 		{ id: '1', legalName: 'Acme Corp' },
@@ -59,7 +67,7 @@ export const load = (async () => {
 
 	return {
 		form,
-		clients: mockClients,
+		clients: clientsData,
 		prerequisites: mockPrerequisites,
 		targetPublics: mockTargetPublics,
 		topics: mockTopics,
@@ -73,7 +81,8 @@ export const load = (async () => {
 }) satisfies PageServerLoad;
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
+	default: async ({ request, locals, url }) => {
+		const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'formations');
 		const { session, user } = await locals.safeGetSession();
 		if (!session || !user) {
 			return fail(401, { message: 'Non autorisé' });

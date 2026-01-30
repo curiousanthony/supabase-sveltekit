@@ -1,13 +1,12 @@
 import { db } from '$lib/db';
 import { deals, formations } from '$lib/db/schema';
-import { getUserWorkspace } from '$lib/auth';
+import { requireRole } from '$lib/server/guards';
 import { eq, desc, and } from 'drizzle-orm';
 import { redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load = (async ({ params, locals }) => {
-	const workspaceId = await getUserWorkspace(locals);
-	if (!workspaceId) throw redirect(303, '/deals');
+export const load = (async ({ params, locals, url }) => {
+	const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'deals');
 
 	const deal = await db.query.deals.findFirst({
 		where: (d, { and, eq }) => and(eq(d.id, params.id), eq(d.workspaceId, workspaceId)),
@@ -42,12 +41,10 @@ export const load = (async ({ params, locals }) => {
 }) satisfies PageServerLoad;
 
 export const actions: Actions = {
-	updateStage: async ({ request, params, locals }) => {
+	updateStage: async ({ request, params, locals, url }) => {
+		const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'deals');
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
-
-		const workspaceId = await getUserWorkspace(locals);
-		if (!workspaceId) return fail(400, { message: 'Aucun workspace' });
 
 		const fd = await request.formData();
 		const stage = fd.get('stage') as string | null;
@@ -69,12 +66,10 @@ export const actions: Actions = {
 		return { success: true, stage };
 	},
 
-	closeAndCreateFormation: async ({ request, params, locals }) => {
+	closeAndCreateFormation: async ({ request, params, locals, url }) => {
+		const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'deals');
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
-
-		const workspaceId = await getUserWorkspace(locals);
-		if (!workspaceId) return fail(400, { message: 'Aucun workspace' });
 
 		const deal = await db.query.deals.findFirst({
 			where: (d, { and, eq }) => and(eq(d.id, params.id), eq(d.workspaceId, workspaceId)),

@@ -1,7 +1,7 @@
 import { db } from '$lib/db';
 import { formations } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { getUserWorkspace } from '$lib/auth';
+import { requireRole } from '$lib/server/guards';
 import type { PageServerLoad } from './$types';
 
 /** Key Qualiopi-related fields on a formation (critères 2 & 3). */
@@ -38,20 +38,18 @@ function isFormationQualiopiComplete(f: {
 	};
 }
 
-export const load = (async ({ locals }) => {
-	const workspaceId = await getUserWorkspace(locals);
+export const load = (async ({ locals, url }) => {
+	const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'qualiopi');
 
-	const formationsData = workspaceId
-		? await db.query.formations.findMany({
-				where: eq(formations.workspaceId, workspaceId),
-				with: {
-					thematique: {
-						columns: { name: true }
-					}
-				},
-				orderBy: (formations, { desc }) => [desc(formations.idInWorkspace)]
-			})
-		: [];
+	const formationsData = await db.query.formations.findMany({
+		where: eq(formations.workspaceId, workspaceId),
+		with: {
+			thematique: {
+				columns: { name: true }
+			}
+		},
+		orderBy: (formations, { desc }) => [desc(formations.idInWorkspace)]
+	});
 
 	const conformityByFormation = formationsData.map((f) => ({
 		id: f.id,

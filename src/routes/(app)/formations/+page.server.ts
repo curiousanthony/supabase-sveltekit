@@ -1,15 +1,15 @@
 import { db } from '$lib/db';
+import { formations } from '$lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { requireRole } from '$lib/server/guards';
 import type { PageServerLoad } from './$types';
 
-export const load = (async () => {
-	try {
-		// const formations = await db.query.formations.findMany({
-		//     orderBy: (formations, {desc}) => [
-		//         desc(formations.idInWorkspace)
-		//     ]
-		// });
+export const load = (async ({ locals, url }) => {
+	const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'formations');
 
+	try {
 		const formationsData = await db.query.formations.findMany({
+			where: eq(formations.workspaceId, workspaceId),
 			with: {
 				thematique: {
 					columns: { name: true }

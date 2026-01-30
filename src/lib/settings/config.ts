@@ -13,6 +13,16 @@ import Tool from '@tabler/icons-svelte/icons/tool'
 import History from '@tabler/icons-svelte/icons/history'
 import Users from '@tabler/icons-svelte/icons/users'
 
+/** Permission required to see each nav item. Undefined = visible to all. */
+export const sitemapPermissions: Record<string, 'deals' | 'clients' | 'formations' | 'qualiopi' | 'formateurs' | 'messagerie' | 'dashboard' | undefined> = {
+	'/': 'dashboard',
+	'/messagerie': 'messagerie',
+	'/formations': 'formations',
+	'/contacts': 'formateurs',
+	'/deals': 'deals',
+	'/qualiopi': 'qualiopi'
+};
+
 export const appInfo = {
 	"name": "Mentore Manager",
 	"desc": "Mentore Manager",
@@ -22,63 +32,18 @@ export const appInfo = {
 }
 
 
-export const sitemap = [
-	{
-		title: 'Boîte de réception',
-		url: '/inbox',
-		icon: Inbox
-	},
-	{
-		title: 'Tableau de bord',
-		url: '/',
-		icon: LayoutDashboard
-	},
-	{
-		title: 'Messagerie',
-		url: '/messagerie',
-		icon: Messages
-	},
-	{
-		title: 'Calendrier',
-		url: '/calendrier',
-		icon: CalendarWeek
-	},
-	{
-		title: 'Formations',
-		url: '/formations',
-		icon: Book_2
-	},
-	{
-		title: 'Contacts',
-		url: '/contacts',
-		// icon: AddressBook,
-		icon: Users
-	},
-	{
-		title: 'Deals',
-		url: '/deals',
-		icon: HeartHandshake
-	},
-	{
-		title: 'Bibliothèque',
-		url: '/bibliotheque',
-		icon: Books
-	},
-	{
-		title: 'Gestion qualité',
-		url: '/qualiopi',
-		icon: ThumbUp
-	},
-	{
-		title: 'Outils',
-		url: '/outils',
-		icon: Tool
-	},
-	{
-		title: 'Historique',
-		url: '/historique',
-		icon: History
-	}
+export const sitemap: { title: string; url: string; icon: typeof Inbox }[] = [
+	{ title: 'Boîte de réception', url: '/inbox', icon: Inbox },
+	{ title: 'Tableau de bord', url: '/', icon: LayoutDashboard },
+	{ title: 'Messagerie', url: '/messagerie', icon: Messages },
+	{ title: 'Calendrier', url: '/calendrier', icon: CalendarWeek },
+	{ title: 'Formations', url: '/formations', icon: Book_2 },
+	{ title: 'Contacts', url: '/contacts', icon: Users },
+	{ title: 'Deals', url: '/deals', icon: HeartHandshake },
+	{ title: 'Bibliothèque', url: '/bibliotheque', icon: Books },
+	{ title: 'Gestion qualité', url: '/qualiopi', icon: ThumbUp },
+	{ title: 'Outils', url: '/outils', icon: Tool },
+	{ title: 'Historique', url: '/historique', icon: History }
 ]
 
 export default {

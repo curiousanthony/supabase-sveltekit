@@ -1,10 +1,15 @@
 import { db } from '$lib/db';
+import { formations } from '$lib/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { requireRole } from '$lib/server/guards';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load = (async ({ params }) => {
-	// Get the formation object from the ID in the URL, from the database
+export const load = (async ({ params, locals, url }) => {
+	const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'formations');
+
 	const formation = await db.query.formations.findFirst({
-		where: (formations, { eq }) => eq(formations.id, params.id),
+		where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
 		with: {
 			thematique: {
 				columns: {
@@ -24,7 +29,7 @@ export const load = (async ({ params }) => {
 	const pageName = formation?.name ?? 'Formation';
 
 	if (!formation) {
-		throw new Error('Formation not found');
+		throw redirect(303, '/formations');
 	}
 
 	// Conditional Tailwind CSS class based on formation "statut" value

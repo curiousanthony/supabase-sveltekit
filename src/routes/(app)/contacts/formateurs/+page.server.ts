@@ -1,22 +1,36 @@
 import { db } from '$lib/db';
+import { workspaceFormateurs, formateurs } from '$lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { requireRole } from '$lib/server/guards';
 import type { PageServerLoad } from './$types';
 
-export const load = (async () => {
-    try {
-        const formateurs = await db.query.formateurs.findMany({
-            with: {
-                user: true,
-                formateursThematiques: {
-                    with: {
-                        thematique: {
-                            columns: {
-                                name: true
-                            }
-                        }
-                    }}
-                
-            }
-        })
+export const load = (async ({ locals, url }) => {
+	const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'formateurs');
+
+	try {
+		const formateursInWorkspace = await db.query.workspaceFormateurs.findMany({
+			where: eq(workspaceFormateurs.workspaceId, workspaceId),
+			columns: { formateurId: true }
+		});
+
+		const formateurIds = formateursInWorkspace.map((f) => f.formateurId);
+
+		const formateurs =
+			formateurIds.length === 0
+				? []
+				: await db.query.formateurs.findMany({
+						where: (f, { inArray }) => inArray(f.id, formateurIds),
+						with: {
+							user: true,
+							formateursThematiques: {
+								with: {
+									thematique: {
+										columns: { name: true }
+									}
+								}
+							}
+						}
+					});
 
         // console.log("from formateurs/+page.server.ts → formateurs:\n", formateurs);
 
