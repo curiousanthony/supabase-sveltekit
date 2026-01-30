@@ -1,6 +1,13 @@
 -- Seed mock data for Deals, Formations, Formateurs, Clients (only when workspace + user exist).
 -- Uses existing workspace and first workspace user for created_by/owner_id; adds 2 mock users for formateurs.
 
+-- Ensure clients.workspace_id exists (in case migration 20260129164731 was not applied on remote)
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS workspace_id uuid;
+DO $$ BEGIN
+  ALTER TABLE clients ADD CONSTRAINT clients_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE set null ON UPDATE cascade;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- 1) Mock users for formateurs (idempotent)
 INSERT INTO users (id, email, created_at)
 VALUES
