@@ -5,6 +5,8 @@ export const modalites = pgEnum("modalites", ['Distanciel', 'Présentiel', 'Hybr
 export const statutsFormation = pgEnum("statuts_formation", ['En attente', 'En cours', 'Terminée'])
 export const typeClient = pgEnum("type_client", ['Entreprise', 'Particulier'])
 export const typesFinancement = pgEnum("types_financement", ['CPF', 'OPCO', 'Inter', 'Intra'])
+export const dealStage = pgEnum("deal_stage", ['Lead', 'Qualification', 'Proposition', 'Négociation', 'Gagné', 'Perdu'])
+export const workspaceRole = pgEnum("workspace_role", ['owner', 'admin', 'sales'])
 
 
 export const clients = pgTable("clients", {
@@ -28,6 +30,7 @@ export const workspacesUsers = pgTable("workspaces_users", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	workspaceId: uuid("workspace_id").notNull(),
 	userId: uuid("user_id").notNull(),
+	role: workspaceRole().default('sales').notNull(),
 }, (table) => [
 	uniqueIndex("unique_workspace_user").using("btree", table.workspaceId.asc().nullsLast().op("uuid_ops"), table.userId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
@@ -96,6 +99,7 @@ export const formations = pgTable("formations", {
 	idInWorkspace: integer("id_in_workspace"),
 	statut: statutsFormation().default('En attente').notNull(),
 	typeFinancement: typesFinancement("type_financement"),
+	clientId: uuid("client_id"),
 }, (table) => [
 	foreignKey({
 			columns: [table.workspaceId],
@@ -117,7 +121,48 @@ export const formations = pgTable("formations", {
 			foreignColumns: [thematiques.id],
 			name: "formations_topic_id_fkey"
 		}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+			columns: [table.clientId],
+			foreignColumns: [clients.id],
+			name: "formations_client_id_fkey"
+		}).onUpdate("cascade").onDelete("set null"),
 	unique("courses_id2_key").on(table.id),
+]);
+
+/** Step keys for the 10-step admin workflow (bubble-admin-workflow). */
+export const workflowStepKeys = [
+	'info_verification',
+	'convention_program',
+	'needs_analysis',
+	'convocation',
+	'mission_order',
+	'end_certificate',
+	'satisfaction_questionnaires',
+	'instructor_documents',
+	'billing',
+	'complete_file',
+] as const;
+
+export type WorkflowStepKey = (typeof workflowStepKeys)[number];
+
+export const formationWorkflowSteps = pgTable("formation_workflow_steps", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	formationId: uuid("formation_id").notNull(),
+	stepKey: varchar("step_key", { length: 64 }).notNull(),
+	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
+	completedBy: uuid("completed_by"),
+}, (table) => [
+	foreignKey({
+		columns: [table.formationId],
+		foreignColumns: [formations.id],
+		name: "formation_workflow_steps_formation_id_fkey",
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.completedBy],
+		foreignColumns: [users.id],
+		name: "formation_workflow_steps_completed_by_fkey",
+	}),
+	unique("unique_formation_step").on(table.formationId, table.stepKey),
 ]);
 
 export const modules = pgTable("modules", {
@@ -220,4 +265,47 @@ export const formateursThematiques = pgTable("formateurs_thematiques", {
 			name: "formateurs_thematiques_formateur_id_fkey"
 		}).onUpdate("cascade").onDelete("cascade"),
 	unique("unique_formateur_thematique").on(table.thematiqueId, table.formateurId),
+]);
+
+export const deals = pgTable("deals", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	workspaceId: uuid("workspace_id").notNull(),
+	clientId: uuid("client_id").notNull(),
+	name: text().notNull(),
+	description: text(),
+	stage: dealStage().default('Lead').notNull(),
+	value: numeric("value", { precision: 12, scale: 2 }),
+	currency: varchar("currency", { length: 3 }).default('EUR').notNull(),
+	ownerId: uuid("owner_id").notNull(),
+	createdBy: uuid("created_by").notNull(),
+	closedAt: timestamp("closed_at", { withTimezone: true, mode: 'string' }),
+	formationId: uuid("formation_id"),
+}, (table) => [
+	foreignKey({
+		columns: [table.workspaceId],
+		foreignColumns: [workspaces.id],
+		name: "deals_workspace_id_fkey",
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.clientId],
+		foreignColumns: [clients.id],
+		name: "deals_client_id_fkey",
+	}).onUpdate("cascade").onDelete("restrict"),
+	foreignKey({
+		columns: [table.ownerId],
+		foreignColumns: [users.id],
+		name: "deals_owner_id_fkey",
+	}).onUpdate("cascade").onDelete("restrict"),
+	foreignKey({
+		columns: [table.createdBy],
+		foreignColumns: [users.id],
+		name: "deals_created_by_fkey",
+	}).onUpdate("cascade").onDelete("restrict"),
+	foreignKey({
+		columns: [table.formationId],
+		foreignColumns: [formations.id],
+		name: "deals_formation_id_fkey",
+	}).onUpdate("cascade").onDelete("set null"),
 ]);

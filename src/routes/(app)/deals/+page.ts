@@ -1,7 +1,4 @@
 import type { PageLoad } from './$types';
 
-export const load = (async () => {
-	return {
-		pageName: 'Deals'
-	};
-}) satisfies PageLoad;
+/** Pass-through: all data comes from +page.server.ts */
+export const load = (async ({ data }) => data) satisfies PageLoad;

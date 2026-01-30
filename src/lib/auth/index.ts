@@ -1,5 +1,5 @@
 import { db } from '$lib/db';
-import { workspacesUsers } from '$lib/db/schema';
+import { workspacesUsers, workspaces, users, clients, deals } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const getOrCreateUserProfile = async (locals: App.Locals) => {
@@ -42,8 +42,10 @@ export const getOrCreateUserProfile = async (locals: App.Locals) => {
 };
 
 /**
- * Get the user's workspace ID from the workspaces_users table
- * For now, returns the first workspace the user belongs to
+ * Get the user's workspace ID from the workspaces_users table.
+ * For now, returns the first workspace the user belongs to.
+ * If the user has no workspace, ensures they get one: syncs to public.users,
+ * creates a default workspace if needed, and assigns the user to it.
  */
 export const getUserWorkspace = async (locals: App.Locals) => {
 	const { user } = await locals.safeGetSession();
@@ -53,12 +55,93 @@ export const getUserWorkspace = async (locals: App.Locals) => {
 	}
 
 	// Get the first workspace the user belongs to
-	const workspaceUser = await db.query.workspacesUsers.findFirst({
+	let workspaceUser = await db.query.workspacesUsers.findFirst({
 		where: eq(workspacesUsers.userId, user.id),
 		columns: {
 			workspaceId: true
 		}
 	});
 
-	return workspaceUser?.workspaceId ?? null;
+	if (workspaceUser?.workspaceId) {
+		return workspaceUser.workspaceId;
+	}
+
+	// User has no workspace: ensure they have one
+	// 1. Ensure user exists in public.users (same id as auth.users)
+	await db
+		.insert(users)
+		.values({
+			id: user.id,
+			email: user.email ?? '',
+			firstName: user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
+			lastName: (user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || user.user_metadata?.family_name) ?? null,
+			avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
+		})
+		.onConflictDoNothing({ target: [users.id] });
+
+	// 2. Create a new personal workspace for this user
+	const [inserted] = await db
+		.insert(workspaces)
+		.values({ name: 'Mon espace' })
+		.returning({ id: workspaces.id });
+	const workspace = inserted;
+
+	if (!workspace) {
+		return null;
+	}
+
+	// 3. Add user to workspace
+	await db
+		.insert(workspacesUsers)
+		.values({
+			workspaceId: workspace.id,
+			userId: user.id
+		})
+		.onConflictDoNothing({
+			target: [workspacesUsers.workspaceId, workspacesUsers.userId]
+		});
+
+	// 4. Create sample client and deals so the user can see the Kanban
+	const [sampleClient] = await db
+		.insert(clients)
+		.values({
+			legalName: 'Exemple SARL',
+			type: 'Entreprise',
+			createdBy: user.id
+		})
+		.returning({ id: clients.id });
+
+	if (sampleClient) {
+		await db.insert(deals).values([
+			{
+				workspaceId: workspace.id,
+				clientId: sampleClient.id,
+				name: 'Deal exemple – Formation Excel',
+				value: '4500',
+				stage: 'Proposition',
+				ownerId: user.id,
+				createdBy: user.id
+			},
+			{
+				workspaceId: workspace.id,
+				clientId: sampleClient.id,
+				name: 'Deal exemple – Anglais business',
+				value: '3200',
+				stage: 'Qualification',
+				ownerId: user.id,
+				createdBy: user.id
+			},
+			{
+				workspaceId: workspace.id,
+				clientId: sampleClient.id,
+				name: 'Deal exemple – Management',
+				value: '6800',
+				stage: 'Lead',
+				ownerId: user.id,
+				createdBy: user.id
+			}
+		]);
+	}
+
+	return workspace.id;
 };
