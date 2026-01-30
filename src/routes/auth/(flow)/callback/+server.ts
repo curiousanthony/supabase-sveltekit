@@ -37,10 +37,17 @@ export const GET = async (event) => {
 
 		if (!error && data?.session) {
 			// Validate user via Auth server so cookies/session are fully established
-			await supabase.auth.getUser();
+			const {
+				data: { user },
+				error: userError
+			} = await supabase.auth.getUser();
 
 			// Small delay to ensure async cookie operations complete
 			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			if (userError || !user) {
+				throw redirect(303, '/auth/auth-code-error');
+			}
 
 			// Validate and sanitize the redirect path to prevent open redirect attacks
 			const redirectPath = validateRedirectPath(next);
