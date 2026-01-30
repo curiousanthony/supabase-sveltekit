@@ -17,12 +17,18 @@ export const clients = pgTable("clients", {
 	email: text(),
 	siret: integer(),
 	legalName: text("legal_name"),
+	workspaceId: uuid("workspace_id"),
 }, (table) => [
 	foreignKey({
 			columns: [table.createdBy],
 			foreignColumns: [users.id],
 			name: "clients_created_by_fkey"
 		}),
+	foreignKey({
+			columns: [table.workspaceId],
+			foreignColumns: [workspaces.id],
+			name: "clients_workspace_id_fkey"
+		}).onUpdate("cascade").onDelete("set null"),
 ]);
 
 export const workspacesUsers = pgTable("workspaces_users", {
