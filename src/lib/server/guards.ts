@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { getActiveWorkspace, getUserRoleInWorkspace, setActiveWorkspace, type WorkspaceRole } from './workspace';
 import { hasPermission, type Permission } from './permissions';
 import { getUserWorkspace } from '$lib/auth';
@@ -57,7 +57,7 @@ export async function requireRole(
 	const role = await getUserRoleInWorkspace(userId, workspaceId);
 
 	if (!role || !hasPermission(role, permission)) {
-		throw redirect(303, '/');
+		throw error(403, 'You do not have permission to access this resource');
 	}
 
 	return { userId, workspaceId, role };

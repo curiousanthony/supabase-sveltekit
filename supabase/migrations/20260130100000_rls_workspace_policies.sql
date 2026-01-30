@@ -8,8 +8,26 @@ RETURNS SETOF uuid
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
+SET search_path = public
 AS $$
   SELECT workspace_id FROM workspaces_users WHERE user_id = p_user_id;
+$$;
+
+-- Helper: true only when the user is the workspace creator (first member being added)
+-- Prevents arbitrary self-insert into existing workspaces.
+CREATE OR REPLACE FUNCTION validate_workspace_creator(p_workspace_id uuid, p_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT p_user_id = auth.uid()
+    AND EXISTS (SELECT 1 FROM workspaces WHERE id = p_workspace_id)
+    AND NOT EXISTS (
+      SELECT 1 FROM workspaces_users
+      WHERE workspace_id = p_workspace_id
+    );
 $$;
 
 -- workspaces: user must be a member to select; authenticated can create (for onboarding)
@@ -29,7 +47,7 @@ CREATE POLICY "workspaces_users_select"
 CREATE POLICY "workspaces_users_insert"
   ON workspaces_users FOR INSERT
   WITH CHECK (
-    (user_id = auth.uid())
+    validate_workspace_creator(workspace_id, user_id)
     OR
     EXISTS (
       SELECT 1 FROM workspaces_users wu

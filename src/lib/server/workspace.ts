@@ -2,6 +2,9 @@ import { db } from '$lib/db';
 import { users, workspaces, workspacesUsers } from '$lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
+export class UnauthorizedError extends Error {}
+export class NotFoundError extends Error {}
+
 export type WorkspaceRole = 'owner' | 'admin' | 'sales' | 'secretary';
 
 export interface WorkspaceWithRole {
@@ -85,7 +88,7 @@ export async function setActiveWorkspace(userId: string, workspaceId: string): P
 	});
 
 	if (!member) {
-		throw new Error('User does not belong to this workspace');
+		throw new UnauthorizedError('User does not belong to this workspace');
 	}
 
 	await db

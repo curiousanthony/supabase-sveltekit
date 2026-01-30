@@ -2,13 +2,16 @@ import { db } from '$lib/db';
 import { deals, clients } from '$lib/db/schema';
 import { requireRole } from '$lib/server/guards';
 import { eq, asc } from 'drizzle-orm';
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
 const STAGES = ['Lead', 'Qualification', 'Proposition', 'Négociation', 'Gagné', 'Perdu'] as const;
 
 export const load = (async ({ locals, url }) => {
-	const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'deals');
+	const { workspaceId } = await requireRole(
+		{ ...locals, url } as Parameters<typeof requireRole>[0],
+		'deals'
+	);
 
 	const clientsData = await db.query.clients.findMany({
 		where: eq(clients.workspaceId, workspaceId),
@@ -19,13 +22,21 @@ export const load = (async ({ locals, url }) => {
 	return {
 		clients: clientsData,
 		workspaceId,
-		header: { pageName: 'Créer un deal', backButton: true, backButtonLabel: 'Deals', backButtonHref: '/deals' }
+		header: {
+			pageName: 'Créer un deal',
+			backButton: true,
+			backButtonLabel: 'Deals',
+			backButtonHref: '/deals'
+		}
 	};
 }) satisfies PageServerLoad;
 
 export const actions: Actions = {
 	default: async ({ request, locals, url }) => {
-		const { workspaceId } = await requireRole({ ...locals, url } as Parameters<typeof requireRole>[0], 'deals');
+		const { workspaceId } = await requireRole(
+			{ ...locals, url } as Parameters<typeof requireRole>[0],
+			'deals'
+		);
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
 
@@ -38,7 +49,8 @@ export const actions: Actions = {
 
 		if (!name) return fail(400, { message: 'Le nom du deal est requis' });
 		if (!clientId) return fail(400, { message: 'Le client est requis' });
-		if (!STAGES.includes(stage as (typeof STAGES)[number])) return fail(400, { message: 'Étape invalide' });
+		if (!STAGES.includes(stage as (typeof STAGES)[number]))
+			return fail(400, { message: 'Étape invalide' });
 
 		let valueNum: number | null = null;
 		if (valueRaw) {

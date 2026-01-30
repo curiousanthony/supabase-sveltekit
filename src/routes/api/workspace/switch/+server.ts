@@ -1,6 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { setActiveWorkspace } from '$lib/server/workspace';
+import {
+	setActiveWorkspace,
+	UnauthorizedError,
+	NotFoundError
+} from '$lib/server/workspace';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { user } = await locals.safeGetSession();
@@ -20,6 +24,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		await setActiveWorkspace(user.id, workspaceId);
 		return json({ success: true });
 	} catch (e) {
-		return json({ error: 'Impossible de changer d\'espace' }, { status: 403 });
+		const err = e instanceof Error ? e : new Error(String(e));
+		console.error('[workspace/switch]', err.message, err.stack);
+		if (e instanceof UnauthorizedError) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
+		if (e instanceof NotFoundError) {
+			return json({ error: 'Workspace not found' }, { status: 404 });
+		}
+		return json({ error: 'Internal server error' }, { status: 500 });
 	}
 };

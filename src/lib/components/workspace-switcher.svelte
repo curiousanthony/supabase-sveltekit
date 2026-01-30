@@ -50,7 +50,12 @@
 			if (res.ok) {
 				selectedWorkspace = ws;
 				await invalidateAll();
+			} else {
+				// Consider using a toast/notification system
+				console.error('Failed to switch workspace:', res.status);
 			}
+		} catch (error) {
+			console.error('Error switching workspace:', error);
 		} finally {
 			isSwitching = false;
 		}
@@ -94,7 +99,7 @@
 						{/if}
 					</DropdownMenu.Item>
 				{/each}
-				{#if workspaces.length > 0}
+				{#if workspaces.length > 0 && canManageWorkspace}
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item onSelect={() => goto('/parametres/workspace')}>
 						<SettingsIcon class="size-4" />
