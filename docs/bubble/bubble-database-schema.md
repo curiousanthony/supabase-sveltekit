@@ -24,24 +24,24 @@ _[To be filled in after network request analysis]_
 
 #### Columns
 
-| Column Name         | Data Type           | Required | Default           | Notes                          |
-| ------------------- | ------------------- | -------- | ----------------- | ------------------------------ |
-| `id`                | Text/UUID           | Yes      | Auto-generated    | Primary key                    |
-| `created_date`      | Date/DateTime       | Yes      | Current timestamp | When record was created        |
-| `modified_date`     | Date/DateTime       | No       | -                 | Last modification time         |
-| `name`              | Text                | Yes/No   | -                 | Formation name/title           |
-| `description`       | Text                | No       | -                 | Formation description          |
-| `client_id`         | Thing (User/Client) | Yes/No   | -                 | Reference to client            |
-| `duree`             | Number              | Yes/No   | -                 | Duration in hours              |
-| `modalite`          | Text/Enum           | Yes/No   | -                 | Modality type                  |
-| `statut`            | Text/Enum           | Yes      | 'En attente'      | Status                         |
-| `thematique_id`     | Thing               | No       | -                 | Reference to thematic          |
-| `sousthematique_id` | Thing               | No       | -                 | Reference to sub-thematic      |
-| `code_rncp`         | Text                | No       | -                 | RNCP code                      |
-| `type_financement`  | Text/Enum           | No       | -                 | Financement type               |
-| `workspace_id`      | Thing               | Yes      | -                 | Reference to workspace         |
-| `created_by`        | Thing (User)        | Yes      | Current user      | Creator reference              |
-| `id_in_workspace`   | Number              | No       | -                 | Sequential ID within workspace |
+| Column Name         | Data Type      | Required | Default           | Notes                          |
+| ------------------- | -------------- | -------- | ----------------- | ------------------------------ |
+| `id`                | Text/UUID      | Yes      | Auto-generated    | Primary key                    |
+| `created_date`      | Date/DateTime  | Yes      | Current timestamp | When record was created        |
+| `modified_date`     | Date/DateTime  | No       | -                 | Last modification time         |
+| `name`              | Text           | Yes/No   | -                 | Formation name/title           |
+| `description`       | Text           | No       | -                 | Formation description          |
+| `client_id`         | Thing (Client) | Yes/No   | -                 | Reference to client            |
+| `duree`             | Number         | Yes/No   | -                 | Duration in hours              |
+| `modalite`          | Text/Enum      | Yes/No   | -                 | Modality type                  |
+| `statut`            | Text/Enum      | Yes      | 'En attente'      | Status                         |
+| `thematique_id`     | Thing          | No       | -                 | Reference to thematic          |
+| `sousthematique_id` | Thing          | No       | -                 | Reference to sub-thematic      |
+| `code_rncp`         | Text           | No       | -                 | RNCP code                      |
+| `type_financement`  | Text/Enum      | No       | -                 | Financement type               |
+| `workspace_id`      | Thing          | Yes      | -                 | Reference to workspace         |
+| `created_by`        | Thing (User)   | Yes      | Current user      | Creator reference              |
+| `id_in_workspace`   | Number         | No       | -                 | Sequential ID within workspace |
 
 _[Additional columns to be documented after analysis]_
 

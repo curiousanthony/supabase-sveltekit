@@ -83,6 +83,8 @@ export function isFormationQualiopiComplete(
 		description?: string | null;
 		modalite?: string | null;
 		duree?: number | null;
+		evaluationMode?: string | null;
+		suiviAssiduite?: string | null;
 	}
 ) {
 	const hasName = Boolean(f.name && String(f.name).trim());

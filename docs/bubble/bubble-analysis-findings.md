@@ -175,7 +175,7 @@ The Admin tab shows a **10-step administrative workflow**:
 1. **CSV Import Option**:
    - "Importer une liste en CSV" (Import a CSV list) button
    - File upload: "Click to upload a file" / "Choose File" button
-   - Instructions: "Le fichier importé doit être obligatoirement au format CSV et composé de 3 colonnes : \"prenom\", \"nom\", \"fonction\", \"groupe\" et \"email\""
+   - Instructions: "Le fichier importé doit être obligatoirement au format CSV et composé de 5 colonnes : \"prenom\", \"nom\", \"fonction\", \"groupe\" et \"email\""
    - "Template de CSV" (CSV template) button
 
 2. **Manual Entry Option**:
