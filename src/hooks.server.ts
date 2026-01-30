@@ -22,19 +22,13 @@ const supabase: Handle = async ({ event, resolve }) => {
       setAll: (cookiesToSet) => {
         cookiesToSet.forEach(({ name, value, options }) => {
           try {
-            // Log cookie setting attempts (especially for auth tokens)
-            if (name.includes('auth-token')) {
-              console.log('[Hooks] Setting auth cookie:', name, 'has value:', !!value, 'value length:', value?.length || 0)
-            }
             event.cookies.set(name, value, { ...options, path: '/' })
           } catch (error) {
             // Ignore errors when trying to set cookies after response has been sent
             // This can happen with async auth state change callbacks
             if (error instanceof Error && error.message.includes('response has been generated')) {
-              console.log('[Hooks] Cookie set failed (response sent):', name)
               return
             }
-            console.error('[Hooks] Cookie set error:', name, error)
             throw error
           }
         })

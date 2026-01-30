@@ -32,17 +32,8 @@ export const GET = async (event) => {
 	const code = url.searchParams.get('code') as string;
 	const next = url.searchParams.get('next') ?? '/';
 
-	console.log('[Auth Callback] Code received:', code ? 'yes' : 'no');
-	console.log('[Auth Callback] Next path:', next);
-
 	if (code) {
 		const { error, data } = await supabase.auth.exchangeCodeForSession(code);
-		console.log(
-			'[Auth Callback] Exchange result - error:',
-			error?.message,
-			'session:',
-			data?.session ? 'yes' : 'no'
-		);
 
 		if (!error && data?.session) {
 			// Validate user via Auth server so cookies/session are fully established
@@ -51,52 +42,10 @@ export const GET = async (event) => {
 			// Small delay to ensure async cookie operations complete
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
-			// Verify cookies were set by checking what cookies exist
-			const allCookies = event.cookies.getAll();
-			console.log(
-				'[Auth Callback] All cookies after exchange:',
-				allCookies
-					.map((c) => `${c.name}=${c.value ? c.value.substring(0, 20) + '...' : '(empty)'}`)
-					.join(', ')
-			);
-			const supabaseCookies = allCookies.filter(
-				(c) => c.name.includes('supabase') || c.name.includes('sb-')
-			);
-			console.log(
-				'[Auth Callback] Supabase cookies after exchange:',
-				supabaseCookies.map((c) => `${c.name} (${c.value ? 'has value' : 'empty'})`).join(', ')
-			);
-
-			// Verify user (validated via Auth server; do not use getSession() for user)
-			const {
-				data: { user: verifyUser },
-				error: userError
-			} = await supabase.auth.getUser();
-			console.log(
-				'[Auth Callback] User verification after exchange:',
-				verifyUser ? 'found' : 'NOT FOUND',
-				'error:',
-				userError?.message
-			);
-
-			if (!verifyUser) {
-				console.log(
-					'[Auth Callback] WARNING: User not found after exchange, but exchange succeeded. This suggests cookies may not be set correctly.'
-				);
-				// Still try to redirect - the client might be able to read the cookies
-			}
-
-			// The session is in the exchange response, and cookies should be set
 			// Validate and sanitize the redirect path to prevent open redirect attacks
 			const redirectPath = validateRedirectPath(next);
-			console.log('[Auth Callback] Session established, redirecting to:', redirectPath);
 			throw redirect(303, redirectPath);
 		} else {
-			console.log(
-				'[Auth Callback] Exchange failed or no session - error:',
-				error?.message,
-				'redirecting to error page'
-			);
 			throw redirect(303, '/auth/auth-code-error');
 		}
 	} else {
