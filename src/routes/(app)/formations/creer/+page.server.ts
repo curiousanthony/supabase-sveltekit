@@ -1,13 +1,33 @@
 import { db } from '$lib/db';
-import { formations, workspacesUsers } from '$lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { formations, clients, modules } from '$lib/db/schema';
+import { eq, asc, desc } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms/server';
 import { zod } from 'sveltekit-superforms/adapters';
 import { formationSchema } from './schema';
+import { getUserWorkspace } from '$lib/auth';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load = (async () => {
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const load = (async ({ locals }) => {
+	const workspaceId = await getUserWorkspace(locals);
+	if (!workspaceId) {
+		return {
+			form: await superValidate(zod(formationSchema), { defaults: {} }),
+			clients: [],
+			prerequisites: [],
+			targetPublics: [],
+			topics: [],
+			header: { pageName: 'Créer une formation', backButton: true, backButtonLabel: 'Formations', backButtonHref: '/formations' }
+		};
+	}
+
+	const clientsData = await db.query.clients.findMany({
+		where: eq(clients.workspaceId, workspaceId),
+		columns: { id: true, legalName: true },
+		orderBy: [asc(clients.legalName)]
+	});
 	// Mock data for the UI-first approach
 	const mockClients = [
 		{ id: '1', legalName: 'Acme Corp' },
@@ -59,7 +79,7 @@ export const load = (async () => {
 
 	return {
 		form,
-		clients: mockClients,
+		clients: clientsData,
 		prerequisites: mockPrerequisites,
 		targetPublics: mockTargetPublics,
 		topics: mockTopics,
@@ -74,27 +94,58 @@ export const load = (async () => {
 
 export const actions: Actions = {
 	default: async ({ request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(400, { message: 'Aucun workspace associé' });
 		const { session, user } = await locals.safeGetSession();
 		if (!session || !user) {
 			return fail(401, { message: 'Non autorisé' });
 		}
 
 		const form = await superValidate(request, zod(formationSchema));
-
-		console.log('--- FORM SUBMITTED (UI FLOW ONLY) ---');
-		console.log('Data:', JSON.stringify(form.data, null, 2));
-		console.log('Valid:', form.valid);
-		console.log('------------------------------------');
-
 		if (!form.valid) {
 			return fail(400, { form });
 		}
 
-		// Simulate backend delay
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		const topicId =
+			form.data.topicId && UUID_REGEX.test(form.data.topicId) ? form.data.topicId : null;
+		const clientId = form.data.clientId && UUID_REGEX.test(form.data.clientId) ? form.data.clientId : null;
 
-		// For now, redirect to a success state or just back to the library
-		// In a real app, we would insert into DB here.
-		throw redirect(303, '/formations');
+		const maxIdResult = await db
+			.select({ n: formations.idInWorkspace })
+			.from(formations)
+			.where(eq(formations.workspaceId, workspaceId))
+			.orderBy(desc(formations.idInWorkspace))
+			.limit(1);
+		const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
+
+		const [inserted] = await db
+			.insert(formations)
+			.values({
+				workspaceId,
+				createdBy: user.id,
+				name: form.data.name ?? null,
+				description: form.data.description?.trim() || null,
+				topicId,
+				clientId,
+				duree: form.data.duree,
+				modalite: form.data.modalite,
+				idInWorkspace: nextIdInWorkspace,
+				statut: 'En attente'
+			})
+			.returning({ id: formations.id });
+
+		if (!inserted) return fail(500, { message: 'Erreur lors de la création de la formation', form });
+
+		await db.insert(modules).values(
+			form.data.modules.map((m, i) => ({
+				courseId: inserted.id,
+				createdBy: user.id,
+				name: m.title,
+				durationHours: String(m.durationHours),
+				orderIndex: i
+			}))
+		);
+
+		throw redirect(303, `/formations/${inserted.id}`);
 	}
 };
