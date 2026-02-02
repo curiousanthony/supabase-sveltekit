@@ -154,6 +154,7 @@ export const workspaces = pgTable(
 			.defaultNow()
 			.notNull(),
 		name: varchar(),
+		logoUrl: text('logo_url'),
 		id: uuid().defaultRandom().primaryKey().notNull()
 	},
 	(table) => [unique('workspaces_id2_key').on(table.id)]
