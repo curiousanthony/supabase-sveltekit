@@ -70,3 +70,50 @@ If you encounter **"relation already exists"** errors during `supabase db push`:
 
 ### Note for AI agents
 AI agents working on this codebase must follow the **schema-first** workflow and apply migrations locally; see [.agent/workflows/database-migration.md](../.agent/workflows/database-migration.md). The DB-first workflow above is for human/solo development.
+
+---
+
+## Remote database (production)
+
+To ensure the **remote** Supabase database matches the local schema and migrations (e.g. after a release to `main`):
+
+1. **Link your remote project** (if not already linked):
+   ```bash
+   supabase link --project-ref <your-project-ref>
+   ```
+   Get the project ref from the Supabase Dashboard → Project Settings → General.
+
+2. **Push migrations** to the remote database:
+   ```bash
+   supabase db push
+   ```
+   This applies all pending migrations in `supabase/migrations/` to the remote DB. The remote schema and seed data will match what you have locally.
+
+---
+
+## Demo data (testing in production/staging)
+
+The migration `20260202100000_seed_demo_workspace_and_mock_data.sql` seeds a demo workspace **"Espace démo"** with:
+
+- **1 demo user** in `public.users` (email: `demo@example.com`) and **1 workspace** "Espace démo"
+- **3 clients** (Acme Corp, Globex Corporation, Jean Dupont)
+- **3 formations** (Leadership, Excel avancé, Anglais business) with different statuts and types
+- **3 deals** (Lead, Qualification, Proposition) linked to those clients
+- **2 formateurs** (Paris, Lyon) with rates and descriptions
+
+This runs automatically when you apply migrations (e.g. `supabase db push` on the remote).
+
+### Accessing the demo workspace
+
+To see this data in the app, add your **auth user** to the demo workspace. After signing in, run in the Supabase SQL Editor (or any Postgres client connected to your project):
+
+```sql
+-- Replace YOUR_AUTH_USER_ID with your actual user id (from auth.users or the app)
+INSERT INTO workspaces_users (workspace_id, user_id, role)
+SELECT id, 'YOUR_AUTH_USER_ID'::uuid, 'admin'
+FROM workspaces
+WHERE name = 'Espace démo'
+ON CONFLICT (workspace_id, user_id) DO NOTHING;
+```
+
+Then switch to the workspace **"Espace démo"** in the app (workspace switcher in the sidebar) to view and test with the mock data.
