@@ -66,6 +66,8 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 		if (e && typeof e === 'object' && 'status' in e && (e as { status: number }).status === 303) {
 			throw e;
 		}
+		console.error('[Layout] Workspace load failed:', e);
+		throw e;
 	}
 
 	return {

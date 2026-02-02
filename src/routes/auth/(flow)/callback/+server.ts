@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { getUserWorkspace } from '$lib/auth';
 
 /**
  * Validates and sanitizes a redirect path to prevent open redirect attacks.
@@ -47,6 +48,14 @@ export const GET = async (event) => {
 
 			if (userError || !user) {
 				throw redirect(303, '/auth/auth-code-error');
+			}
+
+			// Ensure user has a workspace (create if missing) so first app load only does reads
+			try {
+				await getUserWorkspace(event.locals);
+			} catch (err) {
+				console.error('[Auth Callback] Workspace provisioning failed:', err);
+				// Redirect anyway; layout/page will retry getUserWorkspace on first load
 			}
 
 			// Validate and sanitize the redirect path to prevent open redirect attacks

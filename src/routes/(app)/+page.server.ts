@@ -1,6 +1,6 @@
 import { db } from '$lib/db';
 import { formations, deals } from '$lib/db/schema';
-import { getUserWorkspace } from '$lib/auth';
+import { requireWorkspace } from '$lib/server/guards';
 import { eq, desc, and, notInArray } from 'drizzle-orm';
 import { isFormationQualiopiComplete } from '$lib/formation-workflow';
 import type { PageServerLoad } from './$types';
@@ -9,22 +9,14 @@ const RECENT_FORMATIONS_LIMIT = 5;
 const RECENT_DEALS_LIMIT = 5;
 const ACTIVE_DEALS_FOR_COUNT = 500;
 
-export const load = (async ({ locals }) => {
-	const workspaceId = await getUserWorkspace(locals);
-
+export const load = (async ({ locals, url }) => {
 	const header = {
 		pageName: 'Accueil',
 		actions: []
 	};
 
-	if (!workspaceId) {
-		return {
-			header,
-			recentFormations: [],
-			activeDeals: [],
-			stats: { formationsCount: 0, dealsCount: 0, qualiopiPercent: 0, qualiopiToComplete: 0 }
-		};
-	}
+	// Use same current workspace as layout (from lastActiveWorkspaceId / cookie), not first workspace in DB
+	const { workspaceId } = await requireWorkspace({ ...locals, url });
 
 	const [formationsData, activeDealsFull, allFormationsForQualiopi] = await Promise.all([
 		db.query.formations.findMany({

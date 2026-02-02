@@ -66,87 +66,105 @@ export const getUserWorkspace = async (locals: App.Locals) => {
 		return workspaceUser.workspaceId;
 	}
 
-	// User has no workspace: ensure they have one
-	// 1. Ensure user exists in public.users (same id as auth.users)
-	await db
-		.insert(users)
-		.values({
-			id: user.id,
-			email: user.email ?? '',
-			firstName: user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
-			lastName:
-				(user.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
-					user.user_metadata?.family_name) ??
-				null,
-			avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
-		})
-		.onConflictDoNothing({ target: [users.id] });
+	// User has no workspace: ensure they have one (transactional, with try/catch + re-check)
+	try {
+		const workspaceId = await db.transaction(async (tx) => {
+			// 1. Ensure user exists in public.users (same id as auth.users)
+			await tx
+				.insert(users)
+				.values({
+					id: user.id,
+					email: user.email ?? '',
+					firstName:
+						user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
+					lastName:
+						(user.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
+							user.user_metadata?.family_name) ??
+						null,
+					avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
+				})
+				.onConflictDoNothing({ target: [users.id] });
 
-	// 2. Create a new personal workspace for this user
-	const [inserted] = await db
-		.insert(workspaces)
-		.values({ name: 'Mon espace' })
-		.returning({ id: workspaces.id });
-	const workspace = inserted;
+			// 2. Create a new personal workspace for this user
+			const [inserted] = await tx
+				.insert(workspaces)
+				.values({ name: 'Mon espace' })
+				.returning({ id: workspaces.id });
+			const workspace = inserted;
 
-	if (!workspace) {
-		return null;
-	}
+			if (!workspace) {
+				throw new Error('Failed to create workspace');
+			}
 
-	// 3. Add user to workspace as owner
-	await db
-		.insert(workspacesUsers)
-		.values({
-			workspaceId: workspace.id,
-			userId: user.id,
-			role: 'owner'
-		})
-		.onConflictDoNothing({
-			target: [workspacesUsers.workspaceId, workspacesUsers.userId]
+			// 3. Add user to workspace as owner
+			await tx
+				.insert(workspacesUsers)
+				.values({
+					workspaceId: workspace.id,
+					userId: user.id,
+					role: 'owner'
+				})
+				.onConflictDoNothing({
+					target: [workspacesUsers.workspaceId, workspacesUsers.userId]
+				});
+
+			// 4. Create sample client and deals so the user can see the Kanban
+			const [sampleClient] = await tx
+				.insert(clients)
+				.values({
+					legalName: 'Exemple SARL',
+					type: 'Entreprise',
+					createdBy: user.id,
+					workspaceId: workspace.id
+				})
+				.returning({ id: clients.id });
+
+			if (sampleClient) {
+				await tx.insert(deals).values([
+					{
+						workspaceId: workspace.id,
+						clientId: sampleClient.id,
+						name: 'Deal exemple – Formation Excel',
+						value: '4500',
+						stage: 'Proposition',
+						ownerId: user.id,
+						createdBy: user.id
+					},
+					{
+						workspaceId: workspace.id,
+						clientId: sampleClient.id,
+						name: 'Deal exemple – Anglais business',
+						value: '3200',
+						stage: 'Qualification',
+						ownerId: user.id,
+						createdBy: user.id
+					},
+					{
+						workspaceId: workspace.id,
+						clientId: sampleClient.id,
+						name: 'Deal exemple – Management',
+						value: '6800',
+						stage: 'Lead',
+						ownerId: user.id,
+						createdBy: user.id
+					}
+				]);
+			}
+
+			return workspace.id;
 		});
 
-	// 4. Create sample client and deals so the user can see the Kanban
-	const [sampleClient] = await db
-		.insert(clients)
-		.values({
-			legalName: 'Exemple SARL',
-			type: 'Entreprise',
-			createdBy: user.id,
-			workspaceId: workspace.id
-		})
-		.returning({ id: clients.id });
-
-	if (sampleClient) {
-		await db.insert(deals).values([
-			{
-				workspaceId: workspace.id,
-				clientId: sampleClient.id,
-				name: 'Deal exemple – Formation Excel',
-				value: '4500',
-				stage: 'Proposition',
-				ownerId: user.id,
-				createdBy: user.id
-			},
-			{
-				workspaceId: workspace.id,
-				clientId: sampleClient.id,
-				name: 'Deal exemple – Anglais business',
-				value: '3200',
-				stage: 'Qualification',
-				ownerId: user.id,
-				createdBy: user.id
-			},
-			{
-				workspaceId: workspace.id,
-				clientId: sampleClient.id,
-				name: 'Deal exemple – Management',
-				value: '6800',
-				stage: 'Lead',
-				ownerId: user.id,
-				createdBy: user.id
-			}
-		]);
+		if (workspaceId) return workspaceId;
+	} catch (err) {
+		console.error('[getUserWorkspace] Create workspace failed:', err);
+		// Re-check: another request may have created a workspace for this user
+		const retry = await db.query.workspacesUsers.findFirst({
+			where: eq(workspacesUsers.userId, user.id),
+			columns: { workspaceId: true }
+		});
+		if (retry?.workspaceId) return retry.workspaceId;
+		throw err;
 	}
 
-	return workspace.id;
+	return null;
 };
