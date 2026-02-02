@@ -1,3 +1,10 @@
+## [0.7.2](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.7.1...v0.7.2) (2026-02-02)
+
+
+### Bug Fixes
+
+* use onConflictDoUpdate for user creation during onboarding ([595403c](https://github.com/curiousanthony/supabase-sveltekit/commit/595403cb442ca20d5af8e4e2bdecafe66d427787))
+
 ## [0.7.1](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.7.0...v0.7.1) (2026-02-02)
 
 
