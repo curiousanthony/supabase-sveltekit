@@ -1,3 +1,10 @@
+## [0.7.1](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.7.0...v0.7.1) (2026-02-02)
+
+
+### Bug Fixes
+
+* handle email conflict on user insert during onboarding ([71ca9dc](https://github.com/curiousanthony/supabase-sveltekit/commit/71ca9dce5c7f0bb3a9f8ec23aabdc989426de037))
+
 # [0.7.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.6.1...v0.7.0) (2026-02-02)
 
 
