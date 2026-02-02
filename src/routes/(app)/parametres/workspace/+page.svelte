@@ -50,15 +50,18 @@
 	let inviteEmail = $state('');
 	let inviteRole = $state<WorkspaceRole>('sales');
 	let inviteSubmitting = $state(false);
+	let inviteError = $state('');
 
 	let roleChangeDialogOpen = $state(false);
 	let roleChangeUserId = $state<string | null>(null);
 	let roleChangeNewRole = $state<WorkspaceRole>('sales');
 	let roleChangeSubmitting = $state(false);
+	let roleChangeError = $state('');
 
 	let removeMemberDialogOpen = $state(false);
 	let removeMemberUserId = $state<string | null>(null);
 	let removeMemberSubmitting = $state(false);
+	let removeMemberError = $state('');
 
 	let logoUploading = $state(false);
 	let logoFileInput: HTMLInputElement | null = $state(null);
@@ -98,12 +101,14 @@
 				toast.success('Logo mis à jour');
 			} else {
 				let message = 'Erreur lors du téléversement';
-				try {
-					const err = await res.json();
-					if (err?.message) message = err.message;
-				} catch {
-					const text = await res.text();
-					if (text) message = text.slice(0, 200);
+				const text = await res.text();
+				if (text) {
+					try {
+						const err = JSON.parse(text);
+						if (err?.message) message = err.message;
+					} catch {
+						message = text.slice(0, 200);
+					}
 				}
 				toast.error(message);
 			}
@@ -130,11 +135,14 @@
 				toast.success('Logo supprimé');
 			} else {
 				let message = 'Erreur lors de la suppression';
-				try {
-					const err = await res.json();
-					if (err?.message) message = err.message;
-				} catch {
-					// ignore
+				const text = await res.text();
+				if (text) {
+					try {
+						const err = JSON.parse(text);
+						if (err?.message) message = err.message;
+					} catch {
+						message = text.slice(0, 200);
+					}
 				}
 				toast.error(message);
 			}
@@ -147,11 +155,13 @@
 	function openRoleChangeDialog(member: Member) {
 		roleChangeUserId = member.userId;
 		roleChangeNewRole = member.role as WorkspaceRole;
+		roleChangeError = '';
 		roleChangeDialogOpen = true;
 	}
 
 	function openRemoveMemberDialog(member: Member) {
 		removeMemberUserId = member.userId;
+		removeMemberError = '';
 		removeMemberDialogOpen = true;
 	}
 
@@ -187,9 +197,14 @@
 						method="POST"
 						action="?/saveSettings"
 						use:enhance={() => {
-							return async ({ update }) => {
-								await update();
+							return async ({ result, update }) => {
+								await update({ reset: false });
 								await invalidateAll();
+								if (result.type === 'success') {
+									toast.success('Paramètres enregistrés');
+								} else if (result.type === 'failure' && result.data) {
+									toast.error((result.data as { message?: string }).message ?? 'Erreur lors de l\'enregistrement');
+								}
 							};
 						}}
 						class="space-y-6"
@@ -224,7 +239,7 @@
 								type="text"
 								value={workspace?.siret ?? ''}
 								placeholder="12345678901234"
-								maxlength="14"
+								maxlength={14}
 							/>
 						</div>
 
@@ -297,7 +312,7 @@
 									{pendingInvites.length} invitation{pendingInvites.length !== 1 ? 's' : ''} en attente
 								</p>
 							</div>
-							<Button.Root onclick={() => (inviteDialogOpen = true)}>
+							<Button.Root onclick={() => { inviteError = ''; inviteDialogOpen = true; }}>
 								<UserPlusIcon class="size-4" />
 								Inviter un membre
 							</Button.Root>
@@ -431,16 +446,29 @@
 			method="POST"
 			action="?/createInvite"
 			use:enhance={() => {
-				return async ({ update }) => {
-					await update();
-					inviteDialogOpen = false;
-					inviteEmail = '';
-					inviteRole = 'sales';
-					await invalidateAll();
+				return async ({ result, update }) => {
+					inviteSubmitting = true;
+					inviteError = '';
+					try {
+						await update();
+						if (result.type === 'success') {
+							inviteDialogOpen = false;
+							inviteEmail = '';
+							inviteRole = 'sales';
+							await invalidateAll();
+						} else if (result.type === 'failure' && result.data) {
+							inviteError = (result.data as { message?: string }).message ?? 'Une erreur est survenue';
+						}
+					} finally {
+						inviteSubmitting = false;
+					}
 				};
 			}}
 			class="space-y-4"
 		>
+			{#if inviteError}
+				<p class="text-sm text-destructive">{inviteError}</p>
+			{/if}
 			<div class="space-y-2">
 				<Label.Root for="invite-email">Email</Label.Root>
 				<Input.Root
@@ -454,14 +482,9 @@
 			</div>
 			<div class="space-y-2">
 				<Label.Root for="invite-role">Rôle</Label.Root>
-				<Select.Root
-					selected={{ value: inviteRole, label: ROLE_LABELS[inviteRole] }}
-					onSelectedChange={(selected) => {
-						if (selected) inviteRole = selected.value as WorkspaceRole;
-					}}
-				>
+				<Select.Root type="single" bind:value={inviteRole}>
 					<Select.Trigger id="invite-role">
-						<Select.Value placeholder="Sélectionner un rôle" />
+						{ROLE_LABELS[inviteRole] ?? 'Sélectionner un rôle'}
 					</Select.Trigger>
 					<Select.Content>
 						{#each Object.entries(ROLE_LABELS) as [role, label]}
@@ -494,25 +517,33 @@
 			method="POST"
 			action="?/changeRole"
 			use:enhance={() => {
-				return async ({ update }) => {
-					await update();
-					roleChangeDialogOpen = false;
-					await invalidateAll();
+				return async ({ result, update }) => {
+					roleChangeSubmitting = true;
+					roleChangeError = '';
+					try {
+						await update();
+						if (result.type === 'success') {
+							roleChangeDialogOpen = false;
+							await invalidateAll();
+						} else if (result.type === 'failure' && result.data) {
+							roleChangeError = (result.data as { message?: string }).message ?? 'Une erreur est survenue';
+						}
+					} finally {
+						roleChangeSubmitting = false;
+					}
 				};
 			}}
 			class="space-y-4"
 		>
 			<input type="hidden" name="userId" value={roleChangeUserId ?? ''} />
+			{#if roleChangeError}
+				<p class="text-sm text-destructive">{roleChangeError}</p>
+			{/if}
 			<div class="space-y-2">
 				<Label.Root for="role-change">Rôle</Label.Root>
-				<Select.Root
-					selected={{ value: roleChangeNewRole, label: ROLE_LABELS[roleChangeNewRole] }}
-					onSelectedChange={(selected) => {
-						if (selected) roleChangeNewRole = selected.value as WorkspaceRole;
-					}}
-				>
+				<Select.Root type="single" bind:value={roleChangeNewRole}>
 					<Select.Trigger id="role-change">
-						<Select.Value placeholder="Sélectionner un rôle" />
+						{ROLE_LABELS[roleChangeNewRole] ?? 'Sélectionner un rôle'}
 					</Select.Trigger>
 					<Select.Content>
 						{#each Object.entries(ROLE_LABELS) as [role, label]}
@@ -547,14 +578,27 @@
 			method="POST"
 			action="?/removeMember"
 			use:enhance={() => {
-				return async ({ update }) => {
-					await update();
-					removeMemberDialogOpen = false;
-					await invalidateAll();
+				return async ({ result, update }) => {
+					removeMemberSubmitting = true;
+					removeMemberError = '';
+					try {
+						await update();
+						if (result.type === 'success') {
+							removeMemberDialogOpen = false;
+							await invalidateAll();
+						} else if (result.type === 'failure' && result.data) {
+							removeMemberError = (result.data as { message?: string }).message ?? 'Une erreur est survenue';
+						}
+					} finally {
+						removeMemberSubmitting = false;
+					}
 				};
 			}}
 		>
 			<input type="hidden" name="userId" value={removeMemberUserId ?? ''} />
+			{#if removeMemberError}
+				<p class="text-sm text-destructive">{removeMemberError}</p>
+			{/if}
 			<Dialog.Footer>
 				<Button.Root type="button" variant="outline" onclick={() => (removeMemberDialogOpen = false)}>
 					Annuler
