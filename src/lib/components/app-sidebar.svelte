@@ -232,7 +232,7 @@
 		</Sidebar.Menu>
 	</Sidebar.Header>
 	<!-- Shortcuts (Notion-style: Search, Home, Inbox) -->
-	<Sidebar.Content class="border-b border-sidebar-border pb-2">
+	<Sidebar.Content class="flex-none shrink-0">
 		<Sidebar.Menu>
 			<Sidebar.MenuItem>
 				<Sidebar.MenuButton
@@ -266,8 +266,9 @@
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 	</Sidebar.Content>
+	<Sidebar.Separator />
 	<Sidebar.Content>
-		<NavMain items={navItems} />
+		<NavMain items={navItems} allowedNavUrls={allowedNavUrls} />
 		<!-- <NavMain items={data.navMain} /> -->
 		<!-- <NavDocuments items={data.documents} /> -->
 		<NavSecondary items={fakeData.navSecondary} class="mt-auto" />
