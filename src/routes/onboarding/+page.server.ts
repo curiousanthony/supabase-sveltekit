@@ -58,7 +58,7 @@ export const actions: Actions = {
 		try {
 			const workspaceId = await db.transaction(async (tx) => {
 				// 1. Ensure user exists in public.users (same id as auth.users)
-				// Use onConflictDoNothing without target to handle both id and email conflicts
+				// Use onConflictDoUpdate on id to ensure user row exists for FK constraints
 				await tx
 					.insert(users)
 					.values({
@@ -72,7 +72,19 @@ export const actions: Actions = {
 							null,
 						avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
 					})
-					.onConflictDoNothing();
+					.onConflictDoUpdate({
+						target: users.id,
+						set: {
+							email: user.email ?? '',
+							firstName:
+								user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
+							lastName:
+								(user.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
+									user.user_metadata?.family_name) ??
+								null,
+							avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
+						}
+					});
 
 				// 2. Create the new workspace with the user-provided name
 				const [inserted] = await tx
