@@ -40,32 +40,33 @@
 		<p class="mt-1 text-xs">Contactez votre administrateur pour être rattaché à un espace.</p>
 	</div>
 {:else}
-	<h1 class="text-2xl font-bold">Pipeline Deals</h1>
+	<div class="flex min-h-0 flex-1 flex-col gap-4">
+		<h1 class="shrink-0 text-2xl font-bold">Pipeline Deals</h1>
 
-	{#if (deals ?? []).length === 0}
-		<div class="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-			<p class="text-sm">Aucun deal pour le moment.</p>
-			<a href="/deals/creer" class="mt-2 inline-block text-sm font-medium text-primary hover:underline">
-				Créer un deal
-			</a>
-		</div>
-	{:else}
-		<div class="flex gap-4 overflow-x-auto pb-4">
-			{#each stages as stage}
-				<div class="flex min-w-[280px] min-h-[200px] flex-col gap-2 rounded-lg bg-muted/40 p-4">
-					<div
-						class={cn(
-							'flex items-center justify-between',
-							stage === 'Gagné' && 'border-b-2 border-green-500/30',
-							stage === 'Perdu' && 'border-b-2 border-red-500/30'
-						)}
-					>
-						<h2 class="font-semibold">{stage}</h2>
-						<Badge variant="secondary" class="text-xs">
-							{getDealsByStage(stage).length}
-						</Badge>
-					</div>
-					<div class="flex flex-1 flex-col gap-2">
+		{#if (deals ?? []).length === 0}
+			<div class="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+				<p class="text-sm">Aucun deal pour le moment.</p>
+				<a href="/deals/creer" class="mt-2 inline-block text-sm font-medium text-primary hover:underline">
+					Créer un deal
+				</a>
+			</div>
+		{:else}
+			<div class="flex min-h-0 flex-1 gap-4 overflow-x-auto pb-4">
+				{#each stages as stage}
+					<div class="flex h-full min-w-[280px] flex-col gap-2 rounded-lg bg-muted/40 p-4">
+						<div
+							class={cn(
+								'flex shrink-0 items-center justify-between',
+								stage === 'Gagné' && 'border-b-2 border-green-500/30',
+								stage === 'Perdu' && 'border-b-2 border-red-500/30'
+							)}
+						>
+							<h2 class="font-semibold">{stage}</h2>
+							<Badge variant="secondary" class="text-xs">
+								{getDealsByStage(stage).length}
+							</Badge>
+						</div>
+						<div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
 						{#each getDealsByStage(stage) as deal (deal.id)}
 							<a href="/deals/{deal.id}" class="block">
 								<Card.Root
@@ -99,5 +100,6 @@
 				</div>
 			{/each}
 		</div>
-	{/if}
+		{/if}
+	</div>
 {/if}
