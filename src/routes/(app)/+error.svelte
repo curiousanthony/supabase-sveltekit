@@ -1,10 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
-	import { sitemap } from '$lib/settings/config';
 	import LostDocument from '$lib/components/ui/custom/illustrations/lost-document.svelte';
 	import {
 		Home,
@@ -18,13 +16,14 @@
 		HelpCircle,
 		RefreshCw
 	} from '@lucide/svelte';
+	import type { Component } from 'svelte';
 
 	// Determine if it's a 404 or other error
 	const is404 = $derived(page.status === 404);
 	const is500 = $derived(page.status >= 500);
 
 	// Extract the section from the URL path
-	const pathSection = $derived(() => {
+	const pathSection = $derived.by(() => {
 		const path = page.url.pathname;
 		const segments = path.split('/').filter(Boolean);
 		return segments[0] || '';
@@ -35,7 +34,7 @@
 		title: string;
 		subtitle: string;
 		suggestion: string;
-		icon: typeof BookOpen;
+		icon: Component;
 		href: string;
 	}
 
@@ -78,10 +77,9 @@
 	};
 
 	// Get context-specific or default message
-	const contextMessage = $derived(() => {
-		const section = pathSection();
-		if (section && contextMessages[section]) {
-			return contextMessages[section];
+	const contextMessage = $derived.by(() => {
+		if (pathSection && contextMessages[pathSection]) {
+			return contextMessages[pathSection];
 		}
 		return null;
 	});
@@ -103,17 +101,17 @@
 	];
 
 	// Get a consistent message based on URL (so it doesn't change on re-render)
-	const genericMessageIndex = $derived(() => {
+	const genericMessageIndex = $derived.by(() => {
 		const hash = page.url.pathname.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 		return hash % generic404Messages.length;
 	});
 
-	const genericMessage = $derived(() => generic404Messages[genericMessageIndex()]);
+	const genericMessage = $derived(generic404Messages[genericMessageIndex]);
 
 	// Error message for non-404 errors
-	const errorMessage = $derived(() => {
+	const errorMessage = $derived.by(() => {
 		if (is404) {
-			return contextMessage()?.subtitle || genericMessage().subtitle;
+			return contextMessage?.subtitle || genericMessage.subtitle;
 		}
 		if (is500) {
 			return "Notre serveur a besoin d'une petite pause. Réessayez dans un instant.";
@@ -122,9 +120,9 @@
 	});
 
 	// Error title
-	const errorTitle = $derived(() => {
+	const errorTitle = $derived.by(() => {
 		if (is404) {
-			return contextMessage()?.title || genericMessage().title;
+			return contextMessage?.title || genericMessage.title;
 		}
 		if (is500) {
 			return 'Erreur technique';
@@ -154,7 +152,7 @@
 </script>
 
 <svelte:head>
-	<title>{page.status} - {errorTitle()} | Mentore Manager</title>
+	<title>{page.status} - {errorTitle} | Mentore Manager</title>
 </svelte:head>
 
 <div class="flex flex-1 flex-col items-center justify-center p-4 md:p-8">
@@ -174,24 +172,21 @@
 				</span>
 			</div>
 			<Empty.Title class="text-2xl md:text-3xl">
-				{errorTitle()}
+				{errorTitle}
 			</Empty.Title>
 			<Empty.Description class="text-base">
-				{errorMessage()}
+				{errorMessage}
 			</Empty.Description>
 		</Empty.Header>
 
 		<!-- Content -->
 		<Empty.Content class="max-w-md">
 			<!-- Context-specific suggestion -->
-			{#if is404 && contextMessage()}
-				{@const ctx = contextMessage()}
-				{#if ctx}
-					<Button href={ctx.href} size="lg" class="w-full">
-						<ctx.icon class="size-4" />
-						{ctx.suggestion}
-					</Button>
-				{/if}
+			{#if is404 && contextMessage}
+				<Button href={contextMessage.href} size="lg" class="w-full">
+					<contextMessage.icon class="size-4" />
+					{contextMessage.suggestion}
+				</Button>
 			{:else}
 				<Button href="/" size="lg" class="w-full">
 					<Home class="size-4" />

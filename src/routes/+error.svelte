@@ -9,7 +9,7 @@
 	const is404 = $derived(page.status === 404);
 
 	// Get a user-friendly error message
-	const errorMessage = $derived(() => {
+	const errorMessage = $derived.by(() => {
 		if (is404) {
 			return "La page que vous recherchez n'existe pas ou a été déplacée.";
 		}
@@ -17,7 +17,7 @@
 	});
 
 	// Get the error title
-	const errorTitle = $derived(() => {
+	const errorTitle = $derived.by(() => {
 		if (is404) {
 			return 'Page introuvable';
 		}
@@ -29,7 +29,7 @@
 </script>
 
 <svelte:head>
-	<title>{page.status} - {errorTitle()} | {appInfo.name}</title>
+	<title>{page.status} - {errorTitle} | {appInfo.name}</title>
 </svelte:head>
 
 <div class="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
@@ -51,10 +51,10 @@
 				<Card.Title class="text-2xl tabular-nums">
 					<span class="text-muted-foreground">{page.status}</span>
 					<span class="mx-2 text-muted-foreground/50">·</span>
-					{errorTitle()}
+					{errorTitle}
 				</Card.Title>
 				<Card.Description class="text-balance">
-					{errorMessage()}
+					{errorMessage}
 				</Card.Description>
 			</Card.Header>
 
