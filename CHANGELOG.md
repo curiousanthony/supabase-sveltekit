@@ -1,3 +1,10 @@
+## [0.6.1](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.6.0...v0.6.1) (2026-02-02)
+
+
+### Bug Fixes
+
+* enhance error handling and redirect logic for workspace retrieval ([4dbc2fd](https://github.com/curiousanthony/supabase-sveltekit/commit/4dbc2fdab3a4e2b4b07d3c65986673a7e32bf852))
+
 # [0.6.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.5.0...v0.6.0) (2026-02-02)
 
 
