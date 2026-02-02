@@ -1,3 +1,10 @@
+# [0.5.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.4.0...v0.5.0) (2026-02-02)
+
+
+### Features
+
+* sidebar Nouveau dropdown and vertical dropdowns for Nouveau and user menu ([b53f80d](https://github.com/curiousanthony/supabase-sveltekit/commit/b53f80d71f28e70909812e0c2d47433c668dc48e))
+
 # [0.4.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.3.0...v0.4.0) (2026-02-02)
 
 
