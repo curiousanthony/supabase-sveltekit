@@ -1,3 +1,16 @@
+# [0.6.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.5.0...v0.6.0) (2026-02-02)
+
+
+### Bug Fixes
+
+* improve error handling in workspace creation and redirect logic ([4ce075c](https://github.com/curiousanthony/supabase-sveltekit/commit/4ce075c8d36b20504927d383b4e83f7332e4eb3d))
+
+
+### Features
+
+* add web-design-guidelines skill from vercel-labs/agent-skills ([086bf20](https://github.com/curiousanthony/supabase-sveltekit/commit/086bf209beb64450f716be149cef6caae05a6738))
+* ensure signed-in users always have a workspace ([78fdc97](https://github.com/curiousanthony/supabase-sveltekit/commit/78fdc97e8b2109f22d9ff7cbf94a3a433b82b2ca))
+
 # [0.5.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.4.0...v0.5.0) (2026-02-02)
 
 
