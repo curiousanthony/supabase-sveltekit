@@ -1,3 +1,16 @@
+# [0.4.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.3.0...v0.4.0) (2026-02-02)
+
+
+### Bug Fixes
+
+* ensure clients.workspace_id exists in seed migration for remote DB compatibility ([7679923](https://github.com/curiousanthony/supabase-sveltekit/commit/7679923965077551327c3e0d30b53646f6415f89))
+
+
+### Features
+
+* enhance sidebar with shortcuts and command palette integration ([597b272](https://github.com/curiousanthony/supabase-sveltekit/commit/597b272b895bd2d23094ba8342c47fefb10b9248))
+* workspace switcher and RBAC (roles, permissions, team page) ([9afc727](https://github.com/curiousanthony/supabase-sveltekit/commit/9afc7276924c026353befd622bfec1039b8ba862))
+
 # [0.3.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.2.0...v0.3.0) (2026-01-30)
 
 
