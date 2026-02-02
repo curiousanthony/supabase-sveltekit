@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.6.1...v0.7.0) (2026-02-02)
+
+
+### Features
+
+* add multi-step onboarding form for workspace creation ([852f7bf](https://github.com/curiousanthony/supabase-sveltekit/commit/852f7bf0d4d8c178d09415f86081d3527ba1238a))
+
 ## [0.6.1](https://github.com/curiousanthony/supabase-sveltekit/compare/v0.6.0...v0.6.1) (2026-02-02)
 
 
