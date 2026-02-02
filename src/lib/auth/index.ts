@@ -163,7 +163,8 @@ export const getUserWorkspace = async (locals: App.Locals) => {
 			columns: { workspaceId: true }
 		});
 		if (retry?.workspaceId) return retry.workspaceId;
-		throw err;
+		// Return null so the app can redirect to onboarding instead of 500
+		return null;
 	}
 
 	return null;

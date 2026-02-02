@@ -25,7 +25,7 @@ export async function requireWorkspace(locals: RequireWorkspaceLocals): Promise<
 		workspaceId = await getUserWorkspace(locals as App.Locals);
 		if (workspaceId) await setActiveWorkspace(user.id, workspaceId);
 	}
-	if (!workspaceId) throw redirect(303, '/');
+	if (!workspaceId) throw redirect(303, '/onboarding');
 
 	return { userId: user.id, workspaceId };
 }
