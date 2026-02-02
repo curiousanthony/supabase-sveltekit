@@ -1,33 +1,31 @@
 <script lang="ts">
-	import CirclePlusFilledIcon from '@tabler/icons-svelte/icons/circle-plus-filled';
-	import MailIcon from '@tabler/icons-svelte/icons/mail';
-	import { Button } from '$lib/components/ui/button/index.js';
+	import { goto } from '$app/navigation';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import type { Icon } from '@tabler/icons-svelte';
 	import { page } from '$app/state';
 	import Plus from '@tabler/icons-svelte/icons/plus';
+	import HeartHandshake from '@tabler/icons-svelte/icons/heart-handshake';
+	import Book2 from '@tabler/icons-svelte/icons/book-2';
+	import Users from '@tabler/icons-svelte/icons/users';
 
-	let { items }: { items: { title: string; url: string; icon?: Icon }[] } = $props();
+	let { items, allowedNavUrls = [] }: { items: { title: string; url: string; icon?: Icon }[]; allowedNavUrls?: string[] } = $props();
+
+	const quickCreateActions = $derived(
+		[
+			{ title: 'Créer un deal', href: '/deals/creer', icon: HeartHandshake, show: allowedNavUrls.includes('/deals') },
+			{ title: 'Créer une formation', href: '/formations/creer', icon: Book2, show: allowedNavUrls.includes('/formations') },
+			{ title: 'Contacts', href: '/contacts', icon: Users, show: allowedNavUrls.includes('/contacts') }
+		].filter((a) => a.show)
+	);
 
 	/**
 	 * Calculates the active state for a menu item using robust route matching.
-	 * @param itemUrl The URL from the menu item (e.g., '/products').
-	 * @param currentPath The current page's pathname (e.g., '/products/123').
-	 * @returns boolean - true if the item should be active.
 	 */
 	function calculateIsActive(itemUrl: string, currentPath: string): boolean {
-		// 1. Is this the root path item?
 		const isRoot = itemUrl === '/';
-
-		// 2. Exact match check
 		const isCurrentPage = currentPath === itemUrl;
-
-		// 3. Parent route check (applies only to non-root items)
-		// Checks if the path starts with the itemUrl followed by a slash,
-		// preventing /settings from matching /settings-billing.
 		const isParent = !isRoot && currentPath.startsWith(itemUrl + '/');
-
-		// The item is active if it's the current page (exact match) or a parent of the current page.
 		return isCurrentPage || isParent;
 	}
 </script>
@@ -36,22 +34,42 @@
 	<Sidebar.GroupContent class="flex flex-col gap-2">
 		<Sidebar.Menu>
 			<Sidebar.MenuItem class="flex items-center gap-2">
-				<Sidebar.MenuButton
-					class="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-					tooltipContent="Nouveau"
-				>
-					<!-- <CirclePlusFilledIcon /> -->
-					<Plus class="h-4 w-4" stroke={3} />
-					<span class="font-semibold">Nouveau</span>
-				</Sidebar.MenuButton>
-				<!-- <Button
-					size="icon"
-					class="size-8 group-data-[collapsible=icon]:opacity-0"
-					variant="outline"
-				>
-					<MailIcon />
-					<span class="sr-only">Inbox</span>
-				</Button> -->
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger>
+						{#snippet child({ props })}
+							<Sidebar.MenuButton
+								{...props}
+								class="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground data-[state=open]:bg-primary/90 data-[state=open]:text-primary-foreground cursor-pointer"
+								tooltipContent="Nouveau"
+							>
+								<Plus class="h-4 w-4" stroke={3} />
+								<span class="font-semibold">Nouveau</span>
+							</Sidebar.MenuButton>
+						{/snippet}
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content
+						class="min-w-56 rounded-lg"
+						side="bottom"
+						align="start"
+						sideOffset={4}
+					>
+						<DropdownMenu.Label class="text-xs text-muted-foreground">
+							Choisissez ce que vous voulez créer
+						</DropdownMenu.Label>
+						<DropdownMenu.Separator />
+						{#each quickCreateActions as action (action.href)}
+							<DropdownMenu.Item onclick={() => goto(action.href)}>
+								<action.icon class="size-4 shrink-0" />
+								{action.title}
+							</DropdownMenu.Item>
+						{/each}
+						{#if quickCreateActions.length === 0}
+							<DropdownMenu.Item disabled>
+								<span class="text-muted-foreground">Aucune action disponible</span>
+							</DropdownMenu.Item>
+						{/if}
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 		<Sidebar.Menu>
