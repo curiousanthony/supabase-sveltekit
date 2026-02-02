@@ -39,6 +39,8 @@
 
 	import { sitemap } from '$lib/settings/config';
 	import VersionSwitcher from './workspace-switcher.svelte';
+	import { openCommandPalette } from '$lib/stores/command-palette-store';
+	import Home from '@tabler/icons-svelte/icons/home';
 
 	let { userObject, workspace, workspaces = [], role, roleLabel, allowedNavUrls = [], ...restProps } = $props();
 	let {
@@ -47,9 +49,11 @@
 		avatar_url = ''
 	} = $derived(userObject?.user_metadata ?? {});
 
-	const navItems = $derived(
+	const fullNavItems = $derived(
 		allowedNavUrls?.length ? sitemap.filter((item) => allowedNavUrls.includes(item.url)) : sitemap
 	);
+	// Main nav excludes root and inbox; they live in shortcuts (Notion-style)
+	const navItems = $derived(fullNavItems.filter((item) => item.url !== '/' && item.url !== '/inbox'));
 
 	// console.log(name, email, avatar_url);
 
@@ -227,6 +231,41 @@
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 	</Sidebar.Header>
+	<!-- Shortcuts (Notion-style: Search, Home, Inbox) -->
+	<Sidebar.Content class="border-b border-sidebar-border pb-2">
+		<Sidebar.Menu>
+			<Sidebar.MenuItem>
+				<Sidebar.MenuButton
+					tooltipContent="Chercher (⌘K)"
+					onclick={() => openCommandPalette()}
+					class="cursor-pointer"
+				>
+					<SearchIcon class="size-[1.1em]" />
+					<span class="text-[1.1em]">Chercher</span>
+				</Sidebar.MenuButton>
+			</Sidebar.MenuItem>
+			<Sidebar.MenuItem>
+				<Sidebar.MenuButton tooltipContent="Accueil" isActive={page.url.pathname === '/'}>
+					{#snippet child({ props })}
+						<a href="/" {...props}>
+							<Home class="size-[1.1em]" />
+							<span class="text-[1.1em]">Accueil</span>
+						</a>
+					{/snippet}
+				</Sidebar.MenuButton>
+			</Sidebar.MenuItem>
+			<Sidebar.MenuItem>
+				<Sidebar.MenuButton tooltipContent="Boîte de réception" isActive={page.url.pathname === '/inbox'}>
+					{#snippet child({ props })}
+						<a href="/inbox" {...props}>
+							<Inbox class="size-[1.1em]" />
+							<span class="text-[1.1em]">Boîte de réception</span>
+						</a>
+					{/snippet}
+				</Sidebar.MenuButton>
+			</Sidebar.MenuItem>
+		</Sidebar.Menu>
+	</Sidebar.Content>
 	<Sidebar.Content>
 		<NavMain items={navItems} />
 		<!-- <NavMain items={data.navMain} /> -->

@@ -15,6 +15,7 @@
 	import { IconArrowBack, IconSettings } from '@tabler/icons-svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { headerTitleSnippet, headerTitleText } from '$lib/stores/header-store';
+	import { commandPaletteOpen } from '$lib/stores/command-palette-store';
 
 	let { data, children } = $props();
 
@@ -43,8 +44,14 @@
 		return formations.slice(0, RECENT_FORMATIONS_COUNT);
 	});
 
-	// Command palette
+	// Command palette (keyboard + sidebar "Chercher" trigger)
 	let open = $state(false);
+	$effect(() => {
+		if ($commandPaletteOpen) {
+			open = true;
+			commandPaletteOpen.set(false);
+		}
+	});
 
 	// Create a derived variable for recent formations. This is reactive and more performant.
 	// const recentFormations = $derived.by(() => {
