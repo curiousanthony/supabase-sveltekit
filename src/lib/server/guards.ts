@@ -14,7 +14,10 @@ export async function requireWorkspace(locals: RequireWorkspaceLocals): Promise<
 }> {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
-		throw redirect(303, '/auth/login?redirectTo=' + encodeURIComponent(locals.url?.pathname ?? '/'));
+		throw redirect(
+			303,
+			'/auth/login?redirectTo=' + encodeURIComponent(locals.url?.pathname ?? '/')
+		);
 	}
 
 	let workspaceId = await getActiveWorkspace(user.id);

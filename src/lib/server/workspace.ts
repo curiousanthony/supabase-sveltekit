@@ -38,10 +38,7 @@ export async function getActiveWorkspace(userId: string): Promise<string | null>
 	const lastActiveId = userRow?.lastActiveWorkspaceId;
 	if (lastActiveId) {
 		const member = await db.query.workspacesUsers.findFirst({
-			where: and(
-				eq(workspacesUsers.workspaceId, lastActiveId),
-				eq(workspacesUsers.userId, userId)
-			),
+			where: and(eq(workspacesUsers.workspaceId, lastActiveId), eq(workspacesUsers.userId, userId)),
 			columns: { workspaceId: true }
 		});
 		if (member) return lastActiveId;
@@ -57,10 +54,7 @@ export async function getActiveWorkspace(userId: string): Promise<string | null>
 
 export async function setActiveWorkspace(userId: string, workspaceId: string): Promise<void> {
 	const member = await db.query.workspacesUsers.findFirst({
-		where: and(
-			eq(workspacesUsers.workspaceId, workspaceId),
-			eq(workspacesUsers.userId, userId)
-		),
+		where: and(eq(workspacesUsers.workspaceId, workspaceId), eq(workspacesUsers.userId, userId)),
 		columns: { workspaceId: true }
 	});
 	if (!member) throw new Error('User does not belong to this workspace');
@@ -73,10 +67,7 @@ export async function getUserRoleInWorkspace(
 	workspaceId: string
 ): Promise<WorkspaceRole | null> {
 	const row = await db.query.workspacesUsers.findFirst({
-		where: and(
-			eq(workspacesUsers.workspaceId, workspaceId),
-			eq(workspacesUsers.userId, userId)
-		),
+		where: and(eq(workspacesUsers.workspaceId, workspaceId), eq(workspacesUsers.userId, userId)),
 		columns: { role: true }
 	});
 	return (row?.role as WorkspaceRole) ?? null;

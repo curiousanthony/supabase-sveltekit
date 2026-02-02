@@ -74,7 +74,10 @@ export const getUserWorkspace = async (locals: App.Locals) => {
 			id: user.id,
 			email: user.email ?? '',
 			firstName: user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
-			lastName: (user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || user.user_metadata?.family_name) ?? null,
+			lastName:
+				(user.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
+					user.user_metadata?.family_name) ??
+				null,
 			avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
 		})
 		.onConflictDoNothing({ target: [users.id] });
