@@ -8,6 +8,7 @@ export interface WorkspaceWithRole {
 	id: string;
 	name: string | null;
 	role: WorkspaceRole;
+	logoUrl: string | null;
 }
 
 export async function getUserWorkspaces(userId: string): Promise<WorkspaceWithRole[]> {
@@ -15,7 +16,8 @@ export async function getUserWorkspaces(userId: string): Promise<WorkspaceWithRo
 		.select({
 			workspaceId: workspacesUsers.workspaceId,
 			role: workspacesUsers.role,
-			name: workspaces.name
+			name: workspaces.name,
+			logoUrl: workspaces.logoUrl
 		})
 		.from(workspacesUsers)
 		.innerJoin(workspaces, eq(workspacesUsers.workspaceId, workspaces.id))
@@ -24,7 +26,8 @@ export async function getUserWorkspaces(userId: string): Promise<WorkspaceWithRo
 	return rows.map((r) => ({
 		id: r.workspaceId,
 		name: r.name,
-		role: r.role as WorkspaceRole
+		role: r.role as WorkspaceRole,
+		logoUrl: r.logoUrl
 	}));
 }
 
@@ -71,4 +74,110 @@ export async function getUserRoleInWorkspace(
 		columns: { role: true }
 	});
 	return (row?.role as WorkspaceRole) ?? null;
+}
+
+export interface EffectiveContext {
+	effectiveUserId: string;
+	effectiveRole: WorkspaceRole;
+	realUserId: string;
+	realRole: WorkspaceRole;
+	seeAs: {
+		userId: string;
+		role: WorkspaceRole;
+		memberName: string | null;
+	} | null;
+}
+
+export async function getEffectiveContext(
+	realUserId: string,
+	workspaceId: string,
+	seeAsCookie: string | null
+): Promise<EffectiveContext> {
+	const realRole = await getUserRoleInWorkspace(realUserId, workspaceId);
+	if (!realRole) {
+		throw new Error('User is not a member of this workspace');
+	}
+
+	// Check if user is owner (only owners can use "See as")
+	if (realRole !== 'owner' || !seeAsCookie) {
+		return {
+			effectiveUserId: realUserId,
+			effectiveRole: realRole,
+			realUserId,
+			realRole,
+			seeAs: null
+		};
+	}
+
+	try {
+		const decodedCookie = decodeURIComponent(seeAsCookie);
+		const seeAsData = JSON.parse(decodedCookie) as {
+			workspaceId: string;
+			userId: string;
+			role: string;
+		};
+
+		// Verify the see_as is for the current workspace
+		if (seeAsData.workspaceId !== workspaceId) {
+			return {
+				effectiveUserId: realUserId,
+				effectiveRole: realRole,
+				realUserId,
+				realRole,
+				seeAs: null
+			};
+		}
+
+		// Verify the target user is a member of this workspace
+		const targetMember = await db.query.workspacesUsers.findFirst({
+			where: and(
+				eq(workspacesUsers.workspaceId, workspaceId),
+				eq(workspacesUsers.userId, seeAsData.userId)
+			),
+			columns: { role: true }
+		});
+
+		if (!targetMember) {
+			return {
+				effectiveUserId: realUserId,
+				effectiveRole: realRole,
+				realUserId,
+				realRole,
+				seeAs: null
+			};
+		}
+
+		// Get target user's name
+		const targetUser = await db.query.users.findFirst({
+			where: eq(users.id, seeAsData.userId),
+			columns: { firstName: true, lastName: true, email: true }
+		});
+
+		const memberName = targetUser
+			? [targetUser.firstName, targetUser.lastName].filter(Boolean).join(' ') ||
+				targetUser.email ||
+				null
+			: null;
+
+		return {
+			effectiveUserId: seeAsData.userId,
+			effectiveRole: targetMember.role as WorkspaceRole,
+			realUserId,
+			realRole,
+			seeAs: {
+				userId: seeAsData.userId,
+				role: targetMember.role as WorkspaceRole,
+				memberName
+			}
+		};
+	} catch (e) {
+		// Invalid cookie, ignore
+		return {
+			effectiveUserId: realUserId,
+			effectiveRole: realRole,
+			realUserId,
+			realRole,
+			seeAs: null
+		};
+	}
 }

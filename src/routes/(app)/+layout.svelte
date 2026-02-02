@@ -16,6 +16,9 @@
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { headerTitleSnippet, headerTitleText } from '$lib/stores/header-store';
 	import { commandPaletteOpen } from '$lib/stores/command-palette-store';
+	import * as Button from '$lib/components/ui/button/index.js';
+	import EyeIcon from '@tabler/icons-svelte/icons/eye';
+	import { invalidateAll } from '$app/navigation';
 
 	let { data, children } = $props();
 
@@ -113,6 +116,29 @@
 			{/snippet} -->
 			<!-- {@render children?.()} -->
 		</SiteHeader>
+		{#if data?.seeAs}
+			<div class="border-b bg-muted/50 px-4 py-2">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-2 text-sm">
+						<EyeIcon class="size-4" />
+						<span>
+							Vous consultez l'espace en tant que <strong>{data.seeAs.memberName ?? 'Membre'}</strong> ({data.seeAs.roleLabel})
+						</span>
+					</div>
+					<Button.Root
+						variant="ghost"
+						size="sm"
+						onclick={async () => {
+							document.cookie = 'see_as=; path=/; max-age=0';
+							await invalidateAll();
+							window.location.reload();
+						}}
+					>
+						Revenir à mon rôle
+					</Button.Root>
+				</div>
+			</div>
+		{/if}
 		<div class="flex flex-col gap-4 p-4">
 			{@render children()}
 		</div>

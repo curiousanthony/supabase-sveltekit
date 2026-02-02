@@ -12,6 +12,7 @@
 		name: string | null;
 		role: string;
 		roleLabel?: string;
+		logoUrl?: string | null;
 	}
 
 	let {
@@ -20,7 +21,7 @@
 		canManageWorkspace = false
 	}: {
 		workspaces: WorkspaceItem[];
-		defaultWorkspace: { id: string; name: string | null } | null;
+		defaultWorkspace: { id: string; name: string | null; logoUrl?: string | null } | null;
 		canManageWorkspace?: boolean;
 	} = $props();
 
@@ -41,6 +42,9 @@
 
 		isSwitching = true;
 		try {
+			// Clear "See as" cookie when switching workspaces
+			document.cookie = 'see_as=; path=/; max-age=0';
+			
 			const res = await fetch('/api/workspace/switch', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -68,9 +72,17 @@
 						{...props}
 					>
 						<div
-							class="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"
+							class="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden {defaultWorkspace?.logoUrl ? '' : 'bg-sidebar-accent text-sidebar-accent-foreground'}"
 						>
-							<GalleryVerticalEndIcon class="size-4" />
+							{#if defaultWorkspace?.logoUrl}
+								<img
+									src={defaultWorkspace.logoUrl}
+									alt={displayName}
+									class="size-full object-cover"
+								/>
+							{:else}
+								<GalleryVerticalEndIcon class="size-4" />
+							{/if}
 						</div>
 						<div class="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
 							<span class="font-medium">Espace de travail</span>

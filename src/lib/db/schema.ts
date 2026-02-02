@@ -154,8 +154,10 @@ export const workspaces = pgTable(
 			.defaultNow()
 			.notNull(),
 		name: varchar(),
+		id: uuid().defaultRandom().primaryKey().notNull(),
 		logoUrl: text('logo_url'),
-		id: uuid().defaultRandom().primaryKey().notNull()
+		legalName: text('legal_name'),
+		siret: varchar('siret', { length: 14 })
 	},
 	(table) => [unique('workspaces_id2_key').on(table.id)]
 );
@@ -398,6 +400,38 @@ export const formateursThematiques = pgTable(
 			.onUpdate('cascade')
 			.onDelete('cascade'),
 		unique('unique_formateur_thematique').on(table.thematiqueId, table.formateurId)
+	]
+);
+
+export const workspaceInvites = pgTable(
+	'workspace_invites',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		workspaceId: uuid('workspace_id').notNull(),
+		email: text().notNull(),
+		role: workspaceRole().notNull().default('sales'),
+		invitedBy: uuid('invited_by').notNull(),
+		token: text().notNull(),
+		expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.workspaceId],
+			foreignColumns: [workspaces.id],
+			name: 'workspace_invites_workspace_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.invitedBy],
+			foreignColumns: [users.id],
+			name: 'workspace_invites_invited_by_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade')
 	]
 );
 
