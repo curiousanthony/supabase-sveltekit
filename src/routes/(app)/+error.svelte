@@ -16,9 +16,8 @@
 		HelpCircle,
 		RefreshCw
 	} from '@lucide/svelte';
-	import type { Component } from 'svelte';
 
-	// Determine if it's a 404 or other error
+	// Determine error type
 	const is404 = $derived(page.status === 404);
 	const is500 = $derived(page.status >= 500);
 
@@ -30,61 +29,43 @@
 	});
 
 	// Context-aware messages based on where the user was trying to go
-	interface ContextMessage {
-		title: string;
-		subtitle: string;
-		suggestion: string;
-		icon: Component;
-		href: string;
-	}
-
-	const contextMessages: Record<string, ContextMessage> = {
+	const contextMessages: Record<string, { title: string; subtitle: string; suggestion: string; href: string }> = {
 		formations: {
 			title: 'Formation introuvable',
 			subtitle: "Cette formation semble avoir pris une pause café... prolongée.",
 			suggestion: 'Parcourir toutes les formations',
-			icon: BookOpen,
 			href: '/formations'
 		},
 		deals: {
 			title: 'Deal introuvable',
 			subtitle: "Ce deal a peut-être trouvé preneur ailleurs... ou s'est égaré en chemin.",
 			suggestion: 'Voir tous les deals',
-			icon: Handshake,
 			href: '/deals'
 		},
 		contacts: {
 			title: 'Contact introuvable',
 			subtitle: "Ce contact a changé d'adresse sans laisser de message.",
 			suggestion: 'Consulter le répertoire',
-			icon: Users,
 			href: '/contacts'
 		},
 		calendrier: {
 			title: 'Événement introuvable',
 			subtitle: 'Cette date semble avoir disparu du calendrier.',
 			suggestion: 'Retour au calendrier',
-			icon: Calendar,
 			href: '/calendrier'
 		},
 		qualiopi: {
 			title: 'Page qualité introuvable',
 			subtitle: 'Ce critère Qualiopi reste à documenter.',
 			suggestion: 'Gestion qualité',
-			icon: FileText,
 			href: '/qualiopi'
 		}
 	};
 
-	// Get context-specific or default message
-	const contextMessage = $derived.by(() => {
-		if (pathSection && contextMessages[pathSection]) {
-			return contextMessages[pathSection];
-		}
-		return null;
-	});
+	// Get context-specific message
+	const contextMessage = $derived(pathSection && contextMessages[pathSection] ? contextMessages[pathSection] : null);
 
-	// Generic 404 messages (rotate for variety)
+	// Generic 404 messages
 	const generic404Messages = [
 		{
 			title: 'Page introuvable',
@@ -100,7 +81,7 @@
 		}
 	];
 
-	// Get a consistent message based on URL (so it doesn't change on re-render)
+	// Get a consistent message based on URL hash
 	const genericMessageIndex = $derived.by(() => {
 		const hash = page.url.pathname.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 		return hash % generic404Messages.length;
@@ -108,21 +89,21 @@
 
 	const genericMessage = $derived(generic404Messages[genericMessageIndex]);
 
-	// Error message for non-404 errors
+	// Final displayed message
 	const errorMessage = $derived.by(() => {
 		if (is404) {
-			return contextMessage?.subtitle || genericMessage.subtitle;
+			return contextMessage?.subtitle ?? genericMessage.subtitle;
 		}
 		if (is500) {
 			return "Notre serveur a besoin d'une petite pause. Réessayez dans un instant.";
 		}
-		return page.error?.message || "Une erreur inattendue s'est produite.";
+		return page.error?.message ?? "Une erreur inattendue s'est produite.";
 	});
 
-	// Error title
+	// Final displayed title
 	const errorTitle = $derived.by(() => {
 		if (is404) {
-			return contextMessage?.title || genericMessage.title;
+			return contextMessage?.title ?? genericMessage.title;
 		}
 		if (is500) {
 			return 'Erreur technique';
@@ -130,17 +111,8 @@
 		return 'Erreur';
 	});
 
-	// Quick navigation items (most used features)
-	const quickNav = [
-		{ title: 'Tableau de bord', href: '/', icon: Home },
-		{ title: 'Formations', href: '/formations', icon: BookOpen },
-		{ title: 'Contacts', href: '/contacts', icon: Users },
-		{ title: 'Deals', href: '/deals', icon: Handshake }
-	];
-
 	// Command palette trigger
 	function openCommandPalette() {
-		// Trigger the global command palette (Cmd+K / Ctrl+K)
 		const event = new KeyboardEvent('keydown', {
 			key: 'k',
 			metaKey: true,
@@ -165,9 +137,7 @@
 		<!-- Header -->
 		<Empty.Header class="max-w-lg">
 			<div class="mb-2 flex items-center justify-center gap-2">
-				<span
-					class="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium tabular-nums text-primary"
-				>
+				<span class="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium tabular-nums text-primary">
 					Erreur {page.status}
 				</span>
 			</div>
@@ -181,10 +151,20 @@
 
 		<!-- Content -->
 		<Empty.Content class="max-w-md">
-			<!-- Context-specific suggestion -->
+			<!-- Context-specific or default primary action -->
 			{#if is404 && contextMessage}
 				<Button href={contextMessage.href} size="lg" class="w-full">
-					<contextMessage.icon class="size-4" />
+					{#if pathSection === 'formations'}
+						<BookOpen class="size-4" />
+					{:else if pathSection === 'deals'}
+						<Handshake class="size-4" />
+					{:else if pathSection === 'contacts'}
+						<Users class="size-4" />
+					{:else if pathSection === 'calendrier'}
+						<Calendar class="size-4" />
+					{:else if pathSection === 'qualiopi'}
+						<FileText class="size-4" />
+					{/if}
 					{contextMessage.suggestion}
 				</Button>
 			{:else}
@@ -194,7 +174,7 @@
 				</Button>
 			{/if}
 
-			<!-- Secondary actions row -->
+			<!-- Secondary actions -->
 			<div class="flex w-full flex-wrap items-center justify-center gap-2">
 				<Button variant="outline" onclick={() => history.back()}>
 					<ArrowLeft class="size-4" />
@@ -218,20 +198,42 @@
 			<div class="w-full">
 				<p class="mb-3 text-center text-sm text-muted-foreground">Accès rapide</p>
 				<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-					{#each quickNav as item (item.href)}
-						<Button
-							href={item.href}
-							variant="ghost"
-							class="h-auto flex-col gap-1 py-3 text-muted-foreground hover:text-foreground"
-						>
-							<item.icon class="size-5" />
-							<span class="text-xs">{item.title}</span>
-						</Button>
-					{/each}
+					<Button
+						href="/"
+						variant="ghost"
+						class="h-auto flex-col gap-1 py-3 text-muted-foreground hover:text-foreground"
+					>
+						<Home class="size-5" />
+						<span class="text-xs">Tableau de bord</span>
+					</Button>
+					<Button
+						href="/formations"
+						variant="ghost"
+						class="h-auto flex-col gap-1 py-3 text-muted-foreground hover:text-foreground"
+					>
+						<BookOpen class="size-5" />
+						<span class="text-xs">Formations</span>
+					</Button>
+					<Button
+						href="/contacts"
+						variant="ghost"
+						class="h-auto flex-col gap-1 py-3 text-muted-foreground hover:text-foreground"
+					>
+						<Users class="size-5" />
+						<span class="text-xs">Contacts</span>
+					</Button>
+					<Button
+						href="/deals"
+						variant="ghost"
+						class="h-auto flex-col gap-1 py-3 text-muted-foreground hover:text-foreground"
+					>
+						<Handshake class="size-5" />
+						<span class="text-xs">Deals</span>
+					</Button>
 				</div>
 			</div>
 
-			<!-- Debug info (subtle) -->
+			<!-- Path info -->
 			<div class="mt-4 w-full rounded-lg bg-muted/50 p-3">
 				<p class="text-center text-xs text-muted-foreground">
 					<HelpCircle class="mr-1 inline-block size-3" />
