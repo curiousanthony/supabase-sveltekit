@@ -31,13 +31,18 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 	let role: string | null = null;
 	let roleLabel: string | null = null;
 	let allowedNavUrls: string[] = sitemap.map((item) => item.url);
+	let effectiveContext:
+		| Awaited<ReturnType<typeof requireWorkspace>>['effectiveContext']
+		| undefined;
 
 	try {
-		const { userId, workspaceId, effectiveContext } = await requireWorkspace({
+		const result = await requireWorkspace({
 			...locals,
 			url,
 			cookies
 		} as App.Locals);
+		const { userId, workspaceId, effectiveContext: ctx } = result;
+		effectiveContext = ctx;
 		const effectiveUserId = effectiveContext?.effectiveUserId ?? userId;
 		const effectiveRole = effectiveContext?.effectiveRole;
 

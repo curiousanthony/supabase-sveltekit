@@ -23,6 +23,7 @@
 	import type { ComponentProps } from 'svelte';
 	// import { appInfo } from '$lib/settings/config';
 
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import Logo from './ui/custom/brand/logo.svelte';
 	import Inbox from '@tabler/icons-svelte/icons/inbox';
@@ -43,6 +44,14 @@
 	import Home from '@tabler/icons-svelte/icons/home';
 
 	let { userObject, workspace, workspaces = [], role, roleLabel, allowedNavUrls = [], ...restProps } = $props();
+
+	const sidebar = Sidebar.useSidebar();
+	afterNavigate(() => {
+		if (sidebar.isMobile) {
+			sidebar.setOpenMobile(false);
+		}
+	});
+
 	let {
 		name = 'Test',
 		email = 'test@test.com',

@@ -10,6 +10,7 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 	import { ROLE_LABELS } from '$lib/i18n/roles';
 	import type { WorkspaceRole } from '$lib/i18n/roles';
 	import TrashIcon from '@tabler/icons-svelte/icons/trash';
@@ -76,8 +77,9 @@
 		return m.email ?? 'Utilisateur';
 	}
 
-	async function handleLogoUpload() {
-		const file = logoFileInput?.files?.[0];
+	async function handleLogoUpload(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input?.files?.[0];
 		if (!file) return;
 
 		logoUploading = true;
@@ -87,21 +89,30 @@
 
 			const res = await fetch('/parametres/workspace/upload-logo', {
 				method: 'POST',
-				body: formData
+				body: formData,
+				credentials: 'include'
 			});
 
 			if (res.ok) {
 				await invalidateAll();
+				toast.success('Logo mis à jour');
 			} else {
-				const error = await res.json();
-				alert(error.message || 'Erreur lors du téléversement');
+				let message = 'Erreur lors du téléversement';
+				try {
+					const err = await res.json();
+					if (err?.message) message = err.message;
+				} catch {
+					const text = await res.text();
+					if (text) message = text.slice(0, 200);
+				}
+				toast.error(message);
 			}
 		} catch (e) {
 			console.error('Upload error:', e);
-			alert('Erreur lors du téléversement');
+			toast.error('Erreur lors du téléversement');
 		} finally {
 			logoUploading = false;
-			if (logoFileInput) logoFileInput.value = '';
+			if (input) input.value = '';
 		}
 	}
 
@@ -110,15 +121,26 @@
 
 		try {
 			const res = await fetch('/parametres/workspace/upload-logo', {
-				method: 'DELETE'
+				method: 'DELETE',
+				credentials: 'include'
 			});
 
 			if (res.ok) {
 				await invalidateAll();
+				toast.success('Logo supprimé');
+			} else {
+				let message = 'Erreur lors de la suppression';
+				try {
+					const err = await res.json();
+					if (err?.message) message = err.message;
+				} catch {
+					// ignore
+				}
+				toast.error(message);
 			}
 		} catch (e) {
 			console.error('Remove error:', e);
-			alert('Erreur lors de la suppression');
+			toast.error('Erreur lors de la suppression');
 		}
 	}
 
