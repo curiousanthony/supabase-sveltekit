@@ -1,3 +1,4 @@
+import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/db';
 import { formations } from '$lib/db/schema';
 import { getUserWorkspace } from '$lib/auth';
@@ -20,7 +21,7 @@ const header = {
 export const load = (async ({ locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) {
-		return { formations: [], header };
+		throw redirect(303, '/');
 	}
 
 	const formationsData = await db.query.formations.findMany({

@@ -93,7 +93,7 @@ export const getUserWorkspace = async (locals: App.Locals) => {
 			const workspace = inserted;
 
 			if (!workspace) {
-				return null;
+				throw new Error('Failed to create workspace');
 			}
 
 			// 3. Add user to workspace as owner
