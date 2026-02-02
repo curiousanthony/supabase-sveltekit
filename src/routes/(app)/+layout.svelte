@@ -90,7 +90,15 @@
 <Sidebar.Provider
 	style="--sidebar-width: calc(var(--spacing) * 72); --header-height: calc(var(--spacing) * 16);"
 >
-	<AppSidebar variant="inset" userObject={data?.user} />
+	<AppSidebar
+		variant="inset"
+		userObject={data?.user}
+		workspace={data?.workspace}
+		workspaces={data?.workspaces}
+		role={data?.role}
+		roleLabel={data?.roleLabel}
+		allowedNavUrls={data?.allowedNavUrls}
+	/>
 	<main class="flex h-screen w-full flex-col bg-background">
 		<SiteHeader pageName={$headerTitleText || pageTitle} {header} title={$headerTitleSnippet}>
 			<!-- {#snippet actions()}

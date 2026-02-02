@@ -20,7 +20,7 @@
 	type ThemeMode = 'system' | 'light' | 'dark';
 	const MODE_STORAGE_KEY = 'mode-watcher-mode';
 
-	let { user }: { user: { name: string; email: string; avatar_url: string } } = $props();
+	let { user, roleLabel }: { user: { name: string; email: string; avatar_url: string }; roleLabel?: string | null } = $props();
 
 	let themePreference = $state<ThemeMode>('system');
 
@@ -91,6 +91,9 @@
 							<span class="truncate text-xs text-muted-foreground">
 								{user.email}
 							</span>
+							{#if roleLabel}
+								<span class="truncate text-xs text-muted-foreground">Rôle : {roleLabel}</span>
+							{/if}
 						</div>
 					</div>
 				</DropdownMenu.Label>

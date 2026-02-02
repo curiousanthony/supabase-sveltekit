@@ -6,7 +6,7 @@ export const statutsFormation = pgEnum("statuts_formation", ['En attente', 'En c
 export const typeClient = pgEnum("type_client", ['Entreprise', 'Particulier'])
 export const typesFinancement = pgEnum("types_financement", ['CPF', 'OPCO', 'Inter', 'Intra'])
 export const dealStage = pgEnum("deal_stage", ['Lead', 'Qualification', 'Proposition', 'Négociation', 'Gagné', 'Perdu'])
-export const workspaceRole = pgEnum("workspace_role", ['owner', 'admin', 'sales'])
+export const workspaceRole = pgEnum("workspace_role", ['owner', 'admin', 'sales', 'secretary'])
 
 
 export const clients = pgTable("clients", {
@@ -71,9 +71,15 @@ export const users = pgTable("users", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	avatarUrl: text("avatar_url"),
+	lastActiveWorkspaceId: uuid("last_active_workspace_id"),
 }, (table) => [
 	uniqueIndex("email_idx").using("btree", table.email.asc().nullsLast().op("text_ops")),
 	unique("users_id2_key").on(table.id),
+	foreignKey({
+		columns: [table.lastActiveWorkspaceId],
+		foreignColumns: [workspaces.id],
+		name: "users_last_active_workspace_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
 ]);
 
 export const thematiques = pgTable("thematiques", {

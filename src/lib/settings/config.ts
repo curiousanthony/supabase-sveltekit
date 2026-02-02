@@ -13,6 +13,16 @@ import Tool from '@tabler/icons-svelte/icons/tool'
 import History from '@tabler/icons-svelte/icons/history'
 import Users from '@tabler/icons-svelte/icons/users'
 
+/** Permission required per nav URL. Undefined = visible to all. */
+export const sitemapPermissions: Record<string, 'deals' | 'clients' | 'formations' | 'qualiopi' | 'formateurs' | 'messagerie' | 'dashboard' | undefined> = {
+	'/': 'dashboard',
+	'/messagerie': 'messagerie',
+	'/formations': 'formations',
+	'/contacts': 'formateurs',
+	'/deals': 'deals',
+	'/qualiopi': 'qualiopi'
+};
+
 export const appInfo = {
 	"name": "Mentore Manager",
 	"desc": "Mentore Manager",

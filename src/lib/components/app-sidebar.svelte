@@ -40,13 +40,16 @@
 	import { sitemap } from '$lib/settings/config';
 	import VersionSwitcher from './workspace-switcher.svelte';
 
-	let { userObject, ...restProps } = $props();
-	// console.log('userObject: ', userObject.user_metadata);
+	let { userObject, workspace, workspaces = [], role, roleLabel, allowedNavUrls = [], ...restProps } = $props();
 	let {
 		name = 'Test',
 		email = 'test@test.com',
 		avatar_url = ''
-	} = $derived(userObject.user_metadata);
+	} = $derived(userObject?.user_metadata ?? {});
+
+	const navItems = $derived(
+		allowedNavUrls?.length ? sitemap.filter((item) => allowedNavUrls.includes(item.url)) : sitemap
+	);
 
 	// console.log(name, email, avatar_url);
 
@@ -208,8 +211,9 @@
 		<Sidebar.Menu>
 			<Sidebar.MenuItem>
 				<VersionSwitcher
-					workspaces={fakeData.workspaces}
-					defaultWorkspace={fakeData.workspaces[0]}
+					workspaces={workspaces}
+					defaultWorkspace={workspace}
+					canManageWorkspace={role === 'owner' || role === 'admin'}
 				/>
 				<!-- <Logo /> -->
 				<!-- <Sidebar.MenuButton class="data-[slot=sidebar-menu-button]:p-1.5!"> -->
@@ -224,12 +228,12 @@
 		</Sidebar.Menu>
 	</Sidebar.Header>
 	<Sidebar.Content>
-		<NavMain items={sitemap} />
+		<NavMain items={navItems} />
 		<!-- <NavMain items={data.navMain} /> -->
 		<!-- <NavDocuments items={data.documents} /> -->
 		<NavSecondary items={fakeData.navSecondary} class="mt-auto" />
 	</Sidebar.Content>
 	<Sidebar.Footer>
-		<NavUser user={userObject.user_metadata} />
+		<NavUser user={userObject?.user_metadata ?? {}} roleLabel={roleLabel} />
 	</Sidebar.Footer>
 </Sidebar.Root>

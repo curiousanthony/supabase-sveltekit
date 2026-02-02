@@ -90,12 +90,13 @@ export const getUserWorkspace = async (locals: App.Locals) => {
 		return null;
 	}
 
-	// 3. Add user to workspace
+	// 3. Add user to workspace as owner
 	await db
 		.insert(workspacesUsers)
 		.values({
 			workspaceId: workspace.id,
-			userId: user.id
+			userId: user.id,
+			role: 'owner'
 		})
 		.onConflictDoNothing({
 			target: [workspacesUsers.workspaceId, workspacesUsers.userId]
@@ -107,7 +108,8 @@ export const getUserWorkspace = async (locals: App.Locals) => {
 		.values({
 			legalName: 'Exemple SARL',
 			type: 'Entreprise',
-			createdBy: user.id
+			createdBy: user.id,
+			workspaceId: workspace.id
 		})
 		.returning({ id: clients.id });
 
