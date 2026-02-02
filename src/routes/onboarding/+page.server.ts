@@ -1,4 +1,4 @@
-import { redirect, fail } from '@sveltejs/kit';
+import { redirect, fail, isRedirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
 import { zod } from 'sveltekit-superforms/adapters';
@@ -58,6 +58,7 @@ export const actions: Actions = {
 		try {
 			const workspaceId = await db.transaction(async (tx) => {
 				// 1. Ensure user exists in public.users (same id as auth.users)
+				// Use onConflictDoNothing without target to handle both id and email conflicts
 				await tx
 					.insert(users)
 					.values({
@@ -71,7 +72,7 @@ export const actions: Actions = {
 							null,
 						avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
 					})
-					.onConflictDoNothing({ target: [users.id] });
+					.onConflictDoNothing();
 
 				// 2. Create the new workspace with the user-provided name
 				const [inserted] = await tx
@@ -148,12 +149,7 @@ export const actions: Actions = {
 			throw redirect(303, '/');
 		} catch (err) {
 			// Re-throw redirect errors (they're intentional, not failures)
-			if (
-				err &&
-				typeof err === 'object' &&
-				'status' in err &&
-				(err as { status: number }).status === 303
-			) {
+			if (isRedirect(err)) {
 				throw err;
 			}
 			console.error('[Onboarding] Workspace creation failed:', err);

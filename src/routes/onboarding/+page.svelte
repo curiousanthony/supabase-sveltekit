@@ -27,7 +27,12 @@
 					(result.data as { message?: string })?.message ||
 						'Une erreur est survenue. Veuillez réessayer.'
 				);
+			} else if (result.type === 'error') {
+				toast.error('Erreur serveur. Veuillez réessayer.');
 			}
+		},
+		onError: () => {
+			toast.error('Erreur de connexion. Veuillez réessayer.');
 		}
 	});
 
