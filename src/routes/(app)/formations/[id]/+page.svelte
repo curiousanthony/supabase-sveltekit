@@ -5,6 +5,7 @@
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import {
 		IconEdit,
@@ -16,21 +17,46 @@
 		IconChevronDown,
 		IconChevronUp,
 		IconAlertTriangle,
-		IconInfoCircle
+		IconInfoCircle,
+		IconTarget
 	} from '@tabler/icons-svelte';
 
 	let { data }: PageProps = $props();
 	let { formation, progress, steps, learners, modules, formateurs, seances } = $derived(data);
 
-	// State for selected step - default to first in_progress or to_do
-	let selectedStepKey = $state<string | null>(
+	// State for selected step
+	let selectedStepKey = $state<string | null>(null);
+	let defaultStepKey = $derived(
 		steps.find((s) => s.status === 'in_progress')?.key ||
 			steps.find((s) => s.status === 'to_do')?.key ||
 			null
 	);
+	$effect(() => {
+		const def = defaultStepKey;
+		if (def != null && selectedStepKey === null) selectedStepKey = def;
+	});
+
+	// Effective selected key (user selection or default)
+	let effectiveSelectedKey = $derived(selectedStepKey ?? defaultStepKey);
 
 	// Derived: current selected step object
-	let currentStep = $derived(steps.find((s) => s.key === selectedStepKey));
+	let currentStep = $derived(steps.find((s) => s.key === effectiveSelectedKey));
+
+	// Next action step (first in_progress or to_do)
+	let nextActionStep = $derived(
+		steps.find((s) => s.status === 'in_progress') || steps.find((s) => s.status === 'to_do')
+	);
+
+	// Blockers for convocation step (learners without email)
+	let convocationBlockers = $derived(learners.filter((l) => !l.email?.trim()));
+	let hasConvocationBlockers = $derived(convocationBlockers.length > 0);
+
+	// Modules without formateur
+	let modulesWithoutFormateur = $derived(modules.filter((m) => !m.formateurId && !(m as { formateurName?: string }).formateurName));
+	let hasUnassignedModules = $derived(modulesWithoutFormateur.length > 0);
+
+	// Séances view mode
+	let seancesViewMode = $state<'list' | 'calendar'>('list');
 
 	// State for UI
 	let headerExpanded = $state(false);
@@ -51,21 +77,60 @@
 		if (status === 'in_progress') return 'En cours';
 		return 'À venir';
 	}
+
+	// Scroll to step content when clicking Next Action CTA
+	function scrollToStepContent() {
+		selectedStepKey = nextActionStep?.key ?? null;
+	}
 </script>
 
 <!-- Main Layout Container -->
+<Tooltip.Provider delayDuration={300}>
 <div class="flex h-full flex-col">
-	<!-- Collapsible Header Bar -->
+	<!-- Collapsible Header Bar (title in site header, no duplication) -->
 	<Collapsible.Root bind:open={headerExpanded} class="border-b bg-background">
 		<div class="flex items-center justify-between gap-4 px-4 py-3">
-			<!-- Left: Formation identity -->
-			<div class="flex min-w-0 flex-1 items-center gap-3">
-				<h1 class="truncate text-lg font-semibold">{formation.name}</h1>
-				<div class="hidden items-center gap-2 sm:flex">
-					<Badge variant="outline">{formation.statut}</Badge>
-					<Badge variant="secondary">{formation.typeFinancement}</Badge>
+			<!-- Left: Badges + interactive client -->
+			<div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+				<Badge variant="outline">{formation.statut}</Badge>
+				<Badge variant="secondary">{formation.typeFinancement}</Badge>
+				{#if formation.client?.id}
+					<span class="inline-flex items-center gap-1">
+						<a
+							href="/contacts/clients/{formation.client.id}"
+							class="text-sm font-medium text-primary underline-offset-4 hover:underline"
+						>
+							{formation.client.legalName}
+						</a>
+						<Tooltip.Root>
+							<Tooltip.Trigger
+								class="inline-flex rounded p-0.5 text-muted-foreground hover:text-foreground"
+								aria-label="Infos client"
+							>
+								<IconInfoCircle class="h-4 w-4" />
+							</Tooltip.Trigger>
+							<Tooltip.Content class="max-w-xs p-4">
+								<div class="space-y-1 text-sm">
+									<p class="font-semibold">{formation.client.legalName}</p>
+									{#if formation.client.contactPerson}
+										<p>Contact : {formation.client.contactPerson}</p>
+									{/if}
+									{#if formation.client.email}
+										<p>{formation.client.email}</p>
+									{/if}
+									{#if formation.client.phone}
+										<p>{formation.client.phone}</p>
+									{/if}
+									<a href="/contacts/clients/{formation.client.id}" class="text-primary underline">
+										Voir la fiche client →
+									</a>
+								</div>
+							</Tooltip.Content>
+						</Tooltip.Root>
+					</span>
+				{:else}
 					<span class="text-sm text-muted-foreground">{formation.client.legalName}</span>
-				</div>
+				{/if}
 			</div>
 
 			<!-- Right: Actions -->
@@ -87,42 +152,74 @@
 			</div>
 		</div>
 
-		<!-- Expanded Details -->
+		<!-- Expanded Details (sections: base, Qualiopi, modules, brief) -->
 		<Collapsible.Content>
-			<div class="border-t bg-muted/30 px-4 py-3">
-				<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-					<div class="flex items-center gap-2 sm:hidden">
-						<Badge variant="outline">{formation.statut}</Badge>
-						<Badge variant="secondary">{formation.typeFinancement}</Badge>
+			<div class="border-t bg-muted/30 px-4 py-4">
+				<div class="space-y-4">
+					<!-- Informations de base -->
+					<div>
+						<h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+							Informations de base
+						</h4>
+						<div class="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+							<span><span class="text-muted-foreground">Dates:</span> <span class="font-medium">{formation.dates.start} → {formation.dates.end}</span></span>
+							<span><span class="text-muted-foreground">Durée:</span> <span class="font-medium">{formation.duree}h</span></span>
+							<span><span class="text-muted-foreground">Lieu:</span> <span class="font-medium">{formation.lieu}</span></span>
+							<span><span class="text-muted-foreground">Format:</span> <span class="font-medium">{formation.format}</span></span>
+							<span><span class="text-muted-foreground">Thématique:</span> <span class="font-medium">{formation.thematique?.name || '—'}</span></span>
+							<span><span class="text-muted-foreground">Apprenants:</span> <span class="font-medium">{learners.length}</span></span>
+						</div>
 					</div>
-					<span>
-						<span class="text-muted-foreground">Client:</span>
-						<span class="ml-1 font-medium">{formation.client.legalName}</span>
-					</span>
-					<span>
-						<span class="text-muted-foreground">Dates:</span>
-						<span class="ml-1 font-medium">{formation.dates.start} → {formation.dates.end}</span>
-					</span>
-					<span>
-						<span class="text-muted-foreground">Durée:</span>
-						<span class="ml-1 font-medium">{formation.duree}h</span>
-					</span>
-					<span>
-						<span class="text-muted-foreground">Lieu:</span>
-						<span class="ml-1 font-medium">{formation.lieu}</span>
-					</span>
-					<span>
-						<span class="text-muted-foreground">Format:</span>
-						<span class="ml-1 font-medium">{formation.format}</span>
-					</span>
-					<span>
-						<span class="text-muted-foreground">Thématique:</span>
-						<span class="ml-1 font-medium">{formation.thematique?.name || '—'}</span>
-					</span>
-					<span>
-						<span class="text-muted-foreground">Apprenants:</span>
-						<span class="ml-1 font-medium">{learners.length}</span>
-					</span>
+					<!-- Exigences Qualiopi -->
+					{#if formation.publicCible?.length || formation.prerequis?.length || formation.evaluationMode || formation.suiviAssiduite}
+						<div>
+							<h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+								Exigences Qualiopi
+							</h4>
+							<div class="space-y-1 text-sm">
+								{#if formation.publicCible?.length}
+									<p><span class="text-muted-foreground">Public cible:</span> {formation.publicCible.join(', ')}</p>
+								{/if}
+								{#if formation.prerequis?.length}
+									<p><span class="text-muted-foreground">Prérequis:</span> {formation.prerequis.join(', ')}</p>
+								{/if}
+								{#if formation.evaluationMode}
+									<p><span class="text-muted-foreground">Évaluation:</span> {formation.evaluationMode}</p>
+								{/if}
+								{#if formation.suiviAssiduite}
+									<p><span class="text-muted-foreground">Suivi assiduité:</span> {formation.suiviAssiduite}</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+					<!-- Modules -->
+					<div>
+						<h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+							Modules
+						</h4>
+						<ul class="space-y-1 text-sm">
+							{#each modules as m}
+								<li>
+									<span class="font-medium">{m.name}</span>
+									{#if m.durationHours}
+										<span class="text-muted-foreground"> ({m.durationHours}h)</span>
+									{/if}
+									{#if m.objectifs}
+										<p class="ml-4 text-muted-foreground">{m.objectifs}</p>
+									{/if}
+								</li>
+							{/each}
+						</ul>
+					</div>
+					<!-- Brief client -->
+					{#if formation.needsAnalysis}
+						<div>
+							<h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+								Analyse des besoins
+							</h4>
+							<p class="text-sm text-muted-foreground">{formation.needsAnalysis}</p>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</Collapsible.Content>
@@ -130,8 +227,8 @@
 
 	<!-- Two-Column Layout -->
 	<div class="flex min-h-0 flex-1">
-		<!-- Left Sidebar: Steps (hidden on mobile, shown on md+) -->
-		<aside class="hidden w-64 shrink-0 flex-col border-r bg-muted/20 md:flex">
+		<!-- Left Sidebar: Steps (hidden on mobile, shown on md+) - 300px for full step names -->
+		<aside class="hidden w-[300px] shrink-0 flex-col border-r bg-muted/20 md:flex">
 			<!-- Step List -->
 			<div class="flex-1 overflow-y-auto p-4">
 				<h2 class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -139,15 +236,14 @@
 				</h2>
 				<nav class="space-y-1">
 					{#each steps as step (step.key)}
-						{@const StepIcon = getStepIcon(step.status)}
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors
-								{selectedStepKey === step.key
+								{effectiveSelectedKey === step.key
 								? 'bg-primary/10 text-primary font-medium'
 								: 'hover:bg-muted'}
 								{step.status === 'done' ? 'text-muted-foreground' : ''}"
-							onclick={() => (selectedStepKey = step.key)}
+							onclick={() => { selectedStepKey = step.key; }}
 						>
 							<span
 								class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs
@@ -165,16 +261,49 @@
 									{step.stepNumber}
 								{/if}
 							</span>
-							<span class="min-w-0 flex-1 truncate">{step.label}</span>
+							<span class="min-w-0 flex-1 break-words text-left">{step.label}</span>
 						</button>
 					{/each}
 				</nav>
 			</div>
 
-			<!-- Progress & Quick Access -->
+			<!-- Équipe pédagogique (Formateurs) - elevated section -->
 			<div class="border-t p-4">
-				<!-- Progress -->
-				<div class="mb-4">
+				<h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+					Équipe pédagogique
+				</h3>
+				<div class="space-y-2">
+					{#each modules as m}
+						<div class="rounded-lg border p-2">
+							<p class="text-xs font-medium">{m.name}</p>
+							{#if m.formateurId || (m as { formateurName?: string }).formateurName}
+								<p class="text-xs text-muted-foreground">{(m as { formateurName?: string }).formateurName || 'Assigné'}</p>
+								<Button.Root variant="link" size="sm" class="h-auto p-0 text-xs" onclick={() => (showFormateurs = true)}>
+									Voir
+								</Button.Root>
+							{:else}
+								<p class="text-xs text-amber-600 dark:text-amber-400">Non assigné</p>
+								<Button.Root variant="link" size="sm" class="h-auto p-0 text-xs font-medium" onclick={() => (showFormateurs = true)}>
+									Trouver un formateur →
+								</Button.Root>
+							{/if}
+						</div>
+					{/each}
+					<Button.Root
+						variant="outline"
+						size="sm"
+						class="w-full justify-center"
+						onclick={() => (showFormateurs = true)}
+					>
+						<IconUsers class="mr-2 h-4 w-4" />
+						Gérer ({formateurs.length})
+					</Button.Root>
+				</div>
+			</div>
+
+			<!-- Progress & Séances -->
+			<div class="border-t p-4">
+				<div class="mb-3">
 					<div class="mb-1.5 flex items-center justify-between text-xs">
 						<span class="font-medium">{progress.completed}/{progress.total} étapes</span>
 						<span class="text-muted-foreground">
@@ -183,36 +312,75 @@
 					</div>
 					<Progress value={(progress.completed / progress.total) * 100} class="h-1.5" />
 				</div>
-
-				<!-- Quick Access -->
-				<div class="space-y-2">
-					<Button.Root
-						variant="outline"
-						size="sm"
-						class="w-full justify-start"
-						onclick={() => (showFormateurs = true)}
-					>
-						<IconUsers class="mr-2 h-4 w-4" />
-						Formateurs
-						<Badge variant="secondary" class="ml-auto">{formateurs.length}</Badge>
-					</Button.Root>
-					<Button.Root
-						variant="outline"
-						size="sm"
-						class="w-full justify-start"
-						onclick={() => (showSeances = true)}
-					>
-						<IconCalendar class="mr-2 h-4 w-4" />
-						Séances
-						<Badge variant="secondary" class="ml-auto">{seances.length}</Badge>
-					</Button.Root>
-				</div>
+				<Button.Root
+					variant="outline"
+					size="sm"
+					class="w-full justify-start"
+					onclick={() => (showSeances = true)}
+				>
+					<IconCalendar class="mr-2 h-4 w-4" />
+					Séances ({seances.length})
+				</Button.Root>
 			</div>
 		</aside>
 
 		<!-- Main Content Area -->
 		<main class="flex min-w-0 flex-1 flex-col overflow-y-auto">
 			<div class="mx-auto w-full max-w-3xl p-4 md:p-6">
+				<!-- Next Action Hero Card - always visible when there's an action to do -->
+				{#if nextActionStep && nextActionStep.status !== 'done'}
+					<div
+						class="mb-6 rounded-xl border-2 border-primary/30 bg-primary/5 p-6 shadow-sm"
+						id="next-action-card"
+					>
+						<div class="mb-2 flex items-center gap-2">
+							<IconTarget class="h-5 w-5 text-primary" />
+							<span class="text-sm font-semibold uppercase tracking-wide text-primary">Prochaine action</span>
+						</div>
+						<h3 class="mb-1 text-lg font-bold">
+							Étape {nextActionStep.stepNumber}/10 : {nextActionStep.label}
+						</h3>
+						<p class="mb-4 text-sm text-muted-foreground">
+							{@render stepDescription(nextActionStep.key)}
+						</p>
+						{#if nextActionStep.key === 'convocation' && hasConvocationBlockers}
+							<div class="mb-4 flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+								<IconAlertTriangle class="h-4 w-4 shrink-0" />
+								{convocationBlockers.length} apprenant{convocationBlockers.length > 1 ? 's' : ''} sans email
+							</div>
+						{/if}
+						{#if hasUnassignedModules && nextActionStep.key === 'mission_order'}
+							<div class="mb-4 flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+								<IconAlertTriangle class="h-4 w-4 shrink-0" />
+								{modulesWithoutFormateur.length} module{modulesWithoutFormateur.length > 1 ? 's' : ''} sans formateur
+							</div>
+						{/if}
+						<Button.Root size="lg" onclick={scrollToStepContent}>
+							{nextActionStep.primaryButton}
+						</Button.Root>
+					</div>
+				{/if}
+
+				<!-- Unassigned formateurs warning card -->
+				{#if hasUnassignedModules}
+					<div class="mb-6 rounded-lg border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+						<div class="flex items-start justify-between gap-4">
+							<div>
+								<p class="font-medium text-amber-800 dark:text-amber-200">
+									Formateurs requis
+								</p>
+								<p class="text-sm text-amber-700 dark:text-amber-300">
+									{modulesWithoutFormateur.length} module{modulesWithoutFormateur.length > 1 ? 's' : ''} sans formateur assigné
+								</p>
+							</div>
+							<Button.Root variant="outline" size="sm" onclick={() => (showFormateurs = true)}>
+								<IconUsers class="mr-2 h-4 w-4" />
+								Assigner
+							</Button.Root>
+						</div>
+					</div>
+				{/if}
+
 				{#if currentStep}
 					<!-- Step Header -->
 					<div class="mb-6">
@@ -290,7 +458,7 @@
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors
-								{selectedStepKey === step.key
+								{effectiveSelectedKey === step.key
 								? 'bg-primary/10 text-primary font-medium'
 								: 'hover:bg-muted'}"
 							onclick={() => {
@@ -352,6 +520,7 @@
 		</Sheet.Root>
 	</div>
 </div>
+</Tooltip.Provider>
 
 <!-- ========== STEP CONTENT SNIPPETS ========== -->
 
@@ -513,20 +682,21 @@
 		<div class="space-y-4">
 			<h4 class="font-medium">Apprenants à convoquer ({learners.length})</h4>
 			<div class="space-y-2">
-				{#each learners as learner, i}
+				{#each learners as learner}
+					{@const hasEmail = !!learner.email?.trim()}
 					<div class="flex items-center justify-between rounded-lg border p-3">
 						<div class="flex items-center gap-3">
-							{#if i === 2}
-								<IconAlertTriangle class="h-5 w-5 text-amber-500" />
+							{#if hasEmail}
+								<IconCheck class="h-5 w-5 shrink-0 text-green-500" />
 							{:else}
-								<IconCheck class="h-5 w-5 text-green-500" />
+								<IconAlertTriangle class="h-5 w-5 shrink-0 text-amber-500" />
 							{/if}
 							<div>
 								<p class="font-medium">{learner.firstName} {learner.lastName}</p>
-								<p class="text-sm text-muted-foreground">{learner.email}</p>
+								<p class="text-sm text-muted-foreground">{hasEmail ? learner.email : 'Email manquant'}</p>
 							</div>
 						</div>
-						{#if i === 2}
+						{#if !hasEmail}
 							<Button.Root variant="outline" size="sm">Ajouter email</Button.Root>
 						{/if}
 					</div>
@@ -632,7 +802,7 @@
 	<Sheet.Content side="right" class="w-full sm:max-w-md">
 		<Sheet.Header>
 			<Sheet.Title>Formateurs ({formateurs.length})</Sheet.Title>
-			<Sheet.Description>Gérez les formateurs assignés à cette formation</Sheet.Description>
+			<Sheet.Description>Gérez les formateurs assignés aux modules de cette formation</Sheet.Description>
 		</Sheet.Header>
 		<div class="mt-6 space-y-6">
 			<div>
@@ -641,21 +811,31 @@
 					{#each modules as module}
 						<div class="rounded-lg border p-3">
 							<p class="font-medium">{module.name}</p>
-							<p class="text-sm text-muted-foreground">Aucun formateur assigné</p>
-							<Button.Root variant="link" size="sm" class="mt-1 h-auto p-0">
-								Assigner un formateur
-							</Button.Root>
+							{#if module.formateurId || (module as { formateurName?: string }).formateurName}
+								<p class="text-sm text-muted-foreground">{(module as { formateurName?: string }).formateurName || 'Assigné'}</p>
+								<Button.Root variant="link" size="sm" class="mt-1 h-auto p-0">
+									Modifier
+								</Button.Root>
+							{:else}
+								<p class="text-sm text-amber-600 dark:text-amber-400">Aucun formateur assigné</p>
+								<Button.Root variant="link" size="sm" class="mt-1 h-auto p-0 font-medium">
+									Trouver sur le Marketplace →
+								</Button.Root>
+							{/if}
 						</div>
 					{/each}
 				</div>
 			</div>
 			{#if formateurs.length > 0}
 				<div>
-					<h4 class="mb-3 text-sm font-medium">Formateurs disponibles</h4>
+					<h4 class="mb-3 text-sm font-medium">Formateurs de votre base</h4>
 					<div class="space-y-2">
 						{#each formateurs as formateur}
 							<div class="rounded-lg border p-3">
 								<p class="font-medium">{formateur.name}</p>
+								{#if formateur.specialite}
+									<p class="text-xs text-muted-foreground">{(formateur as { specialite?: string }).specialite}</p>
+								{/if}
 							</div>
 						{/each}
 					</div>
@@ -667,18 +847,62 @@
 
 <!-- Séances Sheet (slides from right) -->
 <Sheet.Root bind:open={showSeances}>
-	<Sheet.Content side="right" class="w-full sm:max-w-md">
+	<Sheet.Content side="right" class="w-full sm:max-w-lg">
 		<Sheet.Header>
 			<Sheet.Title>Séances ({seances.length})</Sheet.Title>
 			<Sheet.Description>Planning des sessions de formation</Sheet.Description>
 		</Sheet.Header>
-		<div class="mt-6 space-y-2">
-			{#each seances as seance}
-				<div class="rounded-lg border p-3">
-					<p class="font-medium">{seance.date}</p>
-					<p class="text-sm text-muted-foreground">{seance.startTime} → {seance.endTime}</p>
+		<div class="mt-6">
+			<!-- View toggle -->
+			<div class="mb-4 flex gap-2">
+				<Button.Root
+					variant={seancesViewMode === 'list' ? 'secondary' : 'ghost'}
+					size="sm"
+					onclick={() => (seancesViewMode = 'list')}
+				>
+					Liste
+				</Button.Root>
+				<Button.Root
+					variant={seancesViewMode === 'calendar' ? 'secondary' : 'ghost'}
+					size="sm"
+					onclick={() => (seancesViewMode = 'calendar')}
+				>
+					Calendrier
+				</Button.Root>
+			</div>
+			{#if seancesViewMode === 'list'}
+				<div class="space-y-3">
+					{#each seances as seance}
+						<div class="rounded-lg border p-4">
+							<div class="mb-2 flex items-start justify-between gap-2">
+								<div class="flex items-center gap-2">
+									<IconCalendar class="h-4 w-4 shrink-0 text-muted-foreground" />
+									<span class="font-medium">{seance.date}</span>
+								</div>
+								{#if seance.emargementTotal != null}
+									<Badge variant={seance.emargementSigned === seance.emargementTotal ? 'default' : 'outline'} class="text-xs">
+										{seance.emargementSigned}/{seance.emargementTotal} émargé{seance.emargementSigned === seance.emargementTotal ? 's' : ''}
+									</Badge>
+								{/if}
+							</div>
+							<p class="text-sm text-muted-foreground">{seance.startTime} → {seance.endTime}</p>
+							{#if seance.moduleName}
+								<p class="mt-1 text-sm font-medium">{seance.moduleName}</p>
+							{/if}
+							{#if seance.formateurName}
+								<p class="text-xs text-muted-foreground">Formateur : {seance.formateurName}</p>
+							{:else}
+								<p class="text-xs text-amber-600 dark:text-amber-400">Formateur non assigné</p>
+							{/if}
+						</div>
+					{/each}
 				</div>
-			{/each}
+			{:else}
+				<div class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+					<IconCalendar class="mx-auto mb-2 h-10 w-10 opacity-50" />
+					<p>Vue calendrier à venir</p>
+				</div>
+			{/if}
 			<Button.Root variant="outline" class="mt-4 w-full">
 				Ajouter une séance
 			</Button.Root>

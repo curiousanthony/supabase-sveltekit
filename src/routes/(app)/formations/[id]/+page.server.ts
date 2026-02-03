@@ -35,7 +35,14 @@ export const load = (async ({ params }) => {
 	const dummyFormation = {
 		id: params.id,
 		name: 'Formation pilot',
-		client: { legalName: 'Acme SA' },
+		client: {
+			id: 'client-acme',
+			legalName: 'Acme SA',
+			contactPerson: 'Marie Dupont',
+			email: 'marie.dupont@acme.fr',
+			phone: '01 23 45 67 89',
+			address: '123 rue de Paris, 75001 Paris'
+		},
 		dates: { start: '2026-03-01', end: '2026-03-15' },
 		typeFinancement: 'OPCO',
 		statut: 'En cours',
@@ -43,7 +50,13 @@ export const load = (async ({ params }) => {
 		lieu: 'Paris',
 		format: 'Présentiel',
 		thematique: { name: 'Management' },
-		description: 'Formation de pilotage pour managers'
+		description: 'Formation de pilotage pour managers',
+		// Qualiopi fields from creation flow
+		publicCible: ['Managers', 'Chefs de projet'],
+		prerequis: ['Expérience en gestion d\'équipe', 'Niveau bac+3'],
+		evaluationMode: 'Mise en situation pratique',
+		suiviAssiduite: 'Feuille d\'émargement signée par demi-journée',
+		needsAnalysis: 'Besoin de renforcer les compétences en pilotage de projets complexes pour l\'équipe dirigeante.'
 	};
 
 	const progress = { completed: 3, total: 10 };
@@ -71,27 +84,27 @@ export const load = (async ({ params }) => {
 	const dummyLearners = [
 		{ id: '1', firstName: 'Jean', lastName: 'Dupont', email: 'jean.dupont@example.com' },
 		{ id: '2', firstName: 'Marie', lastName: 'Martin', email: 'marie.martin@example.com' },
-		{ id: '3', firstName: 'Pierre', lastName: 'Bernard', email: 'pierre.bernard@example.com' },
+		{ id: '3', firstName: 'Pierre', lastName: 'Bernard', email: '' }, // Missing email - blocker
 		{ id: '4', firstName: 'Sophie', lastName: 'Dubois', email: 'sophie.dubois@example.com' }
 	];
 
 	const dummyModules = [
-		{ id: '1', name: 'Module 1: Introduction' },
-		{ id: '2', name: 'Module 2: Approfondissement' }
+		{ id: '1', name: 'Module 1: Introduction', durationHours: 8, formateurId: null as string | null, objectifs: 'Comprendre les fondamentaux du pilotage' },
+		{ id: '2', name: 'Module 2: Approfondissement', durationHours: 16, formateurId: '1', formateurName: 'Formateur A', objectifs: 'Mettre en œuvre les méthodes avancées' }
 	];
 
 	const dummyFormateurs = [
-		{ id: '1', name: 'Formateur A' },
-		{ id: '2', name: 'Formateur B' },
-		{ id: '3', name: 'Formateur C' }
+		{ id: '1', name: 'Formateur A', specialite: 'Management' },
+		{ id: '2', name: 'Formateur B', specialite: 'Leadership' },
+		{ id: '3', name: 'Formateur C', specialite: 'Projet' }
 	];
 
 	const dummySeances = [
-		{ id: '1', date: '2026-03-01', startTime: '09:00', endTime: '12:00' },
-		{ id: '2', date: '2026-03-02', startTime: '09:00', endTime: '12:00' },
-		{ id: '3', date: '2026-03-03', startTime: '09:00', endTime: '12:00' },
-		{ id: '4', date: '2026-03-04', startTime: '09:00', endTime: '12:00' },
-		{ id: '5', date: '2026-03-05', startTime: '09:00', endTime: '12:00' }
+		{ id: '1', date: '2026-03-01', startTime: '09:00', endTime: '12:30', moduleName: 'Module 1', formateurName: null as string | null, emargementSigned: 3, emargementTotal: 4 },
+		{ id: '2', date: '2026-03-01', startTime: '14:00', endTime: '17:30', moduleName: 'Module 1', formateurName: null as string | null, emargementSigned: 0, emargementTotal: 4 },
+		{ id: '3', date: '2026-03-02', startTime: '09:00', endTime: '12:30', moduleName: 'Module 2', formateurName: 'Formateur A', emargementSigned: 0, emargementTotal: 4 },
+		{ id: '4', date: '2026-03-02', startTime: '14:00', endTime: '17:30', moduleName: 'Module 2', formateurName: 'Formateur A', emargementSigned: 0, emargementTotal: 4 },
+		{ id: '5', date: '2026-03-03', startTime: '09:00', endTime: '12:30', moduleName: 'Module 2', formateurName: 'Formateur A', emargementSigned: 0, emargementTotal: 4 }
 	];
 
 	const pageName = dummyFormation.name;
