@@ -242,38 +242,42 @@
 	</Sidebar.Header>
 	<!-- Shortcuts (Notion-style: Search, Home, Inbox) -->
 	<Sidebar.Content class="flex-none shrink-0">
-		<Sidebar.Menu>
-			<Sidebar.MenuItem>
-				<Sidebar.MenuButton
-					tooltipContent="Chercher (⌘K)"
-					onclick={() => openCommandPalette()}
-					class="cursor-pointer"
-				>
-					<SearchIcon class="size-[1.1em]" />
-					<span class="text-[1.1em]">Chercher</span>
-				</Sidebar.MenuButton>
-			</Sidebar.MenuItem>
-			<Sidebar.MenuItem>
-				<Sidebar.MenuButton tooltipContent="Accueil" isActive={page.url.pathname === '/'}>
-					{#snippet child({ props })}
-						<a href="/" {...props}>
-							<Home class="size-[1.1em]" />
-							<span class="text-[1.1em]">Accueil</span>
-						</a>
-					{/snippet}
-				</Sidebar.MenuButton>
-			</Sidebar.MenuItem>
-			<Sidebar.MenuItem>
-				<Sidebar.MenuButton tooltipContent="Boîte de réception" isActive={page.url.pathname === '/inbox'}>
-					{#snippet child({ props })}
-						<a href="/inbox" {...props}>
-							<Inbox class="size-[1.1em]" />
-							<span class="text-[1.1em]">Boîte de réception</span>
-						</a>
-					{/snippet}
-				</Sidebar.MenuButton>
-			</Sidebar.MenuItem>
-		</Sidebar.Menu>
+		<Sidebar.Group>
+			<Sidebar.GroupContent>
+				<Sidebar.Menu>
+					<Sidebar.MenuItem>
+						<Sidebar.MenuButton
+							tooltipContent="Chercher (⌘K)"
+							onclick={() => openCommandPalette()}
+							class="cursor-pointer"
+						>
+							<SearchIcon class="size-[1.1em]" />
+							<span class="text-[1.1em]">Chercher</span>
+						</Sidebar.MenuButton>
+					</Sidebar.MenuItem>
+					<Sidebar.MenuItem>
+						<Sidebar.MenuButton tooltipContent="Accueil" isActive={page.url.pathname === '/'}>
+							{#snippet child({ props })}
+								<a href="/" {...props}>
+									<Home class="size-[1.1em] {page.url.pathname === '/' ? 'text-primary' : ''}" />
+									<span class="text-[1.1em] {page.url.pathname === '/' ? 'text-primary' : ''}">Accueil</span>
+								</a>
+							{/snippet}
+						</Sidebar.MenuButton>
+					</Sidebar.MenuItem>
+					<Sidebar.MenuItem>
+						<Sidebar.MenuButton tooltipContent="Boîte de réception" isActive={page.url.pathname === '/inbox'}>
+							{#snippet child({ props })}
+								<a href="/inbox" {...props}>
+									<Inbox class="size-[1.1em] {page.url.pathname === '/inbox' ? 'text-primary' : ''}" />
+									<span class="text-[1.1em] {page.url.pathname === '/inbox' ? 'text-primary' : ''}">Boîte de réception</span>
+								</a>
+							{/snippet}
+						</Sidebar.MenuButton>
+					</Sidebar.MenuItem>
+				</Sidebar.Menu>
+			</Sidebar.GroupContent>
+		</Sidebar.Group>
 	</Sidebar.Content>
 	<Sidebar.Separator />
 	<Sidebar.Content>
