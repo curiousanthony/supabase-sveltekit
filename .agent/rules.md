@@ -42,7 +42,11 @@
 - **Language**: English for code/comments. French/English for documentation (as requested).
 - **Maintenance**: Update `docs/` whenever workflows or patterns change.
 
-## 6. Testing & Playgrounds
+## 6. UI / UX Patterns
+
+- **No right-side Sheet for secondary content**: Do not use a Sheet (or similar panel) that slides in from the **right** to show secondary content (e.g. formateurs, séances, detail panels). Prefer **in-page sections** (scroll/focus to a section) or **full-page routes** instead. Right-side panels fragment the flow; in-page content keeps the user on the same context. (Bottom or left Sheets, e.g. for mobile step picker or sidebar, are acceptable.)
+
+## 7. Testing & Playgrounds
 
 - **Rule**: Follow the [Component Testing Rules](test-pages.md) for all ad-hoc UI testing.
 - **Location**: All test pages must live in `src/routes/playground/[feature-name]`.

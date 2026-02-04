@@ -5,7 +5,7 @@
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
-	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import * as HoverCard from '$lib/components/ui/hover-card/index.js';
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import {
 		IconEdit,
@@ -55,14 +55,9 @@
 	let modulesWithoutFormateur = $derived(modules.filter((m) => !m.formateurId && !(m as { formateurName?: string }).formateurName));
 	let hasUnassignedModules = $derived(modulesWithoutFormateur.length > 0);
 
-	// Séances view mode
-	let seancesViewMode = $state<'list' | 'calendar'>('list');
-
 	// State for UI
 	let headerExpanded = $state(false);
 	let showModifier = $state(false);
-	let showFormateurs = $state(false);
-	let showSeances = $state(false);
 	let mobileStepsOpen = $state(false);
 
 	// Helpers
@@ -85,51 +80,53 @@
 </script>
 
 <!-- Main Layout Container -->
-<Tooltip.Provider delayDuration={300}>
 <div class="flex h-full flex-col">
 	<!-- Collapsible Header Bar (title in site header, no duplication) -->
 	<Collapsible.Root bind:open={headerExpanded} class="border-b bg-background">
 		<div class="flex items-center justify-between gap-4 px-4 py-3">
-			<!-- Left: Badges + interactive client -->
+			<!-- Left: Badges + interactive client (hover card) -->
 			<div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
 				<Badge variant="outline">{formation.statut}</Badge>
 				<Badge variant="secondary">{formation.typeFinancement}</Badge>
 				{#if formation.client?.id}
-					<span class="inline-flex items-center gap-1">
-						<a
-							href="/contacts/clients/{formation.client.id}"
-							class="text-sm font-medium text-primary underline-offset-4 hover:underline"
+					<HoverCard.Root openDelay={200} closeDelay={100}>
+						<HoverCard.Trigger
+							class="inline-flex cursor-pointer rounded-md px-1.5 py-0.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+							aria-label="Voir les infos client"
 						>
 							{formation.client.legalName}
-						</a>
-						<Tooltip.Root>
-							<Tooltip.Trigger
-								class="inline-flex rounded p-0.5 text-muted-foreground hover:text-foreground"
-								aria-label="Infos client"
-							>
-								<IconInfoCircle class="h-4 w-4" />
-							</Tooltip.Trigger>
-							<Tooltip.Content class="max-w-xs p-4">
-								<div class="space-y-1 text-sm">
-									<p class="font-semibold">{formation.client.legalName}</p>
-									{#if formation.client.contactPerson}
-										<p>Contact : {formation.client.contactPerson}</p>
+						</HoverCard.Trigger>
+						<HoverCard.Portal>
+							<HoverCard.Content class="w-80" side="bottom" align="start">
+								<div class="space-y-3">
+									<div>
+										<p class="text-sm font-semibold leading-none">{formation.client.legalName}</p>
+										{#if formation.client.contactPerson}
+											<p class="text-muted-foreground mt-1.5 text-xs">Contact : {formation.client.contactPerson}</p>
+										{/if}
+									</div>
+									{#if formation.client.email || formation.client.phone}
+										<div class="space-y-1 text-xs text-muted-foreground">
+											{#if formation.client.email}
+												<p>{formation.client.email}</p>
+											{/if}
+											{#if formation.client.phone}
+												<p>{formation.client.phone}</p>
+											{/if}
+										</div>
 									{/if}
-									{#if formation.client.email}
-										<p>{formation.client.email}</p>
+									{#if (formation.client as { address?: string }).address}
+										<p class="text-xs text-muted-foreground">{(formation.client as { address?: string }).address}</p>
 									{/if}
-									{#if formation.client.phone}
-										<p>{formation.client.phone}</p>
-									{/if}
-									<a href="/contacts/clients/{formation.client.id}" class="text-primary underline">
+									<Button.Root size="sm" class="w-full" href="/contacts/clients/{formation.client.id}">
 										Voir la fiche client →
-									</a>
+									</Button.Root>
 								</div>
-							</Tooltip.Content>
-						</Tooltip.Root>
-					</span>
+							</HoverCard.Content>
+						</HoverCard.Portal>
+					</HoverCard.Root>
 				{:else}
-					<span class="text-sm text-muted-foreground">{formation.client.legalName}</span>
+					<span class="text-sm text-muted-foreground">{formation.client?.legalName ?? '—'}</span>
 				{/if}
 			</div>
 
@@ -152,78 +149,104 @@
 			</div>
 		</div>
 
-		<!-- Expanded Details (sections: base, Qualiopi, modules, brief) -->
+		<!-- Expanded Details: single at-a-glance view, no extra clicks -->
 		<Collapsible.Content>
 			<div class="border-t bg-muted/30 px-4 py-4">
-				<div class="space-y-4">
-					<!-- Informations de base -->
+				<!-- Primary: dates, durée, lieu, format -->
+				<div class="mb-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
 					<div>
-						<h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-							Informations de base
-						</h4>
-						<div class="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-							<span><span class="text-muted-foreground">Dates:</span> <span class="font-medium">{formation.dates.start} → {formation.dates.end}</span></span>
-							<span><span class="text-muted-foreground">Durée:</span> <span class="font-medium">{formation.duree}h</span></span>
-							<span><span class="text-muted-foreground">Lieu:</span> <span class="font-medium">{formation.lieu}</span></span>
-							<span><span class="text-muted-foreground">Format:</span> <span class="font-medium">{formation.format}</span></span>
-							<span><span class="text-muted-foreground">Thématique:</span> <span class="font-medium">{formation.thematique?.name || '—'}</span></span>
-							<span><span class="text-muted-foreground">Apprenants:</span> <span class="font-medium">{learners.length}</span></span>
-						</div>
+						<p class="text-muted-foreground text-xs">Dates</p>
+						<p class="font-semibold">{formation.dates.start} → {formation.dates.end}</p>
 					</div>
-					<!-- Exigences Qualiopi -->
-					{#if formation.publicCible?.length || formation.prerequis?.length || formation.evaluationMode || formation.suiviAssiduite}
-						<div>
-							<h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-								Exigences Qualiopi
-							</h4>
-							<div class="space-y-1 text-sm">
-								{#if formation.publicCible?.length}
-									<p><span class="text-muted-foreground">Public cible:</span> {formation.publicCible.join(', ')}</p>
-								{/if}
-								{#if formation.prerequis?.length}
-									<p><span class="text-muted-foreground">Prérequis:</span> {formation.prerequis.join(', ')}</p>
-								{/if}
-								{#if formation.evaluationMode}
-									<p><span class="text-muted-foreground">Évaluation:</span> {formation.evaluationMode}</p>
-								{/if}
-								{#if formation.suiviAssiduite}
-									<p><span class="text-muted-foreground">Suivi assiduité:</span> {formation.suiviAssiduite}</p>
-								{/if}
-							</div>
-						</div>
-					{/if}
-					<!-- Modules -->
 					<div>
-						<h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-							Modules
-						</h4>
-						<ul class="space-y-1 text-sm">
-							{#each modules as m}
-								<li>
-									<span class="font-medium">{m.name}</span>
-									{#if m.durationHours}
-										<span class="text-muted-foreground"> ({m.durationHours}h)</span>
-									{/if}
-									{#if m.objectifs}
-										<p class="ml-4 text-muted-foreground">{m.objectifs}</p>
-									{/if}
-								</li>
-							{/each}
-						</ul>
+						<p class="text-muted-foreground text-xs">Durée</p>
+						<p class="font-semibold">{formation.duree}h</p>
 					</div>
-					<!-- Brief client -->
-					{#if formation.needsAnalysis}
-						<div>
-							<h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-								Analyse des besoins
-							</h4>
-							<p class="text-sm text-muted-foreground">{formation.needsAnalysis}</p>
-						</div>
-					{/if}
+					<div>
+						<p class="text-muted-foreground text-xs">Lieu</p>
+						<p class="font-semibold">{formation.lieu}</p>
+					</div>
+					<div>
+						<p class="text-muted-foreground text-xs">Format</p>
+						<p class="font-semibold">{formation.format}</p>
+					</div>
 				</div>
+				<!-- Secondary: thématique, apprenants -->
+				<div class="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+					<span><span class="text-muted-foreground">Thématique :</span> <span class="font-medium">{formation.thematique?.name || '—'}</span></span>
+					<span><span class="text-muted-foreground">Apprenants :</span> <span class="font-medium">{learners.length}</span></span>
+				</div>
+				{#if formation.publicCible?.length || formation.prerequis?.length || formation.evaluationMode || formation.suiviAssiduite}
+					<div class="mb-4 border-t border-border/60 pt-3">
+						<p class="text-muted-foreground mb-2 text-xs font-semibold uppercase">Exigences Qualiopi</p>
+						<div class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+							{#if formation.publicCible?.length}
+								<span><span class="text-muted-foreground">Public :</span> {formation.publicCible.join(', ')}</span>
+							{/if}
+							{#if formation.prerequis?.length}
+								<span><span class="text-muted-foreground">Prérequis :</span> {formation.prerequis.join(', ')}</span>
+							{/if}
+							{#if formation.evaluationMode}
+								<span><span class="text-muted-foreground">Évaluation :</span> {formation.evaluationMode}</span>
+							{/if}
+							{#if formation.suiviAssiduite}
+								<span><span class="text-muted-foreground">Assiduité :</span> {formation.suiviAssiduite}</span>
+							{/if}
+						</div>
+					</div>
+				{/if}
+				<div class="mb-4 border-t border-border/60 pt-3">
+					<p class="text-muted-foreground mb-2 text-xs font-semibold uppercase">Modules</p>
+					<ul class="space-y-1 text-sm">
+						{#each modules as m}
+							<li>
+								<span class="font-medium">{m.name}</span>
+								{#if m.durationHours}
+									<span class="text-muted-foreground"> ({m.durationHours}h)</span>
+								{/if}
+								{#if m.objectifs}
+									<span class="text-muted-foreground"> — {m.objectifs}</span>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
+				{#if formation.needsAnalysis}
+					<div class="border-t border-border/60 pt-3">
+						<p class="text-muted-foreground mb-1 text-xs font-semibold uppercase">Analyse des besoins</p>
+						<p class="text-muted-foreground text-sm">{formation.needsAnalysis}</p>
+					</div>
+				{/if}
 			</div>
 		</Collapsible.Content>
 	</Collapsible.Root>
+
+	<!-- Next Action: compact, one line + CTA -->
+	{#if nextActionStep && nextActionStep.status !== 'done'}
+		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-primary/20 bg-primary/5 px-4 py-3 md:px-6">
+			<div class="flex min-w-0 flex-1 items-center gap-3">
+				<IconTarget class="h-4 w-4 shrink-0 text-primary" />
+				<div>
+					<p class="font-semibold text-foreground">
+						{nextActionStep.label}
+						<span class="text-muted-foreground font-normal"> — {@render nextActionShort(nextActionStep.key)}</span>
+					</p>
+					{#if (nextActionStep.key === 'convocation' && hasConvocationBlockers) || (hasUnassignedModules && nextActionStep.key === 'mission_order')}
+						<p class="text-amber-700 text-xs dark:text-amber-300">
+							{#if nextActionStep.key === 'convocation' && hasConvocationBlockers}
+								{convocationBlockers.length} sans email
+							{:else if hasUnassignedModules && nextActionStep.key === 'mission_order'}
+								{modulesWithoutFormateur.length} module{modulesWithoutFormateur.length > 1 ? 's' : ''} sans formateur
+							{/if}
+						</p>
+					{/if}
+				</div>
+			</div>
+			<Button.Root size="default" onclick={scrollToStepContent}>
+				{nextActionStep.primaryButton}
+			</Button.Root>
+		</div>
+	{/if}
 
 	<!-- Two-Column Layout -->
 	<div class="flex min-h-0 flex-1">
@@ -261,7 +284,7 @@
 									{step.stepNumber}
 								{/if}
 							</span>
-							<span class="min-w-0 flex-1 break-words text-left">{step.label}</span>
+							<span class="min-w-0 flex-1 wrap-break-word text-left">{step.label}</span>
 						</button>
 					{/each}
 				</nav>
@@ -278,12 +301,12 @@
 							<p class="text-xs font-medium">{m.name}</p>
 							{#if m.formateurId || (m as { formateurName?: string }).formateurName}
 								<p class="text-xs text-muted-foreground">{(m as { formateurName?: string }).formateurName || 'Assigné'}</p>
-								<Button.Root variant="link" size="sm" class="h-auto p-0 text-xs" onclick={() => (showFormateurs = true)}>
+								<Button.Root variant="link" size="sm" class="h-auto p-0 text-xs" href="/formations/{formation.id}/formateurs">
 									Voir
 								</Button.Root>
 							{:else}
 								<p class="text-xs text-amber-600 dark:text-amber-400">Non assigné</p>
-								<Button.Root variant="link" size="sm" class="h-auto p-0 text-xs font-medium" onclick={() => (showFormateurs = true)}>
+								<Button.Root variant="link" size="sm" class="h-auto p-0 text-xs font-medium" href="/formations/{formation.id}/formateurs">
 									Trouver un formateur →
 								</Button.Root>
 							{/if}
@@ -293,7 +316,7 @@
 						variant="outline"
 						size="sm"
 						class="w-full justify-center"
-						onclick={() => (showFormateurs = true)}
+						href="/formations/{formation.id}/formateurs"
 					>
 						<IconUsers class="mr-2 h-4 w-4" />
 						Gérer ({formateurs.length})
@@ -316,7 +339,7 @@
 					variant="outline"
 					size="sm"
 					class="w-full justify-start"
-					onclick={() => (showSeances = true)}
+					href="/formations/{formation.id}/seances"
 				>
 					<IconCalendar class="mr-2 h-4 w-4" />
 					Séances ({seances.length})
@@ -327,40 +350,6 @@
 		<!-- Main Content Area -->
 		<main class="flex min-w-0 flex-1 flex-col overflow-y-auto">
 			<div class="mx-auto w-full max-w-3xl p-4 md:p-6">
-				<!-- Next Action Hero Card - always visible when there's an action to do -->
-				{#if nextActionStep && nextActionStep.status !== 'done'}
-					<div
-						class="mb-6 rounded-xl border-2 border-primary/30 bg-primary/5 p-6 shadow-sm"
-						id="next-action-card"
-					>
-						<div class="mb-2 flex items-center gap-2">
-							<IconTarget class="h-5 w-5 text-primary" />
-							<span class="text-sm font-semibold uppercase tracking-wide text-primary">Prochaine action</span>
-						</div>
-						<h3 class="mb-1 text-lg font-bold">
-							Étape {nextActionStep.stepNumber}/10 : {nextActionStep.label}
-						</h3>
-						<p class="mb-4 text-sm text-muted-foreground">
-							{@render stepDescription(nextActionStep.key)}
-						</p>
-						{#if nextActionStep.key === 'convocation' && hasConvocationBlockers}
-							<div class="mb-4 flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-								<IconAlertTriangle class="h-4 w-4 shrink-0" />
-								{convocationBlockers.length} apprenant{convocationBlockers.length > 1 ? 's' : ''} sans email
-							</div>
-						{/if}
-						{#if hasUnassignedModules && nextActionStep.key === 'mission_order'}
-							<div class="mb-4 flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-								<IconAlertTriangle class="h-4 w-4 shrink-0" />
-								{modulesWithoutFormateur.length} module{modulesWithoutFormateur.length > 1 ? 's' : ''} sans formateur
-							</div>
-						{/if}
-						<Button.Root size="lg" onclick={scrollToStepContent}>
-							{nextActionStep.primaryButton}
-						</Button.Root>
-					</div>
-				{/if}
-
 				<!-- Unassigned formateurs warning card -->
 				{#if hasUnassignedModules}
 					<div class="mb-6 rounded-lg border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
@@ -373,7 +362,7 @@
 									{modulesWithoutFormateur.length} module{modulesWithoutFormateur.length > 1 ? 's' : ''} sans formateur assigné
 								</p>
 							</div>
-							<Button.Root variant="outline" size="sm" onclick={() => (showFormateurs = true)}>
+							<Button.Root variant="outline" size="sm" href="/formations/{formation.id}/formateurs">
 								<IconUsers class="mr-2 h-4 w-4" />
 								Assigner
 							</Button.Root>
@@ -489,29 +478,13 @@
 						</button>
 					{/each}
 				</div>
-				<!-- Quick Access in Mobile Sheet -->
+				<!-- Quick Access in Mobile Sheet: links to dedicated pages -->
 				<div class="mt-4 flex gap-2 border-t pt-4">
-					<Button.Root
-						variant="outline"
-						size="sm"
-						class="flex-1"
-						onclick={() => {
-							mobileStepsOpen = false;
-							showFormateurs = true;
-						}}
-					>
+					<Button.Root variant="outline" size="sm" class="flex-1" href="/formations/{formation.id}/formateurs">
 						<IconUsers class="mr-2 h-4 w-4" />
 						Formateurs ({formateurs.length})
 					</Button.Root>
-					<Button.Root
-						variant="outline"
-						size="sm"
-						class="flex-1"
-						onclick={() => {
-							mobileStepsOpen = false;
-							showSeances = true;
-						}}
-					>
+					<Button.Root variant="outline" size="sm" class="flex-1" href="/formations/{formation.id}/seances">
 						<IconCalendar class="mr-2 h-4 w-4" />
 						Séances ({seances.length})
 					</Button.Root>
@@ -520,7 +493,6 @@
 		</Sheet.Root>
 	</div>
 </div>
-</Tooltip.Provider>
 
 <!-- ========== STEP CONTENT SNIPPETS ========== -->
 
@@ -593,6 +565,32 @@
 			Commencer quand même
 		</Button.Root>
 	</div>
+{/snippet}
+
+{#snippet nextActionShort(stepKey: string | undefined)}
+	{#if stepKey === 'info_verification'}
+		vérifier les infos et la liste des apprenants
+	{:else if stepKey === 'convention_program'}
+		générer la convention et le programme
+	{:else if stepKey === 'needs_analysis'}
+		envoyer le questionnaire aux apprenants
+	{:else if stepKey === 'convocation'}
+		{learners.length} apprenant{learners.length > 1 ? 's' : ''} à convoquer
+	{:else if stepKey === 'mission_order'}
+		générer l'ordre de mission
+	{:else if stepKey === 'end_certificate'}
+		générer les attestations
+	{:else if stepKey === 'satisfaction_questionnaires'}
+		programmer les questionnaires
+	{:else if stepKey === 'instructor_documents'}
+		valider les documents formateur
+	{:else if stepKey === 'billing'}
+		facturation et paiement
+	{:else if stepKey === 'complete_file'}
+		finaliser le dossier Qualiopi
+	{:else}
+		compléter cette étape
+	{/if}
 {/snippet}
 
 {#snippet stepDescription(stepKey: string | undefined)}
@@ -797,115 +795,3 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- Formateurs Sheet (slides from right) -->
-<Sheet.Root bind:open={showFormateurs}>
-	<Sheet.Content side="right" class="w-full sm:max-w-md">
-		<Sheet.Header>
-			<Sheet.Title>Formateurs ({formateurs.length})</Sheet.Title>
-			<Sheet.Description>Gérez les formateurs assignés aux modules de cette formation</Sheet.Description>
-		</Sheet.Header>
-		<div class="mt-6 space-y-6">
-			<div>
-				<h4 class="mb-3 text-sm font-medium">Par module</h4>
-				<div class="space-y-2">
-					{#each modules as module}
-						<div class="rounded-lg border p-3">
-							<p class="font-medium">{module.name}</p>
-							{#if module.formateurId || (module as { formateurName?: string }).formateurName}
-								<p class="text-sm text-muted-foreground">{(module as { formateurName?: string }).formateurName || 'Assigné'}</p>
-								<Button.Root variant="link" size="sm" class="mt-1 h-auto p-0">
-									Modifier
-								</Button.Root>
-							{:else}
-								<p class="text-sm text-amber-600 dark:text-amber-400">Aucun formateur assigné</p>
-								<Button.Root variant="link" size="sm" class="mt-1 h-auto p-0 font-medium">
-									Trouver sur le Marketplace →
-								</Button.Root>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			</div>
-			{#if formateurs.length > 0}
-				<div>
-					<h4 class="mb-3 text-sm font-medium">Formateurs de votre base</h4>
-					<div class="space-y-2">
-						{#each formateurs as formateur}
-							<div class="rounded-lg border p-3">
-								<p class="font-medium">{formateur.name}</p>
-								{#if formateur.specialite}
-									<p class="text-xs text-muted-foreground">{(formateur as { specialite?: string }).specialite}</p>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
-		</div>
-	</Sheet.Content>
-</Sheet.Root>
-
-<!-- Séances Sheet (slides from right) -->
-<Sheet.Root bind:open={showSeances}>
-	<Sheet.Content side="right" class="w-full sm:max-w-lg">
-		<Sheet.Header>
-			<Sheet.Title>Séances ({seances.length})</Sheet.Title>
-			<Sheet.Description>Planning des sessions de formation</Sheet.Description>
-		</Sheet.Header>
-		<div class="mt-6">
-			<!-- View toggle -->
-			<div class="mb-4 flex gap-2">
-				<Button.Root
-					variant={seancesViewMode === 'list' ? 'secondary' : 'ghost'}
-					size="sm"
-					onclick={() => (seancesViewMode = 'list')}
-				>
-					Liste
-				</Button.Root>
-				<Button.Root
-					variant={seancesViewMode === 'calendar' ? 'secondary' : 'ghost'}
-					size="sm"
-					onclick={() => (seancesViewMode = 'calendar')}
-				>
-					Calendrier
-				</Button.Root>
-			</div>
-			{#if seancesViewMode === 'list'}
-				<div class="space-y-3">
-					{#each seances as seance}
-						<div class="rounded-lg border p-4">
-							<div class="mb-2 flex items-start justify-between gap-2">
-								<div class="flex items-center gap-2">
-									<IconCalendar class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<span class="font-medium">{seance.date}</span>
-								</div>
-								{#if seance.emargementTotal != null}
-									<Badge variant={seance.emargementSigned === seance.emargementTotal ? 'default' : 'outline'} class="text-xs">
-										{seance.emargementSigned}/{seance.emargementTotal} émargé{seance.emargementSigned === seance.emargementTotal ? 's' : ''}
-									</Badge>
-								{/if}
-							</div>
-							<p class="text-sm text-muted-foreground">{seance.startTime} → {seance.endTime}</p>
-							{#if seance.moduleName}
-								<p class="mt-1 text-sm font-medium">{seance.moduleName}</p>
-							{/if}
-							{#if seance.formateurName}
-								<p class="text-xs text-muted-foreground">Formateur : {seance.formateurName}</p>
-							{:else}
-								<p class="text-xs text-amber-600 dark:text-amber-400">Formateur non assigné</p>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<div class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-					<IconCalendar class="mx-auto mb-2 h-10 w-10 opacity-50" />
-					<p>Vue calendrier à venir</p>
-				</div>
-			{/if}
-			<Button.Root variant="outline" class="mt-4 w-full">
-				Ajouter une séance
-			</Button.Root>
-		</div>
-	</Sheet.Content>
-</Sheet.Root>
