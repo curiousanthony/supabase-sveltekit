@@ -71,6 +71,7 @@
 		"debug": "^4.4.3",
 		"dotenv": "^17.2.3",
 		"drizzle-orm": "^0.44.6",
+		"jspdf": "^4.1.0",
 		"mode-watcher": "^1.1.0",
 		"postgres": "^3.4.7",
 		"zod": "^3.25.64",
