@@ -79,14 +79,14 @@ export const sitemap = [
 		icon: Handshake
 	},
 	{
-		title: 'Bibliothèque',
-		url: '/bibliotheque',
-		icon: Library
-	},
-	{
 		title: 'Gestion qualité',
 		url: '/qualiopi',
 		icon: ThumbsUp
+	},
+	{
+		title: 'Bibliothèque',
+		url: '/bibliotheque',
+		icon: Library
 	},
 	{
 		title: 'Outils',

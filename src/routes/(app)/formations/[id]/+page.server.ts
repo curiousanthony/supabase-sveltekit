@@ -1,65 +1,6 @@
-import { db } from '$lib/db';
 import type { PageServerLoad } from './$types';
 
-export const load = (async ({ params }) => {
-	// Get the formation object from the ID in the URL, from the database
-	const formation = await db.query.formations.findFirst({
-		where: (formations, { eq }) => eq(formations.id, params.id),
-		with: {
-			thematique: {
-				columns: {
-					name: true
-				}
-			},
-			sousthematique: {
-				columns: {
-					name: true
-				}
-			},
-			user: true,
-			modules: true
-		}
-	});
-
-	const pageName = formation?.name ?? 'Formation';
-
-	if (!formation) {
-		throw new Error('Formation not found');
-	}
-
-	// Conditional Tailwind CSS class based on formation "statut" value
-	// const statutClass = formation.statut === 'En cours' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground';
-	const statutBadgeClass =
-		formation.statut === 'En attente'
-			? '[&_svg]:text-neutral-400'
-			: formation.statut === 'En cours'
-				? '[&_svg]:text-yellow-400'
-				: formation.statut === 'Terminée'
-					? '[&_svg]:text-green-400'
-					: 'bg-muted text-muted-foreground';
-
-	// console.log("from formations/[id]/+page.server.ts → formation:\n", formation);
-
-	const header = {
-		pageName: formation.name,
-		idInWorkspace: formation.idInWorkspace ?? null,
-		actions: [
-			{
-				type: 'badge',
-				icon: 'circle',
-				text: formation.statut,
-				variant: 'outline',
-				className: statutBadgeClass + ' select-none'
-			},
-			{
-				type: 'formationButtonGroup',
-				formationId: formation.id
-			}
-		],
-		backButtonLabel: 'Formations',
-		backButtonHref: '/formations',
-		backButton: true
-	};
-
-	return { formation, pageName, header };
+/** PoC: Aperçu uses layout data only. Return empty so layout's dummy formation + header are used. */
+export const load = (async () => {
+	return {};
 }) satisfies PageServerLoad;

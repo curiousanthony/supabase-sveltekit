@@ -1,9 +1,13 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import type { Component } from 'svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+
+	const sidebar = Sidebar.useSidebar();
 
 	type NavLink = { type: 'link'; title: string; url: string; icon: Component };
 	type NavCollapsible = {
@@ -74,53 +78,99 @@
 					</Sidebar.MenuItem>
 				{:else if item.type === 'collapsible' && !item.hidden}
 					{@const isSectionActive = item.children.some((c) => calculateIsActive(c.url, currentPath))}
-					<!-- Collapsible Sidebar.Menu pattern from shadcn-svelte docs -->
-					<Collapsible.Root
-						open={isOpen(item.title, item.defaultOpen)}
-						onOpenChange={(v) => setOpen(item.title, v)}
-						class="group/collapsible"
-					>
+					{#if sidebar.state === 'collapsed'}
+						<!-- When sidebar is collapsed: show dropdown with child links -->
 						<Sidebar.MenuItem>
-							<Collapsible.Trigger>
-								{#snippet child({ props: triggerProps })}
-									<Sidebar.MenuButton
-										{...triggerProps}
-										tooltipContent={item.title}
-										isActive={isSectionActive}
-									>
-										{#snippet child({ props })}
-											<button type="button" {...props}>
-												<item.icon
-													class="size-[1.1em] shrink-0 {isSectionActive ? 'text-primary' : ''}"
-												/>
-												<span
-													class="text-[1.1em] {isSectionActive ? 'text-primary' : ''}"
-												>
-													{item.title}
-												</span>
-												<ChevronDown
-													class="ms-auto size-4 shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-180"
-												/>
-											</button>
-										{/snippet}
-									</Sidebar.MenuButton>
-								{/snippet}
-							</Collapsible.Trigger>
-							<Collapsible.Content>
-								<Sidebar.MenuSub>
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger>
+									{#snippet child({ props: triggerProps })}
+										<Sidebar.MenuButton
+											{...triggerProps}
+											tooltipContent={item.title}
+											isActive={isSectionActive}
+										>
+											{#snippet child({ props })}
+												<button type="button" {...props}>
+													<item.icon
+														class="size-[1.1em] shrink-0 {isSectionActive ? 'text-primary' : ''}"
+													/>
+													<span
+														class="flex flex-1 items-center gap-2 overflow-hidden text-[1.1em] {isSectionActive ? 'text-primary' : ''}"
+													>
+														<span class="truncate">{item.title}</span>
+													</span>
+												</button>
+											{/snippet}
+										</Sidebar.MenuButton>
+									{/snippet}
+								</DropdownMenu.Trigger>
+								<DropdownMenu.Content
+									class="min-w-48 rounded-lg"
+									side="right"
+									align="start"
+									sideOffset={8}
+								>
+									<DropdownMenu.Label class="text-xs text-muted-foreground">
+										{item.title}
+									</DropdownMenu.Label>
+									<DropdownMenu.Separator />
 									{#each item.children as subItem (subItem.url)}
-										<Sidebar.MenuSubItem>
-											<Sidebar.MenuSubButton isActive={calculateIsActive(subItem.url, currentPath)}>
-												{#snippet child({ props })}
-													<a href={subItem.url} {...props}>{subItem.title}</a>
-												{/snippet}
-											</Sidebar.MenuSubButton>
-										</Sidebar.MenuSubItem>
+										<DropdownMenu.Item onclick={() => goto(subItem.url)}>
+											{subItem.title}
+										</DropdownMenu.Item>
 									{/each}
-								</Sidebar.MenuSub>
-							</Collapsible.Content>
+								</DropdownMenu.Content>
+							</DropdownMenu.Root>
 						</Sidebar.MenuItem>
-					</Collapsible.Root>
+					{:else}
+						<!-- When sidebar is expanded: collapsible with sub-items -->
+						<Collapsible.Root
+							open={isOpen(item.title, item.defaultOpen)}
+							onOpenChange={(v) => setOpen(item.title, v)}
+							class="group/collapsible"
+						>
+							<Sidebar.MenuItem>
+								<Collapsible.Trigger>
+									{#snippet child({ props: triggerProps })}
+										<Sidebar.MenuButton
+											{...triggerProps}
+											tooltipContent={item.title}
+											isActive={isSectionActive}
+										>
+											{#snippet child({ props })}
+												<button type="button" {...props}>
+													<item.icon
+														class="size-[1.1em] shrink-0 {isSectionActive ? 'text-primary' : ''}"
+													/>
+													<span
+														class="flex flex-1 items-center gap-2 overflow-hidden text-[1.1em] {isSectionActive ? 'text-primary' : ''}"
+													>
+														<span class="truncate">{item.title}</span>
+														<ChevronDown
+															class="ms-auto size-4 shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-180"
+														/>
+													</span>
+												</button>
+											{/snippet}
+										</Sidebar.MenuButton>
+									{/snippet}
+								</Collapsible.Trigger>
+								<Collapsible.Content>
+									<Sidebar.MenuSub>
+										{#each item.children as subItem (subItem.url)}
+											<Sidebar.MenuSubItem>
+												<Sidebar.MenuSubButton isActive={calculateIsActive(subItem.url, currentPath)}>
+													{#snippet child({ props })}
+														<a href={subItem.url} {...props}>{subItem.title}</a>
+													{/snippet}
+												</Sidebar.MenuSubButton>
+											</Sidebar.MenuSubItem>
+										{/each}
+									</Sidebar.MenuSub>
+								</Collapsible.Content>
+							</Sidebar.MenuItem>
+						</Collapsible.Root>
+					{/if}
 				{/if}
 			{/each}
 		</Sidebar.Menu>
