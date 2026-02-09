@@ -28,20 +28,22 @@
 	const formation = $derived(data?.formation);
 	const formationId = $derived(formation?.id ?? '');
 
-	// Dummy: 7 steps so user sees that more can appear (2 done, 1 current, 4 future/locked)
+	// Dummy: 7 steps; labels as action verbs. Doable = !done && !locked. Show completed (reward), doable (action), locked (unlock me).
 	const QUEST_STEPS = [
-		{ id: '1', label: 'Vérifications des informations', done: true, href: null },
-		{ id: '2', label: 'Générer la convention', done: true, href: null },
-		{ id: '3', label: 'Assigner un formateur', done: false, current: true, href: 'formateurs' },
-		{ id: '4', label: 'Questionnaires de satisfaction', done: false, locked: true, href: 'suivi' },
+		{ id: '1', label: 'Vérifier les informations', done: true, locked: false, href: null },
+		{ id: '2', label: 'Générer la convention', done: true, locked: false, href: null },
+		{ id: '3', label: 'Assigner un formateur', done: false, locked: false, href: 'formateurs' },
+		{ id: '4', label: 'Envoyer les questionnaires de satisfaction', done: false, locked: false, href: 'suivi' },
 		{ id: '5', label: "Contacter l'OPCO", done: false, locked: true, href: 'suivi' },
-		{ id: '6', label: 'Documents formateur', done: false, locked: true, href: 'formateurs' },
-		{ id: '7', label: 'Facturation', done: false, locked: true, href: 'suivi' }
+		{ id: '6', label: 'Collecter les documents formateur', done: false, locked: true, href: 'formateurs' },
+		{ id: '7', label: 'Émettre la facturation', done: false, locked: true, href: 'suivi' }
 	];
 	const completedCount = QUEST_STEPS.filter((s) => s.done).length;
 	const totalCount = QUEST_STEPS.length;
-	const currentStep = QUEST_STEPS.find((s) => s.current);
-	const nextStep = QUEST_STEPS.find((s) => !s.done && !s.locked && !s.current);
+	const completedSteps = $derived(QUEST_STEPS.filter((s) => s.done));
+	const doableSteps = $derived(QUEST_STEPS.filter((s) => !s.done && !s.locked).slice(0, 3));
+	const lockedSteps = $derived(QUEST_STEPS.filter((s) => !s.done && s.locked).slice(0, 2));
+	const allComplete = $derived(completedCount === totalCount && totalCount > 0);
 
 	// Session date as YYYY-MM-DD for past/today/future; displayLabel for UI
 	const DUMMY_SESSIONS = [
@@ -114,41 +116,66 @@
 </script>
 
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-	<!-- Cell 1 – Quest tracker (current + next only; full list on Suivi tab) -->
+	<!-- Cell 1 – Quest tracker: doable → locked → progress at bottom; completed/locked visible for reward & motivation -->
 	<Card.Root class="flex flex-col">
-		<Card.Header class="flex flex-col gap-2">
-			<Card.Title>Actions à réaliser</Card.Title>
-			<div class="flex items-center gap-3">
-				<span class="text-sm text-muted-foreground shrink-0">
-					{completedCount} / {totalCount} complétées
-				</span>
-				<Progress.Root value={(completedCount / totalCount) * 100} class="h-2 flex-1 min-w-0" />
-			</div>
+		<Card.Header>
+			<Card.Title>Actions</Card.Title>
 		</Card.Header>
-		<Card.Content class="flex flex-1 flex-col gap-4">
-			{#if currentStep}
-				<div class="rounded-lg border bg-muted/50 p-3">
-					<p class="text-xs font-medium text-muted-foreground">Prochaine étape</p>
-					<p class="font-medium">{currentStep.label}</p>
-					<Button
-						class="mt-2 cursor-pointer"
-						onclick={() => currentStep.href && goToTab(currentStep.href)}
-					>
-						Commencer
-						<ChevronRight class="size-4" />
-					</Button>
+		<Card.Content class="flex flex-1 flex-col gap-2">
+			{#if doableSteps.length > 0}
+				<div class="space-y-1.5">
+					{#each doableSteps as step}
+						<button
+							type="button"
+							class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2.5 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/50 focus-visible:outline focus-visible:ring-2 focus-visible:ring-ring"
+							onclick={() => step.href && goToTab(step.href)}
+						>
+							<span class="font-medium text-foreground">{step.label}</span>
+							<ChevronRight class="size-4 shrink-0 text-muted-foreground" />
+						</button>
+					{/each}
+				</div>
+			{:else if allComplete}
+				<p class="py-2 text-sm text-muted-foreground">Tout est complété.</p>
+			{/if}
+			{#if lockedSteps.length > 0}
+				<div class="space-y-1">
+					{#each lockedSteps as step}
+						<div
+							class="flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 px-3 py-2 text-sm text-muted-foreground"
+							aria-disabled="true"
+						>
+							<Lock class="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
+							<span>{step.label}</span>
+						</div>
+					{/each}
 				</div>
 			{/if}
-			{#if nextStep}
-				<p class="text-xs text-muted-foreground">
-					Ensuite : <span class="font-medium text-foreground">{nextStep.label}</span>
-				</p>
+			{#if completedSteps.length > 0}
+				<div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+					{#each completedSteps as step}
+						<span class="inline-flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-0.5">
+							<Check class="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+							<span class="line-through">{step.label}</span>
+						</span>
+					{/each}
+				</div>
 			{/if}
+			<div class="mt-2 space-y-1">
+				<div class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+					<span>{completedCount} complétées</span>
+					<span class="tabular-nums">{completedCount}/{totalCount}</span>
+				</div>
+				<Progress.Root
+					value={(completedCount / totalCount) * 100}
+					class="h-1.5 w-full min-h-[6px] rounded-full"
+				/>
+			</div>
 			<a
 				href="/formations/{formationId}/suivi"
-				class="text-sm text-primary underline-offset-4 hover:underline cursor-pointer"
+				class="mt-1 text-sm text-primary underline-offset-4 hover:underline cursor-pointer"
 			>
-				Voir toutes les actions ({completedCount}/{totalCount})
+				Voir toutes les actions
 			</a>
 		</Card.Content>
 	</Card.Root>

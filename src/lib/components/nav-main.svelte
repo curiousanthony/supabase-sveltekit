@@ -115,8 +115,10 @@
 									</DropdownMenu.Label>
 									<DropdownMenu.Separator />
 									{#each item.children as subItem (subItem.url)}
-										<DropdownMenu.Item onclick={() => goto(subItem.url)}>
-											{subItem.title}
+										<DropdownMenu.Item>
+											<a href={subItem.url} class="block w-full">
+												{subItem.title}
+											</a>
 										</DropdownMenu.Item>
 									{/each}
 								</DropdownMenu.Content>

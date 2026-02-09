@@ -25,10 +25,15 @@
 	} = $props();
 
 	let allowToggle = $state(false);
+	let initialized = $state(false);
 
 	const sidebar = setSidebar({
 		open: () => open,
 		setOpen: (value: boolean) => {
+			if (!initialized) {
+				open = value;
+				return;
+			}
 			if (!allowToggle && value === false) return;
 			open = value;
 			onOpenChange(value);
@@ -38,10 +43,11 @@
 
 	let mountTimeoutId: ReturnType<typeof setTimeout> | undefined;
 	onMount(() => {
-		// Force expanded on first paint so sidebar doesn't disappear; allow toggle after layout settled
-		sidebar.setOpen(true);
+		// Force expanded on first paint only when currently closed; allow toggle after layout settled
+		if (!open) sidebar.setOpen(true);
 		mountTimeoutId = setTimeout(() => {
 			allowToggle = true;
+			initialized = true;
 		}, 400);
 	});
 	onDestroy(() => {
