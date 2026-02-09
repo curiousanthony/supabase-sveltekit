@@ -38,11 +38,11 @@
 		{ id: '6', label: 'Collecter les documents formateur', done: false, locked: true, href: 'formateurs' },
 		{ id: '7', label: 'Émettre la facturation', done: false, locked: true, href: 'suivi' }
 	];
-	const completedCount = QUEST_STEPS.filter((s) => s.done).length;
-	const totalCount = QUEST_STEPS.length;
 	const completedSteps = $derived(QUEST_STEPS.filter((s) => s.done));
 	const doableSteps = $derived(QUEST_STEPS.filter((s) => !s.done && !s.locked).slice(0, 3));
 	const lockedSteps = $derived(QUEST_STEPS.filter((s) => !s.done && s.locked).slice(0, 2));
+	const completedCount = $derived(completedSteps.length);
+	const totalCount = $derived(QUEST_STEPS.length);
 	const allComplete = $derived(completedCount === totalCount && totalCount > 0);
 
 	// Session date as YYYY-MM-DD for past/today/future; displayLabel for UI
@@ -167,7 +167,7 @@
 					<span class="tabular-nums">{completedCount}/{totalCount}</span>
 				</div>
 				<Progress.Root
-					value={(completedCount / totalCount) * 100}
+					value={totalCount > 0 ? (completedCount / totalCount) * 100 : 0}
 					class="h-1.5 w-full min-h-[6px] rounded-full"
 				/>
 			</div>

@@ -116,9 +116,9 @@
 									<DropdownMenu.Separator />
 									{#each item.children as subItem (subItem.url)}
 										<DropdownMenu.Item>
-											<a href={subItem.url} class="block w-full">
-												{subItem.title}
-											</a>
+											{#snippet child({ props })}
+												<a href={subItem.url} class="block w-full" {...props}>{subItem.title}</a>
+											{/snippet}
 										</DropdownMenu.Item>
 									{/each}
 								</DropdownMenu.Content>

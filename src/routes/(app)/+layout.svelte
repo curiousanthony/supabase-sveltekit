@@ -140,7 +140,7 @@
 				</div>
 			</div>
 		{/if}
-		<div class="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+		<div class="flex min-w-0 flex-1 flex-col gap-4 p-4">
 			{@render children()}
 		</div>
 	</main>

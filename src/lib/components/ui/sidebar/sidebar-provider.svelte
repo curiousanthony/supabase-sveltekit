@@ -41,10 +41,24 @@
 		},
 	});
 
+	function getSidebarStateFromCookie(): boolean | null {
+		if (typeof document === "undefined") return null;
+		const match = document.cookie
+			.split("; ")
+			.find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`));
+		if (!match) return null;
+		const value = match.slice(SIDEBAR_COOKIE_NAME.length + 1);
+		if (value === "true") return true;
+		if (value === "false") return false;
+		return null;
+	}
+
 	let mountTimeoutId: ReturnType<typeof setTimeout> | undefined;
 	onMount(() => {
-		// Force expanded on first paint only when currently closed; allow toggle after layout settled
-		if (!open) sidebar.setOpen(true);
+		const saved = getSidebarStateFromCookie();
+		if (saved !== null) open = saved;
+		// Force expanded on first paint only when no saved preference and currently closed
+		if (saved === null && !open) sidebar.setOpen(true);
 		mountTimeoutId = setTimeout(() => {
 			allowToggle = true;
 			initialized = true;
