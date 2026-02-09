@@ -6,8 +6,8 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import { IconCircleFilled, IconExternalLink, IconPlus, IconSearch } from '@tabler/icons-svelte';
-	import Share from '@tabler/icons-svelte/icons/share';
-	import History from '@tabler/icons-svelte/icons/history';
+	import Share from '@lucide/svelte/icons/share';
+	import History from '@lucide/svelte/icons/history';
 	import DotsVertical from '@tabler/icons-svelte/icons/dots-vertical';
 	import Pencil from '@tabler/icons-svelte/icons/pencil';
 	import Copy from '@tabler/icons-svelte/icons/copy';
@@ -89,22 +89,24 @@
 				</Button>
 			{:else if action.type === 'formationButtonGroup'}
 				<!-- Formation header: share link, history, more-options dropdown (edit, copy, discuss, delete) -->
-				<ButtonGroup.Root aria-label="Actions formation">
+				<ButtonGroup.Root aria-label="Actions formation" class="items-stretch">
 					<!-- Will: share the Formation link -->
 					<Button
 						variant="outline"
-						size="icon-sm"
+						size="icon"
 						aria-label="Partager le lien de la formation"
 						onclick={() => {}}
+						class="size-9 min-h-9 min-w-9 p-2"
 					>
 						<Share class="size-4" />
 					</Button>
 					<!-- Will: open modifications history logs -->
 					<Button
 						variant="outline"
-						size="icon-sm"
+						size="icon"
 						aria-label="Voir l'historique des modifications"
 						onclick={() => {}}
+						class="size-9 min-h-9 min-w-9 p-2"
 					>
 						<History class="size-4" />
 					</Button>
@@ -114,9 +116,9 @@
 								<Button
 									{...props}
 									variant="outline"
-									size="icon-sm"
+									size="icon"
 									aria-label="Plus d'options"
-									class="data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
+									class="size-9 min-h-9 min-w-9 p-2 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
 								>
 									<DotsVertical class="size-4" />
 								</Button>
