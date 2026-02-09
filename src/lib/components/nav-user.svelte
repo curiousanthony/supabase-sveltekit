@@ -66,9 +66,15 @@
 						</Avatar.Root>
 						<div class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
 							<span class="truncate font-medium">{user.name}</span>
-							<span class="truncate text-xs text-muted-foreground">
-								{user.email}
-							</span>
+							{#if roleLabel}
+								<span class="truncate text-xs text-muted-foreground">
+									{roleLabel}
+								</span>
+							{:else}
+								<span class="truncate text-xs text-muted-foreground">
+									{user.email}
+								</span>
+							{/if}
 						</div>
 						<DotsVerticalIcon class="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
 					</Sidebar.MenuButton>

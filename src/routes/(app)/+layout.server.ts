@@ -21,6 +21,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 	const header = { pageName, actions: [] };
 
 	let workspace: { id: string; name: string | null; logoUrl: string | null } | null = null;
+	let workspacePlanTitle: string = 'Mentore Pro';
 	let workspaces: {
 		id: string;
 		name: string | null;
@@ -61,6 +62,9 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 						logoUrl: workspacesList[0].logoUrl
 					}
 				: null;
+
+		// TODO: Replace with actual workspace plan title from workspace subscription/plan (e.g. from DB or billing provider)
+		workspacePlanTitle = 'Mentore Pro';
 
 		workspaces = workspacesList.map((w) => ({
 			id: w.id,
@@ -108,6 +112,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 		cookies: cookies.getAll(),
 		header,
 		workspace,
+		workspacePlanTitle,
 		workspaces,
 		role,
 		roleLabel,

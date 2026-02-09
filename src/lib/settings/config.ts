@@ -1,17 +1,18 @@
 import logoPath from '$lib/assets/logo.svg';
 import favicon from '$lib/assets/favicon.png';
-import Inbox from '@tabler/icons-svelte/icons/inbox';
-import LayoutDashboard from '@tabler/icons-svelte/icons/layout-dashboard';
-import Messages from '@tabler/icons-svelte/icons/messages';
-import CalendarWeek from '@tabler/icons-svelte/icons/calendar-week';
-import Book_2 from '@tabler/icons-svelte/icons/book-2';
-// import AddressBook from '@tabler/icons-svelte/icons/address-book'
-import HeartHandshake from '@tabler/icons-svelte/icons/heart-handshake';
-import Books from '@tabler/icons-svelte/icons/books';
-import ThumbUp from '@tabler/icons-svelte/icons/thumb-up';
-import Tool from '@tabler/icons-svelte/icons/tool';
-import History from '@tabler/icons-svelte/icons/history';
-import Users from '@tabler/icons-svelte/icons/users';
+import Search from '@lucide/svelte/icons/search';
+import Home from '@lucide/svelte/icons/home';
+import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+import Bell from '@lucide/svelte/icons/bell';
+import MessageCircle from '@lucide/svelte/icons/message-circle';
+import Calendar from '@lucide/svelte/icons/calendar';
+import BookOpen from '@lucide/svelte/icons/book-open';
+import Handshake from '@lucide/svelte/icons/handshake';
+import Library from '@lucide/svelte/icons/library';
+import ThumbsUp from '@lucide/svelte/icons/thumbs-up';
+import Wrench from '@lucide/svelte/icons/wrench';
+import Users from '@lucide/svelte/icons/users';
+import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 
 /** Permission required per nav URL. Undefined = visible to all. */
 export const sitemapPermissions: Record<
@@ -43,9 +44,9 @@ export const appInfo = {
 
 export const sitemap = [
 	{
-		title: 'Boîte de réception',
+		title: 'Notifications',
 		url: '/inbox',
-		icon: Inbox
+		icon: Bell
 	},
 	{
 		title: 'Tableau de bord',
@@ -55,48 +56,42 @@ export const sitemap = [
 	{
 		title: 'Messagerie',
 		url: '/messagerie',
-		icon: Messages
-	},
-	{
-		title: 'Calendrier',
-		url: '/calendrier',
-		icon: CalendarWeek
+		icon: MessageCircle
 	},
 	{
 		title: 'Formations',
 		url: '/formations',
-		icon: Book_2
+		icon: GraduationCap
+	},
+	{
+		title: 'Calendrier',
+		url: '/calendrier',
+		icon: Calendar
 	},
 	{
 		title: 'Contacts',
 		url: '/contacts',
-		// icon: AddressBook,
 		icon: Users
 	},
 	{
 		title: 'Deals',
 		url: '/deals',
-		icon: HeartHandshake
+		icon: Handshake
 	},
 	{
 		title: 'Bibliothèque',
 		url: '/bibliotheque',
-		icon: Books
+		icon: Library
 	},
 	{
 		title: 'Gestion qualité',
 		url: '/qualiopi',
-		icon: ThumbUp
+		icon: ThumbsUp
 	},
 	{
 		title: 'Outils',
 		url: '/outils',
-		icon: Tool
-	},
-	{
-		title: 'Historique',
-		url: '/historique',
-		icon: History
+		icon: Wrench
 	}
 ];
 

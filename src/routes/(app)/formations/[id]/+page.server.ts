@@ -42,6 +42,7 @@ export const load = (async ({ params }) => {
 
 	const header = {
 		pageName: formation.name,
+		idInWorkspace: formation.idInWorkspace ?? null,
 		actions: [
 			{
 				type: 'badge',
@@ -51,12 +52,8 @@ export const load = (async ({ params }) => {
 				className: statutBadgeClass + ' select-none'
 			},
 			{
-				type: 'button',
-				icon: 'search',
-				text: 'Trouver un formateur',
-				href: `/formations/${formation.id}/modifier`,
-				// className: 'bg-primary text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground',
-				variant: 'default'
+				type: 'formationButtonGroup',
+				formationId: formation.id
 			}
 		],
 		backButtonLabel: 'Formations',

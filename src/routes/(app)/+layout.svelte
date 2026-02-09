@@ -104,6 +104,7 @@
 		variant="inset"
 		userObject={data?.user}
 		workspace={data?.workspace}
+		workspacePlanTitle={data?.workspacePlanTitle}
 		workspaces={data?.workspaces}
 		role={data?.role}
 		roleLabel={data?.roleLabel}

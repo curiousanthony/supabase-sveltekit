@@ -18,11 +18,14 @@
 	let {
 		workspaces = [],
 		defaultWorkspace = null,
-		canManageWorkspace = false
+		canManageWorkspace = false,
+		workspacePlanTitle = 'Mentore Pro'
 	}: {
 		workspaces: WorkspaceItem[];
 		defaultWorkspace: { id: string; name: string | null; logoUrl?: string | null } | null;
 		canManageWorkspace?: boolean;
+		/** Current workspace pricing plan title. TODO: will be replaced with actual workspace plan from DB/billing. */
+		workspacePlanTitle?: string;
 	} = $props();
 
 	let selectedWorkspace = $state(defaultWorkspace ?? (workspaces[0] ? { id: workspaces[0].id, name: workspaces[0].name } : null));
@@ -85,8 +88,9 @@
 							{/if}
 						</div>
 						<div class="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-							<span class="font-medium">Espace de travail</span>
-							<span>{displayName}</span>
+							<span class="font-medium">{displayName}</span>
+							<!-- Plan title: TODO replace with actual workspace plan from DB/billing -->
+							<span class="text-muted-foreground text-xs">{workspacePlanTitle}</span>
 						</div>
 						<ChevronsUpDownIcon class="ml-auto group-data-[collapsible=icon]:hidden" />
 					</Sidebar.MenuButton>
