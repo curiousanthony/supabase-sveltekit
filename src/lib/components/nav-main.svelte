@@ -21,8 +21,24 @@
 	const currentPath = $derived(page?.url?.pathname ?? '');
 	const items = $derived(mainNav ?? []);
 
-	// Contacts section: collapsible open state (default open)
-	let contactsOpen = $state(true);
+	// Per-section collapsible state keyed by section id (e.g. item.title)
+	let collapsibleState = $state<Record<string, boolean>>({});
+
+	function isOpen(id: string, defaultOpen: boolean): boolean {
+		return collapsibleState[id] ?? defaultOpen;
+	}
+
+	function isCollapsed(id: string, defaultOpen: boolean): boolean {
+		return !isOpen(id, defaultOpen);
+	}
+
+	function setOpen(id: string, value: boolean): void {
+		collapsibleState = { ...collapsibleState, [id]: value };
+	}
+
+	function toggleCollapse(id: string, defaultOpen: boolean): void {
+		setOpen(id, !isOpen(id, defaultOpen));
+	}
 
 	function calculateIsActive(itemUrl: string, path: string): boolean {
 		const isRoot = itemUrl === '/';
@@ -57,30 +73,35 @@
 						</Sidebar.MenuButton>
 					</Sidebar.MenuItem>
 				{:else if item.type === 'collapsible' && !item.hidden}
+					{@const isSectionActive = item.children.some((c) => calculateIsActive(c.url, currentPath))}
 					<!-- Collapsible Sidebar.Menu pattern from shadcn-svelte docs -->
-					<Collapsible.Root bind:open={contactsOpen} class="group/collapsible">
+					<Collapsible.Root
+						open={isOpen(item.title, item.defaultOpen)}
+						onOpenChange={(v) => setOpen(item.title, v)}
+						class="group/collapsible"
+					>
 						<Sidebar.MenuItem>
 							<Collapsible.Trigger>
 								{#snippet child({ props: triggerProps })}
 									<Sidebar.MenuButton
 										{...triggerProps}
 										tooltipContent={item.title}
-										isActive={calculateIsActive('/contacts', currentPath)}
+										isActive={isSectionActive}
 									>
 										{#snippet child({ props })}
-											<a href="/contacts" {...props}>
+											<button type="button" {...props}>
 												<item.icon
-													class="size-[1.1em] shrink-0 {calculateIsActive('/contacts', currentPath) ? 'text-primary' : ''}"
+													class="size-[1.1em] shrink-0 {isSectionActive ? 'text-primary' : ''}"
 												/>
 												<span
-													class="text-[1.1em] {calculateIsActive('/contacts', currentPath) ? 'text-primary' : ''}"
+													class="text-[1.1em] {isSectionActive ? 'text-primary' : ''}"
 												>
 													{item.title}
 												</span>
 												<ChevronDown
 													class="ms-auto size-4 shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-180"
 												/>
-											</a>
+											</button>
 										{/snippet}
 									</Sidebar.MenuButton>
 								{/snippet}

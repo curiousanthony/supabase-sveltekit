@@ -2,7 +2,7 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	let { pageName } = $derived(data);
+	let pageName = $derived(data.pageName ?? 'Crédits');
 </script>
 
 <svelte:head>

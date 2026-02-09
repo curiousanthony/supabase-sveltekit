@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from "svelte";
+	import { onDestroy, onMount } from "svelte";
 	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 	import { cn, type WithElementRef } from "$lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
@@ -25,13 +25,6 @@
 	} = $props();
 
 	let allowToggle = $state(false);
-	onMount(() => {
-		// Force expanded on first paint so sidebar doesn't disappear; allow toggle after layout settled
-		open = true;
-		setTimeout(() => {
-			allowToggle = true;
-		}, 400);
-	});
 
 	const sidebar = setSidebar({
 		open: () => open,
@@ -41,6 +34,18 @@
 			onOpenChange(value);
 			document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
 		},
+	});
+
+	let mountTimeoutId: ReturnType<typeof setTimeout> | undefined;
+	onMount(() => {
+		// Force expanded on first paint so sidebar doesn't disappear; allow toggle after layout settled
+		sidebar.setOpen(true);
+		mountTimeoutId = setTimeout(() => {
+			allowToggle = true;
+		}, 400);
+	});
+	onDestroy(() => {
+		if (mountTimeoutId !== undefined) clearTimeout(mountTimeoutId);
 	});
 </script>
 

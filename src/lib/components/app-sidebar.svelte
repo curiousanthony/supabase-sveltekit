@@ -18,7 +18,6 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import Handshake from '@lucide/svelte/icons/handshake';
 	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
-	import Users from '@lucide/svelte/icons/users';
 	import Coins from '@lucide/svelte/icons/coins';
 
 	let {
@@ -101,8 +100,7 @@
 				href: '/formations/creer',
 				icon: GraduationCap,
 				show: allowedNavUrls.includes('/formations')
-			},
-			{ title: 'Contacts', href: '/contacts', icon: Users, show: allowedNavUrls.includes('/contacts') }
+			}
 		].filter((a) => a.show)
 	);
 
