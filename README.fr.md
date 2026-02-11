@@ -22,30 +22,28 @@ Construit sur [Mentore.fr](https://mentore.fr), la plateforme de mise en relatio
 
 ## 📖 Documentation
 
--   [Workflow Base de Données](./docs/database.fr.md) - **À lire en premier** avant de modifier le schéma de la base de données.
+-   [Environnement de développement](./docs/setup-dev.fr.md) - **Mise en place pour un nouveau développeur** (Docker, Supabase local, `.env`, `bun run dev`).
+-   [Workflow Base de Données](./docs/database.fr.md) - À lire avant de modifier le schéma de la base de données.
 -   [Workflow Git & GitHub](./docs/git-workflow.fr.md) - Standards pour les branches, commits et releases. La prod déploie depuis `main` ; l’intégration se fait sur `develop` ; les branches de feature sont de courte durée.
 
 ## 💻 Développement
 
 ### Prérequis
 
--   Node.js
+-   Node.js (ou Bun)
+-   **Docker** (Docker Desktop sur Mac/Windows — requis pour Supabase en local)
 -   Supabase CLI (`brew install supabase/tap/supabase`)
 
-### Démarrage
+### Premier démarrage (nouveau sur le projet)
 
-1.  **Installer les dépendances** :
-    ```bash
-    npm install
-    ```
+Pour avoir le même environnement local (Supabase dans Docker + app sur localhost), suivre le guide **[Environnement de développement](./docs/setup-dev.fr.md)** : installation, `supabase start`, fichier `.env` à partir de `.env.dev.example`, `supabase db reset`, puis `bun run dev`.
 
-2.  **Lancer le serveur de développement** :
-    ```bash
-    npm run dev
-    ```
+### Démarrage rapide (environnement déjà configuré)
 
-3.  **Ouvrir l'application** :
-    Naviguez vers [http://localhost:5173](http://localhost:5173).
+1.  **Démarrer Docker** puis Supabase : `supabase start`
+2.  **Installer les dépendances** (si besoin) : `bun install` ou `npm install`
+3.  **Lancer l’app** : `bun run dev`
+4.  **Ouvrir** : [http://localhost:5173](http://localhost:5173)
 
 ### Gestion de la Base de Données
 
