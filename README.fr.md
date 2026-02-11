@@ -8,31 +8,31 @@ Construit sur [Mentore.fr](https://mentore.fr), la plateforme de mise en relatio
 
 ## 🚀 Fonctionnalités Clés
 
--   **Simplification Administrative** : Automatisez la génération des Conventions, Feuilles d'émargement et autres documents obligatoires.
--   **Conformité Qualiopi** : Workflows d'assurance qualité intégrés pour répondre sans effort à tous les critères réglementaires.
--   **Mise en relation Formateurs** (Bientôt disponible) : Trouvez et réservez directement des formateurs indépendants qualifiés du réseau Mentore depuis l'application.
--   **Espaces de travail Multi-Comptes** : Gérez plusieurs centres de formation ou départements depuis un seul compte.
+- **Simplification Administrative** : Automatisez la génération des Conventions, Feuilles d'émargement et autres documents obligatoires.
+- **Conformité Qualiopi** : Workflows d'assurance qualité intégrés pour répondre sans effort à tous les critères réglementaires.
+- **Mise en relation Formateurs** (Bientôt disponible) : Trouvez et réservez directement des formateurs indépendants qualifiés du réseau Mentore depuis l'application.
+- **Espaces de travail Multi-Comptes** : Gérez plusieurs centres de formation ou départements depuis un seul compte.
 
 ## 🛠 Stack Technique
 
--   **Framework** : [SvelteKit](https://kit.svelte.dev/)
--   **Base de données** : [Supabase](https://supabase.com/) (PostgreSQL)
--   **ORM** : [Drizzle ORM](https://orm.drizzle.team/)
--   **Styles** : TailwindCSS
+- **Framework** : [SvelteKit](https://kit.svelte.dev/)
+- **Base de données** : [Supabase](https://supabase.com/) (PostgreSQL)
+- **ORM** : [Drizzle ORM](https://orm.drizzle.team/)
+- **Styles** : TailwindCSS
 
 ## 📖 Documentation
 
--   [Environnement de développement](./docs/setup-dev.fr.md) - **Mise en place pour un nouveau développeur** (Docker, Supabase local, `.env`, `bun run dev`).
--   [Workflow Base de Données](./docs/database.fr.md) - À lire avant de modifier le schéma de la base de données.
--   [Workflow Git & GitHub](./docs/git-workflow.fr.md) - Standards pour les branches, commits et releases. La prod déploie depuis `main` ; l’intégration se fait sur `develop` ; les branches de feature sont de courte durée.
+- [Environnement de développement](./docs/setup-dev.fr.md) - **Mise en place pour un nouveau développeur** (Docker, Supabase local, `.env`, `bun run dev`).
+- [Workflow Base de Données](./docs/database.fr.md) - À lire avant de modifier le schéma de la base de données.
+- [Workflow Git & GitHub](./docs/git-workflow.fr.md) - Standards pour les branches, commits et releases. La prod déploie depuis `main` ; l’intégration se fait sur `develop` ; les branches de feature sont de courte durée.
 
 ## 💻 Développement
 
 ### Prérequis
 
--   Node.js (ou Bun)
--   **Docker** (Docker Desktop sur Mac/Windows — requis pour Supabase en local)
--   Supabase CLI (`brew install supabase/tap/supabase`)
+- Node.js (ou Bun)
+- **Docker** (Docker Desktop sur Mac/Windows — requis pour Supabase en local)
+- Supabase CLI (`brew install supabase/tap/supabase`)
 
 ### Premier démarrage (nouveau sur le projet)
 
@@ -47,7 +47,7 @@ Pour avoir le même environnement local (Supabase dans Docker + app sur localhos
 
 ### Gestion de la Base de Données
 
-Nous utilisons un workflow **DB-First** (Base de données d'abord). Veuillez vous référer au guide [Workflow Base de Données](./docs/database.md) pour des instructions détaillées sur la façon de modifier le schéma à l'aide du Dashboard Supabase et de Drizzle.
+Nous utilisons un workflow **DB-First** (Base de données d'abord). Veuillez vous référer au guide [Workflow Base de Données](./docs/database.fr.md) pour des instructions détaillées sur la façon de modifier le schéma à l'aide du Dashboard Supabase et de Drizzle.
 
 ## 🏗 Build
 

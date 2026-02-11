@@ -17,8 +17,8 @@ Optionnel, s’il veut tester la connexion GitHub ou Google en local : lui donne
 ### 1. Prérequis
 
 - **Node.js** (ou **Bun** si le projet utilise `bun run dev`).
-- **Docker**  
-  - Sur macOS/Windows : **Docker Desktop** (au démarrage, il lance les conteneurs).  
+- **Docker**
+  - Sur macOS/Windows : **Docker Desktop** (au démarrage, il lance les conteneurs).
   - Sur Linux : Docker Engine + Docker Compose.
 - **Supabase CLI** :
   ```bash
@@ -28,7 +28,7 @@ Optionnel, s’il veut tester la connexion GitHub ou Google en local : lui donne
 ### 2. Cloner et installer
 
 ```bash
-git clone <url-du-repo>
+git clone https://github.com/curiousanthony/supabase-sveltekit.git
 cd supabase-sveltekit
 bun install   # ou npm install
 ```
@@ -52,6 +52,7 @@ supabase status
 ```
 
 Tu y verras notamment :
+
 - **API URL** → `PUBLIC_SUPABASE_URL`
 - **anon key** → `PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY`
