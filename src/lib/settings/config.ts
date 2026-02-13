@@ -24,6 +24,7 @@ export const sitemapPermissions: Record<
 	| 'formateurs'
 	| 'messagerie'
 	| 'dashboard'
+	| 'bibliotheque'
 	| undefined
 > = {
 	'/': 'dashboard',
@@ -31,7 +32,8 @@ export const sitemapPermissions: Record<
 	'/formations': 'formations',
 	'/contacts': 'formateurs',
 	'/deals': 'deals',
-	'/qualiopi': 'qualiopi'
+	'/qualiopi': 'qualiopi',
+	'/bibliotheque': 'bibliotheque'
 };
 
 export const appInfo = {

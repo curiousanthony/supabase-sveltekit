@@ -44,10 +44,16 @@
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { Progress } from '$lib/components/ui/progress';
+	import * as Dialog from '$lib/components/ui/dialog';
 
 	import type { FormationSchema } from './schema';
 
 	let { data } = $props();
+
+	const libraryModules = $derived(data?.libraryModules ?? []);
+	const programmeFromLibrary = $derived(data?.programmeFromLibrary ?? null);
+	let openAddFromLibraryDialog = $state(false);
+	let selectedLibraryModuleId = $state('');
 
 	const form = superForm<FormationSchema>(data.form as any, {
 		validators: zodClient(formationSchema as any),
@@ -129,16 +135,6 @@
 		}
 	});
 
-	// Step 3 state sync (Evaluation and Attendance)
-	let evaluationArray = $state([$formData.evaluationMode]);
-	$effect(() => {
-		const next = evaluationArray[0];
-		if (next && $formData.evaluationMode !== next) $formData.evaluationMode = next as any;
-		if ((!next || evaluationArray.length === 0) && $formData.evaluationMode && evaluationArray[0] !== $formData.evaluationMode) {
-			evaluationArray = [$formData.evaluationMode];
-		}
-	});
-
 	let suiviArray = $state([$formData.suiviAssiduite]);
 	$effect(() => {
 		const next = suiviArray[0];
@@ -146,6 +142,13 @@
 		if ((!next || suiviArray.length === 0) && $formData.suiviAssiduite && suiviArray[0] !== $formData.suiviAssiduite) {
 			suiviArray = [$formData.suiviAssiduite];
 		}
+	});
+
+	// Ensure every module has modaliteEvaluation for per-module evaluation (Qualiopi)
+	$effect(() => {
+		$formData.modules.forEach((m) => {
+			if (!m.modaliteEvaluation) (m as any).modaliteEvaluation = 'QCM de fin de formation';
+		});
 	});
 
 	async function nextStep() {
@@ -179,16 +182,39 @@
 	}
 
 	// Module Management
+	const MODALITES_EVALUATION = [
+		'QCM de fin de formation',
+		'Mise en situation pratique',
+		'Étude de cas complexe',
+		'Entretien avec le formateur'
+	] as const;
 	function addModule() {
 		$formData.modules = [
 			...$formData.modules,
-			{ title: `Module ${$formData.modules.length + 1}`, durationHours: 0, objectifs: '' }
+			{ title: `Module ${$formData.modules.length + 1}`, durationHours: 0, objectifs: '', modaliteEvaluation: 'QCM de fin de formation' }
 		];
 	}
 
 	function removeModule(index: number) {
 		if ($formData.modules.length > 1) {
 			$formData.modules = $formData.modules.filter((_, i) => i !== index);
+		}
+	}
+
+	function addModuleFromLibrary() {
+		const lm = libraryModules.find((m) => m.id === selectedLibraryModuleId);
+		if (lm) {
+			$formData.modules = [
+				...$formData.modules,
+				{
+					title: lm.titre,
+					durationHours: lm.dureeHours,
+					objectifs: lm.objectifsPedagogiques ?? '',
+					modaliteEvaluation: lm.modaliteEvaluation
+				}
+			];
+			openAddFromLibraryDialog = false;
+			selectedLibraryModuleId = '';
 		}
 	}
 	
@@ -280,7 +306,11 @@
 									<h2 class="text-2xl font-bold tracking-tight">Commençons par les bases 📝</h2>
 									<p class="text-muted-foreground mt-1 text-base">Identifions le cadre général de votre formation.</p>
 								</header>
-
+								{#if programmeFromLibrary}
+									<div class="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
+										<strong>Cette formation est préremplie à partir du programme :</strong> « {programmeFromLibrary.name} ». Vérifiez le client et les informations ci-dessous avant de continuer.
+									</div>
+								{/if}
 								<div class="grid gap-8">
 									<!-- Row 1: Client and Thématique -->
 									<div class="grid sm:grid-cols-2 gap-6">
@@ -681,13 +711,58 @@ openTopicPopover = false;
 											</label>
 											<Textarea id={`module-objectifs-${i}`} bind:value={module.objectifs} placeholder="À la fin de ce module, l'apprenant sera capable de..." class="resize-none min-h-[80px]" />
 										</div>
+										<div class="space-y-2">
+											<label for={`module-modalite-eval-${i}`} class="text-sm font-bold">Modalité d'évaluation <span class="text-destructive">*</span></label>
+											<Select.Root type="single" bind:value={module.modaliteEvaluation}>
+												<Select.Trigger id={`module-modalite-eval-${i}`} class="w-full">
+													<span class="truncate">{module.modaliteEvaluation ?? 'QCM de fin de formation'}</span>
+												</Select.Trigger>
+												<Select.Content>
+													{#each MODALITES_EVALUATION as mod}
+														<Select.Item value={mod}>{mod}</Select.Item>
+													{/each}
+												</Select.Content>
+											</Select.Root>
+										</div>
 									</Card.Content>
 								</Card.Root>
 							{/each}
 
-							<Button type="button" variant="outline" class="w-full border-dashed border-2 h-16 text-muted-foreground hover:text-primary hover:border-primary transition-all bg-muted/20" onclick={addModule}>
-								<Plus class="mr-2 size-5" /> Ajouter un module
-							</Button>
+							<div class="flex flex-wrap gap-2">
+								<Button type="button" variant="outline" class="flex-1 min-w-[200px] border-dashed border-2 h-16 text-muted-foreground hover:text-primary hover:border-primary transition-all bg-muted/20" onclick={addModule}>
+									<Plus class="mr-2 size-5" /> Ajouter un module
+								</Button>
+								<Dialog.Root bind:open={openAddFromLibraryDialog}>
+									<Dialog.Trigger>
+										<Button type="button" variant="outline" class="flex-1 min-w-[200px] border-dashed border-2 h-16 text-muted-foreground hover:text-primary hover:border-primary transition-all bg-muted/20">
+											<BookOpen class="mr-2 size-5" /> Ajouter depuis la bibliothèque
+										</Button>
+									</Dialog.Trigger>
+									<Dialog.Content>
+										<Dialog.Header>
+											<Dialog.Title>Choisir un module de la bibliothèque</Dialog.Title>
+											<Dialog.Description>Le module sera ajouté au programme. Vous pourrez modifier titre, durée et objectifs avant de valider la formation.</Dialog.Description>
+										</Dialog.Header>
+										<div class="space-y-2 max-h-64 overflow-y-auto py-2">
+											{#each libraryModules as lm}
+												<label class="flex items-center gap-3 rounded-md border p-3 cursor-pointer hover:bg-muted/50 has-checked:bg-primary/10 has-checked:border-primary">
+													<input type="radio" name="addFromLibrary" value={lm.id} bind:group={selectedLibraryModuleId} class="sr-only peer" />
+													<span class="font-medium flex-1">{lm.titre}</span>
+													<span class="text-sm text-muted-foreground">{lm.dureeHours}h · {lm.modaliteEvaluation}</span>
+												</label>
+											{/each}
+											{#if libraryModules.length === 0}
+												<p class="text-sm text-muted-foreground py-4">Aucun module dans la bibliothèque.</p>
+												<Button type="button" variant="outline" href="/bibliotheque/modules/creer">Créer un module dans la bibliothèque</Button>
+											{/if}
+										</div>
+										<Dialog.Footer class="flex gap-2">
+											<Dialog.Close><Button type="button" variant="outline">Annuler</Button></Dialog.Close>
+											<Button type="button" disabled={!selectedLibraryModuleId} onclick={addModuleFromLibrary}>Ajouter</Button>
+										</Dialog.Footer>
+									</Dialog.Content>
+								</Dialog.Root>
+							</div>
 						</div>
 
 						<QualiopiAdvise 
@@ -707,33 +782,7 @@ openTopicPopover = false;
 						</header>
 
 						<div class="space-y-10">
-							<!-- Evaluation Mode -->
-							<div class="space-y-4">
-								<div class="flex items-center justify-between">
-									<div class="text-sm font-bold flex items-center gap-2">
-										Comment évaluez-vous les acquis ? <span class="text-destructive">*</span>
-									</div>
-									<Tooltip.Root>
-										<Tooltip.Trigger>
-											<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20 cursor-help">
-												Indicateur 11
-											</Badge>
-										</Tooltip.Trigger>
-										<Tooltip.Content>
-											<p class="max-w-xs">Indicateur 11 : Le mode d'évaluation doit permettre de vérifier l'acquisition des compétences visées. Il doit être adapté aux objectifs pédagogiques et permettre une traçabilité pour Qualiopi.</p>
-										</Tooltip.Content>
-									</Tooltip.Root>
-								</div>
-								
-								<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={evaluationArray} class="grid-cols-1 sm:grid-cols-2 gap-4">
-									<CardCheckbox value="QCM de fin de formation" title="QCM" subtitle="Vérification rapide des connaissances" icon={ClipboardList} />
-									<CardCheckbox value="Mise en situation pratique" title="Pratique" subtitle="Mise en œuvre réelle ou simulée" icon={Target} />
-									<CardCheckbox value="Étude de cas complexe" title="Étude de cas" subtitle="Analyse de situations concrètes" icon={BookOpen} />
-									<CardCheckbox value="Entretien avec le formateur" title="Entretien" subtitle="Dialogue direct de validation" icon={MessageCircle} />
-								</CardCheckboxGroup>
-							</div>
-
-							<!-- Attendance Tracking -->
+							<!-- Suivi assiduité (évaluation is per-module in Step 2) -->
 							<div class="space-y-4">
 								<div class="text-sm font-bold flex items-center gap-2">
 									Suivi de l'assiduité <span class="text-destructive">*</span>
@@ -764,11 +813,6 @@ openTopicPopover = false;
 							</div> -->
 
 							<div class="space-y-4">
-								<QualiopiAdvise 
-									variant="info"
-									title="Conseil : Mode d'évaluation"
-									message="Choisissez un mode d'évaluation adapté à vos objectifs pédagogiques. Le QCM convient pour vérifier les connaissances théoriques, tandis que la mise en situation pratique permet d'évaluer les compétences opérationnelles."
-								/>
 								<QualiopiAdvise 
 									variant="info"
 									title="Conseil : Suivi de l'assiduité"

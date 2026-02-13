@@ -1,12 +1,16 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import { enhance } from '$app/forms';
+	import { toast } from 'svelte-sonner';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import * as Progress from '$lib/components/ui/progress/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { RangeCalendar } from 'bits-ui';
 	import { CalendarDate } from '@internationalized/date';
 	import { cn } from '$lib/utils';
@@ -27,6 +31,17 @@
 
 	const formation = $derived(data?.formation);
 	const formationId = $derived(formation?.id ?? '');
+	const libraryModules = $derived(data?.libraryModules ?? []);
+
+	let openAddModuleDialog = $state(false);
+	let selectedLibraryModuleId = $state('');
+
+	$effect(() => {
+		if (page?.url?.searchParams?.get('from') === 'library-module' && formationId) {
+			toast.success('Module ajouté à la formation.');
+			goto(`/formations/${formationId}`, { replaceState: true });
+		}
+	});
 
 	// Dummy: 7 steps; labels as action verbs. Doable = !done && !locked. Show completed (reward), doable (action), locked (unlock me).
 	const QUEST_STEPS = [
@@ -346,6 +361,59 @@
 					Gérer
 				</Button>
 			</div>
+		</Card.Content>
+	</Card.Root>
+
+	<!-- Programme / Modules (real data + Add from Library) -->
+	<Card.Root>
+		<Card.Header class="flex flex-row items-center justify-between">
+			<Card.Title>Programme / Modules</Card.Title>
+			<Dialog.Root bind:open={openAddModuleDialog}>
+				<Dialog.Trigger>
+					<Button variant="outline" size="sm">Ajouter depuis la bibliothèque</Button>
+				</Dialog.Trigger>
+				<Dialog.Content>
+					<Dialog.Header>
+						<Dialog.Title>Choisir un module de la bibliothèque</Dialog.Title>
+						<Dialog.Description>Le module sera copié dans cette formation.</Dialog.Description>
+					</Dialog.Header>
+					<form method="POST" action="?/addModuleFromLibrary" use:enhance={() => async ({ result, update }: { result: { type: string }; update: () => Promise<void> }) => { await update(); if (result.type === 'success') { openAddModuleDialog = false; invalidateAll(); } }}>
+						<input type="hidden" name="libraryModuleId" value={selectedLibraryModuleId} />
+						<div class="space-y-2 max-h-64 overflow-y-auto py-2">
+							{#each libraryModules as lm}
+								<label class="flex items-center gap-3 rounded-md border p-3 cursor-pointer hover:bg-muted/50 has-[:checked]:bg-primary/10 has-[:checked]:border-primary">
+									<input type="radio" name="libraryModuleId" value={lm.id} bind:group={selectedLibraryModuleId} class="sr-only peer" />
+									<span class="font-medium flex-1">{lm.titre}</span>
+									<span class="text-sm text-muted-foreground">{lm.dureeHours}h · {lm.modaliteEvaluation}</span>
+								</label>
+							{/each}
+							{#if libraryModules.length === 0}
+								<p class="text-sm text-muted-foreground py-4">Aucun module dans la bibliothèque. Créez-en dans Bibliothèque → Modules.</p>
+							{/if}
+						</div>
+						<Dialog.Footer class="flex gap-2">
+							<Dialog.Close><Button type="button" variant="outline">Annuler</Button></Dialog.Close>
+							<Button type="submit" disabled={!selectedLibraryModuleId}>Ajouter</Button>
+						</Dialog.Footer>
+					</form>
+				</Dialog.Content>
+			</Dialog.Root>
+		</Card.Header>
+		<Card.Content>
+			{#if formation?.modules && formation.modules.length > 0}
+				<ul class="space-y-2">
+					{#each formation.modules as mod (mod.id)}
+						<li class="flex items-center justify-between rounded-md border px-3 py-2">
+							<div>
+								<p class="font-medium">{mod.name}</p>
+								<p class="text-xs text-muted-foreground">{mod.durationHours}h {#if mod.modaliteEvaluation}· {mod.modaliteEvaluation}{/if}</p>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="text-sm text-muted-foreground">Aucun module. Ajoutez-en depuis la bibliothèque ou en modifiant la formation.</p>
+			{/if}
 		</Card.Content>
 	</Card.Root>
 

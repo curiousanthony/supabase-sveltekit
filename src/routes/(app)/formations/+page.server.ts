@@ -14,6 +14,13 @@ const header = {
 			text: 'Créer une formation',
 			href: '/formations/creer',
 			variant: 'default' as const
+		},
+		{
+			type: 'button' as const,
+			icon: 'book',
+			text: "Créer à partir d'un programme",
+			href: '/bibliotheque/programmes',
+			variant: 'outline' as const
 		}
 	]
 };

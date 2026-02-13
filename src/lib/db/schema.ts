@@ -14,8 +14,6 @@ import {
 	boolean,
 	pgEnum
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-
 export const modalites = pgEnum('modalites', ['Distanciel', 'Présentiel', 'Hybride', 'E-Learning']);
 export const statutsFormation = pgEnum('statuts_formation', ['En attente', 'En cours', 'Terminée']);
 export const typeClient = pgEnum('type_client', ['Entreprise', 'Particulier']);
@@ -29,6 +27,12 @@ export const dealStage = pgEnum('deal_stage', [
 	'Perdu'
 ]);
 export const workspaceRole = pgEnum('workspace_role', ['owner', 'admin', 'sales', 'secretary']);
+export const modalitesEvaluation = pgEnum('modalites_evaluation', [
+	'QCM de fin de formation',
+	'Mise en situation pratique',
+	'Étude de cas complexe',
+	'Entretien avec le formateur'
+]);
 
 export const clients = pgTable(
 	'clients',
@@ -274,7 +278,9 @@ export const modules = pgTable(
 		durationHours: numeric('duration_hours'),
 		orderIndex: integer('order_index'),
 		createdBy: uuid('created_by').notNull(),
-		courseId: uuid('course_id').notNull()
+		courseId: uuid('course_id').notNull(),
+		objectifsPedagogiques: text('objectifs_pedagogiques'),
+		modaliteEvaluation: modalitesEvaluation('modalite_evaluation')
 	},
 	(table) => [
 		foreignKey({
@@ -435,6 +441,116 @@ export const workspaceInvites = pgTable(
 	]
 );
 
+export const targetPublics = pgTable(
+	'target_publics',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		workspaceId: uuid('workspace_id').notNull(),
+		name: text().notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.workspaceId],
+			foreignColumns: [workspaces.id],
+			name: 'target_publics_workspace_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade')
+	]
+);
+
+export const prerequisites = pgTable(
+	'prerequisites',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		workspaceId: uuid('workspace_id').notNull(),
+		name: text().notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.workspaceId],
+			foreignColumns: [workspaces.id],
+			name: 'prerequisites_workspace_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade')
+	]
+);
+
+export const libraryModules = pgTable(
+	'library_modules',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		workspaceId: uuid('workspace_id').notNull(),
+		createdBy: uuid('created_by').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull(),
+		titre: text().notNull(),
+		dureeHours: numeric('duree_hours').notNull(),
+		objectifsPedagogiques: text('objectifs_pedagogiques').notNull(),
+		modaliteEvaluation: modalitesEvaluation('modalite_evaluation').notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.workspaceId],
+			foreignColumns: [workspaces.id],
+			name: 'library_modules_workspace_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [users.id],
+			name: 'library_modules_created_by_fkey'
+		})
+	]
+);
+
+export const libraryProgrammes = pgTable(
+	'library_programmes',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		workspaceId: uuid('workspace_id').notNull(),
+		createdBy: uuid('created_by').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull(),
+		titre: text().notNull(),
+		duree: integer().notNull(),
+		topicId: uuid('topic_id'),
+		modalite: modalites().notNull(),
+		objectifs: text()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.workspaceId],
+			foreignColumns: [workspaces.id],
+			name: 'library_programmes_workspace_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [users.id],
+			name: 'library_programmes_created_by_fkey'
+		}),
+		foreignKey({
+			columns: [table.topicId],
+			foreignColumns: [thematiques.id],
+			name: 'library_programmes_topic_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('set null')
+	]
+);
+
 export const deals = pgTable(
 	'deals',
 	{
@@ -455,7 +571,8 @@ export const deals = pgTable(
 		ownerId: uuid('owner_id').notNull(),
 		createdBy: uuid('created_by').notNull(),
 		closedAt: timestamp('closed_at', { withTimezone: true, mode: 'string' }),
-		formationId: uuid('formation_id')
+		formationId: uuid('formation_id'),
+		libraryProgrammeId: uuid('library_programme_id')
 	},
 	(table) => [
 		foreignKey({
@@ -492,6 +609,142 @@ export const deals = pgTable(
 			name: 'deals_formation_id_fkey'
 		})
 			.onUpdate('cascade')
+			.onDelete('set null'),
+		foreignKey({
+			columns: [table.libraryProgrammeId],
+			foreignColumns: [libraryProgrammes.id],
+			name: 'deals_library_programme_id_fkey'
+		})
+			.onUpdate('cascade')
 			.onDelete('set null')
+	]
+);
+
+export const libraryProgrammeTargetPublics = pgTable(
+	'library_programme_target_publics',
+	{
+		libraryProgrammeId: uuid('library_programme_id').notNull(),
+		targetPublicId: uuid('target_public_id').notNull()
+	},
+	(table) => [
+		unique('unique_library_programme_target_public').on(
+			table.libraryProgrammeId,
+			table.targetPublicId
+		),
+		foreignKey({
+			columns: [table.libraryProgrammeId],
+			foreignColumns: [libraryProgrammes.id],
+			name: 'library_programme_target_publics_programme_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.targetPublicId],
+			foreignColumns: [targetPublics.id],
+			name: 'library_programme_target_publics_target_public_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade')
+	]
+);
+
+export const libraryProgrammePrerequisites = pgTable(
+	'library_programme_prerequisites',
+	{
+		libraryProgrammeId: uuid('library_programme_id').notNull(),
+		prerequisiteId: uuid('prerequisite_id').notNull()
+	},
+	(table) => [
+		unique('unique_library_programme_prerequisite').on(
+			table.libraryProgrammeId,
+			table.prerequisiteId
+		),
+		foreignKey({
+			columns: [table.libraryProgrammeId],
+			foreignColumns: [libraryProgrammes.id],
+			name: 'library_programme_prerequisites_programme_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.prerequisiteId],
+			foreignColumns: [prerequisites.id],
+			name: 'library_programme_prerequisites_prerequisite_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade')
+	]
+);
+
+export const libraryProgrammeModules = pgTable(
+	'library_programme_modules',
+	{
+		libraryProgrammeId: uuid('library_programme_id').notNull(),
+		libraryModuleId: uuid('library_module_id').notNull(),
+		orderIndex: integer('order_index').notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.libraryProgrammeId],
+			foreignColumns: [libraryProgrammes.id],
+			name: 'library_programme_modules_programme_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.libraryModuleId],
+			foreignColumns: [libraryModules.id],
+			name: 'library_programme_modules_module_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade')
+	]
+);
+
+export const formationTargetPublics = pgTable(
+	'formation_target_publics',
+	{
+		formationId: uuid('formation_id').notNull(),
+		targetPublicId: uuid('target_public_id').notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.formationId],
+			foreignColumns: [formations.id],
+			name: 'formation_target_publics_formation_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.targetPublicId],
+			foreignColumns: [targetPublics.id],
+			name: 'formation_target_publics_target_public_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade')
+	]
+);
+
+export const formationPrerequisites = pgTable(
+	'formation_prerequisites',
+	{
+		formationId: uuid('formation_id').notNull(),
+		prerequisiteId: uuid('prerequisite_id').notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.formationId],
+			foreignColumns: [formations.id],
+			name: 'formation_prerequisites_formation_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.prerequisiteId],
+			foreignColumns: [prerequisites.id],
+			name: 'formation_prerequisites_prerequisite_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade')
 	]
 );

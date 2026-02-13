@@ -1,46 +1,35 @@
+import { redirect } from '@sveltejs/kit';
+import { db } from '$lib/db';
+import { formations } from '$lib/db/schema';
+import { getUserWorkspace } from '$lib/auth';
+import { eq, and } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
-/** PoC: dummy formation and header so the formation detail UI works without DB. Replace with real fetch when backend is wired. */
-export const load = (async ({ params }) => {
-	const formationId = params.id;
-	const statutBadgeClass =
-		'[&_svg]:text-neutral-400'; // En attente
+export const load: LayoutServerLoad = async ({ params, locals }) => {
+	const workspaceId = await getUserWorkspace(locals);
+	if (!workspaceId) throw redirect(303, '/');
 
-	const formation = {
-		id: formationId,
-		name: 'Introduction à ChatGPT',
-		description: 'Formation d\'introduction aux usages de ChatGPT en entreprise.',
-		idInWorkspace: 246,
-		duree: 35,
-		modalite: 'Présentiel',
-		statut: 'En attente',
-		typeFinancement: 'Intra',
-		thematique: { name: 'IA générative' },
-		sousthematique: null,
-		user: null,
-		modules: []
-	};
+	const formation = await db.query.formations.findFirst({
+		where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
+		with: {
+			thematique: { columns: { name: true } },
+			modules: { orderBy: (m, { asc }) => [asc(m.orderIndex)] }
+		}
+	});
+
+	if (!formation) throw redirect(303, '/formations');
 
 	const header = {
-		pageName: formation.name,
+		pageName: formation.name ?? 'Formation',
 		idInWorkspace: formation.idInWorkspace,
 		actions: [
-			{
-				type: 'badge',
-				icon: 'circle',
-				text: formation.statut,
-				variant: 'outline',
-				className: statutBadgeClass + ' select-none'
-			},
-			{
-				type: 'formationButtonGroup',
-				formationId: formation.id
-			}
+			{ type: 'badge' as const, icon: 'circle', text: formation.statut, variant: 'outline' as const, className: 'select-none' },
+			{ type: 'formationButtonGroup' as const, formationId: formation.id }
 		],
 		backButtonLabel: 'Formations',
 		backButtonHref: '/formations',
 		backButton: true
 	};
 
-	return { formation, pageName: formation.name, header };
-}) satisfies LayoutServerLoad;
+	return { formation, pageName: formation.name ?? 'Formation', header };
+};

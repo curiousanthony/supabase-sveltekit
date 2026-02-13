@@ -12,20 +12,25 @@ export const formationSchema = z.object({
 	prerequisiteIds: z.array(z.string()).default([]),
 	customPrerequisites: z.array(z.string()).default([]),
 
-	// Step 2: Modules
+	// Step 2: Modules (per-module evaluation)
 	modules: z
 		.array(
 			z.object({
 				title: z.string().min(1, 'Le titre du module est requis'),
 				durationHours: z.number().min(0.5, 'La durée doit être supérieure à 0').default(1),
-				objectifs: z.string().min(1, 'Les objectifs sont requis')
+				objectifs: z.string().min(1, 'Les objectifs sont requis'),
+				modaliteEvaluation: z.enum([
+					'QCM de fin de formation',
+					'Mise en situation pratique',
+					'Étude de cas complexe',
+					'Entretien avec le formateur'
+				])
 			})
 		)
 		.min(1, 'Au moins un module est requis'),
 
-	// Step 3: Conformité Qualiopi
+	// Step 3: Conformité Qualiopi (suivi assiduité only; evaluation is per-module)
 	description: z.string().optional(),
-	evaluationMode: z.string().min(1, "Le mode d'évaluation est requis pour Qualiopi"),
 	suiviAssiduite: z.string().min(1, "Le suivi de l'assiduité est requis pour Qualiopi")
 });
 

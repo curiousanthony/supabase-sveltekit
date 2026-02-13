@@ -14,7 +14,16 @@ import {
 	seances,
 	formateurs,
 	formateursThematiques,
-	deals
+	deals,
+	targetPublics,
+	prerequisites,
+	libraryModules,
+	libraryProgrammes,
+	libraryProgrammeTargetPublics,
+	libraryProgrammePrerequisites,
+	libraryProgrammeModules,
+	formationTargetPublics,
+	formationPrerequisites
 } from './schema';
 
 export const clientsRelations = relations(clients, ({ one, many }) => ({
@@ -57,7 +66,11 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
 	workspacesUsers: many(workspacesUsers),
 	formations: many(formations),
 	deals: many(deals),
-	invites: many(workspaceInvites)
+	invites: many(workspaceInvites),
+	targetPublics: many(targetPublics),
+	prerequisites: many(prerequisites),
+	libraryModules: many(libraryModules),
+	libraryProgrammes: many(libraryProgrammes)
 }));
 
 export const workspaceInvitesRelations = relations(workspaceInvites, ({ one }) => ({
@@ -82,7 +95,8 @@ export const sousthematiquesRelations = relations(sousthematiques, ({ one, many 
 export const thematiquesRelations = relations(thematiques, ({ many }) => ({
 	sousthematiques: many(sousthematiques),
 	formations: many(formations),
-	formateursThematiques: many(formateursThematiques)
+	formateursThematiques: many(formateursThematiques),
+	libraryProgrammes: many(libraryProgrammes)
 }));
 
 export const formationsRelations = relations(formations, ({ one, many }) => ({
@@ -108,7 +122,9 @@ export const formationsRelations = relations(formations, ({ one, many }) => ({
 	}),
 	modules: many(modules),
 	workflowSteps: many(formationWorkflowSteps),
-	dealsFromFormation: many(deals)
+	dealsFromFormation: many(deals),
+	targetPublics: many(formationTargetPublics),
+	prerequisites: many(formationPrerequisites)
 }));
 
 export const formationWorkflowStepsRelations = relations(formationWorkflowSteps, ({ one }) => ({
@@ -199,5 +215,119 @@ export const dealsRelations = relations(deals, ({ one }) => ({
 	formation: one(formations, {
 		fields: [deals.formationId],
 		references: [formations.id]
+	}),
+	libraryProgramme: one(libraryProgrammes, {
+		fields: [deals.libraryProgrammeId],
+		references: [libraryProgrammes.id]
+	})
+}));
+
+export const targetPublicsRelations = relations(targetPublics, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [targetPublics.workspaceId],
+		references: [workspaces.id]
+	}),
+	libraryProgrammeTargetPublics: many(libraryProgrammeTargetPublics),
+	formationTargetPublics: many(formationTargetPublics)
+}));
+
+export const prerequisitesRelations = relations(prerequisites, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [prerequisites.workspaceId],
+		references: [workspaces.id]
+	}),
+	libraryProgrammePrerequisites: many(libraryProgrammePrerequisites),
+	formationPrerequisites: many(formationPrerequisites)
+}));
+
+export const libraryModulesRelations = relations(libraryModules, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [libraryModules.workspaceId],
+		references: [workspaces.id]
+	}),
+	createdByUser: one(users, {
+		fields: [libraryModules.createdBy],
+		references: [users.id]
+	}),
+	libraryProgrammeModules: many(libraryProgrammeModules)
+}));
+
+export const libraryProgrammesRelations = relations(libraryProgrammes, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [libraryProgrammes.workspaceId],
+		references: [workspaces.id]
+	}),
+	createdByUser: one(users, {
+		fields: [libraryProgrammes.createdBy],
+		references: [users.id]
+	}),
+	thematique: one(thematiques, {
+		fields: [libraryProgrammes.topicId],
+		references: [thematiques.id]
+	}),
+	targetPublics: many(libraryProgrammeTargetPublics),
+	prerequisites: many(libraryProgrammePrerequisites),
+	libraryProgrammeModules: many(libraryProgrammeModules),
+	deals: many(deals)
+}));
+
+export const libraryProgrammeTargetPublicsRelations = relations(
+	libraryProgrammeTargetPublics,
+	({ one }) => ({
+		libraryProgramme: one(libraryProgrammes, {
+			fields: [libraryProgrammeTargetPublics.libraryProgrammeId],
+			references: [libraryProgrammes.id]
+		}),
+		targetPublic: one(targetPublics, {
+			fields: [libraryProgrammeTargetPublics.targetPublicId],
+			references: [targetPublics.id]
+		})
+	})
+);
+
+export const libraryProgrammePrerequisitesRelations = relations(
+	libraryProgrammePrerequisites,
+	({ one }) => ({
+		libraryProgramme: one(libraryProgrammes, {
+			fields: [libraryProgrammePrerequisites.libraryProgrammeId],
+			references: [libraryProgrammes.id]
+		}),
+		prerequisite: one(prerequisites, {
+			fields: [libraryProgrammePrerequisites.prerequisiteId],
+			references: [prerequisites.id]
+		})
+	})
+);
+
+export const libraryProgrammeModulesRelations = relations(libraryProgrammeModules, ({ one }) => ({
+	libraryProgramme: one(libraryProgrammes, {
+		fields: [libraryProgrammeModules.libraryProgrammeId],
+		references: [libraryProgrammes.id]
+	}),
+	libraryModule: one(libraryModules, {
+		fields: [libraryProgrammeModules.libraryModuleId],
+		references: [libraryModules.id]
+	})
+}));
+
+export const formationTargetPublicsRelations = relations(formationTargetPublics, ({ one }) => ({
+	formation: one(formations, {
+		fields: [formationTargetPublics.formationId],
+		references: [formations.id]
+	}),
+	targetPublic: one(targetPublics, {
+		fields: [formationTargetPublics.targetPublicId],
+		references: [targetPublics.id]
+	})
+}));
+
+export const formationPrerequisitesRelations = relations(formationPrerequisites, ({ one }) => ({
+	formation: one(formations, {
+		fields: [formationPrerequisites.formationId],
+		references: [formations.id]
+	}),
+	prerequisite: one(prerequisites, {
+		fields: [formationPrerequisites.prerequisiteId],
+		references: [prerequisites.id]
 	})
 }));

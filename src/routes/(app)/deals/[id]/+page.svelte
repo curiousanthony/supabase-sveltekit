@@ -14,10 +14,17 @@
 	import { cn } from '$lib/utils';
 
 	let { data }: PageProps = $props();
-	let { deal, header } = $derived(data);
+	let { deal, header, libraryProgrammes = [] } = $derived(data);
 
 	let openCloseDialog = $state(false);
 	let stageSelection = $state('Lead');
+	let programmeSelection = $state(deal?.libraryProgrammeId ?? '');
+	$effect(() => {
+		if (deal?.libraryProgrammeId) programmeSelection = deal.libraryProgrammeId;
+	});
+	const selectedProgrammeTitre = $derived(
+		programmeSelection ? libraryProgrammes.find((p) => p.id === programmeSelection)?.titre ?? null : null
+	);
 	$effect(() => {
 		if (deal?.stage) stageSelection = deal.stage;
 	});
@@ -81,6 +88,12 @@
 							<User class="size-4 text-muted-foreground" />
 							{ownerLabel(deal.owner)}
 						</div>
+						{#if deal.libraryProgramme && !deal.formation}
+							<div class="flex items-center gap-2 text-sm text-muted-foreground">
+								<span>Programme ciblé :</span>
+								<Badge variant="secondary">{deal.libraryProgramme.titre}</Badge>
+							</div>
+						{/if}
 						{#if deal.formation}
 							<div class="pt-2">
 								<Button href="/formations/{deal.formation.id}" variant="default">
@@ -126,8 +139,47 @@
 								<Button type="submit">Mettre à jour</Button>
 							</form>
 
+							{#if libraryProgrammes.length > 0 && !deal.formation}
+								<form
+									method="POST"
+									action="?/setProgramme"
+									use:enhance={() => {
+										return async ({ result, update }) => {
+											await update();
+											if (result.type === 'success') invalidateAll();
+										};
+									}}
+									class="flex flex-wrap items-end gap-3 pt-2 border-t"
+								>
+									<div class="space-y-2">
+										<label for="programme-select" class="text-sm font-medium">1. Programme ciblé (intérêt du lead)</label>
+										<Select.Root type="single" bind:value={programmeSelection}>
+											<Select.Trigger id="programme-select" class="w-[280px]">
+												<span class="truncate">
+													{programmeSelection
+														? libraryProgrammes.find((p) => p.id === programmeSelection)?.titre ?? 'Choisir…'
+														: 'Aucun'}
+												</span>
+											</Select.Trigger>
+											<Select.Content>
+												<Select.Item value="">Aucun</Select.Item>
+												{#each libraryProgrammes as p}
+													<Select.Item value={p.id}>{p.titre}</Select.Item>
+												{/each}
+											</Select.Content>
+										</Select.Root>
+										<p class="text-xs text-muted-foreground">
+											En clôturant le deal, la formation sera créée à partir de ce programme (modules et objectifs préremplis).
+										</p>
+									</div>
+									<input type="hidden" name="programmeId" value={programmeSelection} />
+									<Button type="submit" variant="outline">Enregistrer</Button>
+								</form>
+							{/if}
+
 							{#if !deal.formation}
 								<div class="pt-2 border-t">
+									<p class="text-sm font-medium text-muted-foreground mb-1">2. Clôturer et créer la formation</p>
 									<Dialog.Root bind:open={openCloseDialog}>
 										<Dialog.Trigger>
 											<Button variant="default">
@@ -136,9 +188,17 @@
 										</Dialog.Trigger>
 										<Dialog.Content>
 											<Dialog.Header>
-												<Dialog.Title>Créer une formation à partir du deal ?</Dialog.Title>
+												<Dialog.Title>
+													{selectedProgrammeTitre
+														? `Créer une formation à partir du programme « ${selectedProgrammeTitre } » ?`
+														: 'Créer une formation à partir du deal ?'}
+												</Dialog.Title>
 												<Dialog.Description>
-													Une formation sera créée avec le nom, le client et les informations du deal. Vous pourrez la compléter (modules, Qualiopi, etc.) sur la page formation.
+													{#if selectedProgrammeTitre}
+														La formation sera créée à partir du programme « {selectedProgrammeTitre } » : nom, durée, modalité, modules et objectifs seront préremplis. Il restera à choisir le client et à vérifier les infos Qualiopi.
+													{:else}
+														Une formation sera créée avec le nom, le client et les informations du deal. Vous pourrez la compléter (modules, Qualiopi, etc.) sur la page formation.
+													{/if}
 												</Dialog.Description>
 											</Dialog.Header>
 											<Dialog.Footer class="flex gap-2">

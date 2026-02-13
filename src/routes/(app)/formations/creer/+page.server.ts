@@ -1,16 +1,36 @@
 import { db } from '$lib/db';
-import { formations, clients, modules } from '$lib/db/schema';
-import { eq, asc, desc } from 'drizzle-orm';
+import {
+	formations,
+	clients,
+	modules,
+	targetPublics,
+	prerequisites,
+	thematiques,
+	libraryProgrammes,
+	libraryModules
+} from '$lib/db/schema';
+import { eq, asc, desc, and } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms/server';
 import { zod } from 'sveltekit-superforms/adapters';
 import { formationSchema } from './schema';
 import { getUserWorkspace } from '$lib/auth';
+import {
+	formationTargetPublics,
+	formationPrerequisites
+} from '$lib/db/schema';
 import type { PageServerLoad, Actions } from './$types';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const load = (async ({ locals }) => {
+const defaultModule = {
+	title: 'Formation sans titre',
+	durationHours: 7,
+	objectifs: 'Objectifs du premier module',
+	modaliteEvaluation: 'QCM de fin de formation' as const
+};
+
+export const load = (async ({ locals, url }) => {
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) {
 		return {
@@ -19,6 +39,8 @@ export const load = (async ({ locals }) => {
 			prerequisites: [],
 			targetPublics: [],
 			topics: [],
+			libraryModules: [],
+			programmeFromLibrary: null,
 			header: { pageName: 'Créer une formation', backButton: true, backButtonLabel: 'Formations', backButtonHref: '/formations' }
 		};
 	}
@@ -28,33 +50,26 @@ export const load = (async ({ locals }) => {
 		columns: { id: true, legalName: true },
 		orderBy: [asc(clients.legalName)]
 	});
-	// Mock data for the UI-first approach
-	const mockClients = [
-		{ id: '1', legalName: 'Acme Corp' },
-		{ id: '2', legalName: 'Globex Corporation' },
-		{ id: '3', legalName: 'Soylent Corp' }
-	];
 
-	const mockPrerequisites = [
-		{ id: 'p1', name: "Maîtrise des bases de l'informatique" },
-		{ id: 'p2', name: "Connaissance d'Excel niveau débutant" },
-		{ id: 'p3', name: 'Anglais technique' }
-	];
+	const [targetPublicsData, prerequisitesData, topicsData] = await Promise.all([
+		db.query.targetPublics.findMany({
+			where: eq(targetPublics.workspaceId, workspaceId),
+			columns: { id: true, name: true },
+			orderBy: [asc(targetPublics.name)]
+		}),
+		db.query.prerequisites.findMany({
+			where: eq(prerequisites.workspaceId, workspaceId),
+			columns: { id: true, name: true },
+			orderBy: [asc(prerequisites.name)]
+		}),
+		db.query.thematiques.findMany({
+			columns: { id: true, name: true },
+			orderBy: [asc(thematiques.name)]
+		})
+	]);
 
-	const mockTargetPublics = [
-		{ id: 'tp1', name: 'Salariés en reconversion' },
-		{ id: 'tp2', name: "Chefs d'entreprise" },
-		{ id: 'tp3', name: "Demandeurs d'emploi" }
-	];
-
-	const mockTopics = [
-		{ id: 't1', name: 'AI' },
-		{ id: 't2', name: 'Bureautique' },
-		{ id: 't3', name: 'Langues' },
-		{ id: 't4', name: 'Management' }
-	];
-
-	const form = await superValidate(zod(formationSchema), {
+	const programmeId = url.searchParams.get('programmeId');
+	let formDefaults: Parameters<typeof superValidate>[1] = {
 		defaults: {
 			name: 'Formation sans titre',
 			clientId: '',
@@ -65,24 +80,69 @@ export const load = (async ({ locals }) => {
 			targetPublicIds: [],
 			prerequisiteIds: [],
 			customPrerequisites: [],
-			modules: [
-				{
-					title: 'Formation sans titre',
-					durationHours: 7,
-					objectifs: 'Objectifs du premier module'
-				}
-			],
-			evaluationMode: 'QCM de fin de formation',
+			modules: [defaultModule],
 			suiviAssiduite: "Feuille d'émargement signée par demi-journée"
 		}
+	};
+
+	let programmeFromLibrary: { name: string } | null = null;
+	if (programmeId && UUID_REGEX.test(programmeId)) {
+		const programme = await db.query.libraryProgrammes.findFirst({
+			where: and(
+				eq(libraryProgrammes.id, programmeId),
+				eq(libraryProgrammes.workspaceId, workspaceId)
+			),
+			with: {
+				targetPublics: { columns: { targetPublicId: true } },
+				prerequisites: { columns: { prerequisiteId: true } },
+				libraryProgrammeModules: {
+					with: { libraryModule: true },
+					orderBy: (pm, { asc: a }) => [a(pm.orderIndex)]
+				}
+			}
+		});
+		if (programme) {
+			programmeFromLibrary = { name: programme.titre ?? 'Programme' };
+			formDefaults = {
+				defaults: {
+					name: programme.titre,
+					clientId: '',
+					duree: programme.duree,
+					modalite: programme.modalite,
+					topicId: programme.topicId ?? '',
+					customTopic: '',
+					targetPublicIds: programme.targetPublics?.map((t) => t.targetPublicId) ?? [],
+					prerequisiteIds: programme.prerequisites?.map((p) => p.prerequisiteId) ?? [],
+					customPrerequisites: [],
+					modules:
+						programme.libraryProgrammeModules?.map((pm) => ({
+							title: pm.libraryModule?.titre ?? 'Module',
+							durationHours: Number(pm.libraryModule?.dureeHours ?? 1),
+							objectifs: pm.libraryModule?.objectifsPedagogiques ?? '',
+							modaliteEvaluation: pm.libraryModule?.modaliteEvaluation ?? 'QCM de fin de formation'
+						})) ?? [defaultModule],
+					suiviAssiduite: "Feuille d'émargement signée par demi-journée"
+				}
+			};
+		}
+	}
+
+	const libraryModulesData = await db.query.libraryModules.findMany({
+		where: eq(libraryModules.workspaceId, workspaceId),
+		columns: { id: true, titre: true, dureeHours: true, objectifsPedagogiques: true, modaliteEvaluation: true },
+		orderBy: (m, { asc: a }) => [a(m.titre)]
 	});
+
+	const form = await superValidate(zod(formationSchema), formDefaults);
 
 	return {
 		form,
 		clients: clientsData,
-		prerequisites: mockPrerequisites,
-		targetPublics: mockTargetPublics,
-		topics: mockTopics,
+		prerequisites: prerequisitesData,
+		targetPublics: targetPublicsData,
+		topics: topicsData,
+		libraryModules: libraryModulesData,
+		programmeFromLibrary,
 		header: {
 			pageName: 'Créer une formation',
 			backButton: true,
@@ -142,9 +202,22 @@ export const actions: Actions = {
 				createdBy: user.id,
 				name: m.title,
 				durationHours: String(m.durationHours),
-				orderIndex: i
+				orderIndex: i,
+				objectifsPedagogiques: m.objectifs ?? null,
+				modaliteEvaluation: m.modaliteEvaluation ?? null
 			}))
 		);
+
+		for (const id of form.data.targetPublicIds) {
+			if (UUID_REGEX.test(id)) {
+				await db.insert(formationTargetPublics).values({ formationId: inserted.id, targetPublicId: id });
+			}
+		}
+		for (const id of form.data.prerequisiteIds) {
+			if (UUID_REGEX.test(id)) {
+				await db.insert(formationPrerequisites).values({ formationId: inserted.id, prerequisiteId: id });
+			}
+		}
 
 		throw redirect(303, `/formations/${inserted.id}`);
 	}
