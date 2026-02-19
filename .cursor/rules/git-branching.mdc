@@ -1,6 +1,6 @@
 ---
-description: Git branching strategy (main/develop/feature), Conventional Commits, and when to branch vs commit
-alwaysApply: true
+description: Use when the user is doing Git operations—creating or switching branches, committing, merging, integrating to develop, releasing to production, or asking about branch naming, conventional commits, or workflow. Do not use for general coding; only when Git or version control is in scope.
+alwaysApply: false
 ---
 
 # Git Branching & Version Control
