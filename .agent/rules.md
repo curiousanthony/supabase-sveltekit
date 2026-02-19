@@ -20,12 +20,12 @@
 
 - **Process for agents**:
   1. Edit `src/lib/db/schema.ts` (tables, columns, relations).
-  2. Run `npm run db:generate`.
+  2. Run `bun run db:generate`.
   3. Run `supabase db reset` (required: applies the new migration locally so the app works).
   4. Run `supabase db push` only when deploying to remote (e.g. when integrating or releasing).
 - **Never assume** the local database has the latest migrations without running `supabase db reset` after adding or pulling migrations.
 - **DATABASE_URL**: For local dev, must point to local Supabase (e.g. `postgresql://postgres:postgres@127.0.0.1:54322/supabase`) so `db:generate` works. See [docs/database.md](../docs/database.md).
-- **Forbidden**: NEVER use `npm run db:push` or `npm run db:migrate`.
+- **Forbidden**: NEVER use `bun run db:push` or `bun run db:migrate`.
 
 **Human / solo workflow** (edit in Dashboard → `db:pull` → `db:generate` → deploy) is documented in [docs/database.md](../docs/database.md); agents do not use that flow.
 

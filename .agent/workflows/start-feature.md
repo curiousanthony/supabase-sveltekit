@@ -26,5 +26,5 @@ description: Start a new feature branch from develop
 
 4.  **If the feature will touch the database**:
     -   Run `supabase db reset` so the local database applies all migrations for this branch (ensures local DB matches code).
-    -   When you **add new migrations** on the feature branch, always run `supabase db reset` after `npm run db:generate` so the app works on first run.
+    -   When you **add new migrations** on the feature branch, always run `supabase db reset` after `bun run db:generate` so the app works on first run.
     -   Follow [database-migration.md](database-migration.md) for all schema changes.

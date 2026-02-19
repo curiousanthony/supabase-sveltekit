@@ -12,7 +12,7 @@ description: Agent workflow for database schema changes (schema-first). Ensures 
 2.  **Generate migration**
     -   Create a new timestamped SQL migration file.
     ```bash
-    npm run db:generate
+    bun run db:generate
     ```
     -   Requires `DATABASE_URL` pointing to **local** Supabase (e.g. `postgresql://postgres:postgres@127.0.0.1:54322/supabase`).
 
@@ -31,7 +31,7 @@ description: Agent workflow for database schema changes (schema-first). Ensures 
 
 ## Critical rules
 
--   **NEVER** use `npm run db:push` or `npm run db:migrate`.
+-   **NEVER** use `bun run db:push` or `bun run db:migrate`.
 -   **NEVER** assume the local database has the latest migrations. After adding a new migration (or pulling a branch with new migrations), always run `supabase db reset` before running or testing the app.
 -   For local dev, **DATABASE_URL** must point to local Supabase so `db:generate` works (see [docs/database.md](../../docs/database.md)).
 -   If "relation already exists" errors occur during `supabase db push`, suggest `supabase migration repair`.

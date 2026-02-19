@@ -1,11 +1,17 @@
 ---
 name: git-workflow
-description: Executes Git workflows for main/develop/feature branching. Use when the user says "start feature", "commit", "integrate", "merge to develop", "release", "ship to prod", or when the agent is about to run git operations.
+description: Executes Git workflows for main/develop/feature branching. Use when the user says "start feature", "commit", "push", "integrate", "merge", "release", "ship to prod", or when the agent is about to run any git commands.
 ---
 
 # Git Workflow
 
-Follow these workflows for branching, committing, integrating, and releasing. Base branch for all new work is `develop`, not `main`. Never run `git push` or `git merge` unless the user has explicitly said "Integrate", "Merge to develop", "Release", or "Ship to prod".
+Follow these workflows for branching, committing, integrating, and releasing.
+
+- **`main`**: Production only. Never commit directly to `main`.
+- **`develop`**: Integration branch; all feature work merges here first.
+- **Feature branches**: `feat/*`, `fix/*`, `chore/*`, `docs/*` created from `develop`.
+
+Never run `git push` or `git merge` unless the user has explicitly said "Integrate", "Merge to develop", "Release", or "Ship to prod".
 
 ---
 
@@ -30,7 +36,7 @@ Follow these workflows for branching, committing, integrating, and releasing. Ba
    git checkout -b feat/my-feature
    ```
    Use `fix/...`, `chore/...`, or `docs/...` for standalone fixes, chores, or docs work.
-4. **If the feature will touch the database**: Run `supabase db reset` so the local DB matches the branch’s migrations. When adding new migrations on the branch, run `supabase db reset` after `npm run db:generate` so the app works on first run. Follow [.agent/workflows/database-migration.md](../../../.agent/workflows/database-migration.md).
+4. **If the feature will touch the database**: Run `supabase db reset` so the local DB matches the branch’s migrations. When adding new migrations on the branch, run `supabase db reset` after `bun run db:generate` so the app works on first run. Follow [.agent/workflows/database-migration.md](../../../.agent/workflows/database-migration.md).
 
 ---
 
