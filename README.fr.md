@@ -41,7 +41,7 @@ Pour avoir le même environnement local (Supabase dans Docker + app sur localhos
 ### Démarrage rapide (environnement déjà configuré)
 
 1.  **Démarrer Docker** puis Supabase : `supabase start`
-2.  **Installer les dépendances** (si besoin) : `bun install` ou `npm install`
+2.  **Installer les dépendances** (si besoin) : `bun install`
 3.  **Lancer l’app** : `bun run dev`
 4.  **Ouvrir** : [http://localhost:5173](http://localhost:5173)
 
@@ -54,7 +54,7 @@ Nous utilisons un workflow **DB-First** (Base de données d'abord). Veuillez vou
 Pour créer une version de production de votre application :
 
 ```bash
-npm run build
+bun run build
 ```
 
-Vous pouvez prévisualiser la version de production avec `npm run preview`.
+Vous pouvez prévisualiser la version de production avec `bun run preview`.

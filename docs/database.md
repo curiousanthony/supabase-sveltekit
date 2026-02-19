@@ -19,7 +19,7 @@ Make your schema changes (create tables, add columns, etc.) directly in your **l
 Pull the changes from your local database into your Drizzle schema file.
 
 ```bash
-npm run db:pull
+bun run db:pull
 ```
 
 > **What this does:** Introspects your local database and updates `src/lib/db/schema.ts` to match it.
@@ -29,7 +29,7 @@ npm run db:pull
 Create a new SQL migration file based on the changes in your schema file.
 
 ```bash
-npm run db:generate
+bun run db:generate
 ```
 
 > **What this does:** Compares your new `schema.ts` against the previous migration snapshot and generates a timestamped `.sql` file in `supabase/migrations/`.
@@ -70,7 +70,7 @@ Set this in `.env` or `.env.local` (and ensure the file is in `.gitignore`).
 
 ### 🚫 Do NOT use `db:push` or `db:migrate`
 
-We have disabled `npm run db:push` and `npm run db:migrate`.
+We have disabled `bun run db:push` and `bun run db:migrate`.
 
 - **Reason:** These commands bypass Supabase's migration history tracking, which leads to "relation already exists" conflicts when you try to deploy later.
 - **Always** use the workflow above to ensure Drizzle and Supabase stay in sync.

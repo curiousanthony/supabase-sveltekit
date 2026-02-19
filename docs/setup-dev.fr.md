@@ -30,7 +30,7 @@ Optionnel, s’il veut tester la connexion GitHub ou Google en local : lui donne
 ```bash
 git clone https://github.com/curiousanthony/supabase-sveltekit.git
 cd supabase-sveltekit
-bun install   # ou npm install
+bun install
 ```
 
 ### 3. Démarrer Supabase en local (Docker)

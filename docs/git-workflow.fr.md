@@ -68,7 +68,7 @@ La production déploie uniquement depuis `main`. Pour release :
 
 **Fréquence des releases** : Release quand un lot logique est validé en staging (Preview `develop`). Éviter d’accumuler des semaines de travail sur `develop`.
 
-**Note** : Vous n’avez pas besoin de lancer `npm version` (ou équivalent `bun`) manuellement. Il suffit de fusionner `develop` dans `main`.
+**Note** : Vous n’avez pas besoin de lancer `bun version` manuellement. Il suffit de fusionner `develop` dans `main`.
 
 ## 5. Vercel
 

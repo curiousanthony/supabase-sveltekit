@@ -39,12 +39,12 @@ Built on top of [Mentore.fr](https://mentore.fr), the leading matchmaking platfo
 
 1.  **Install dependencies**:
     ```bash
-    npm install
+    bun install
     ```
 
 2.  **Start the development server**:
     ```bash
-    npm run dev
+    bun run dev
     ```
 
 3.  **Open the app**:
@@ -59,7 +59,7 @@ We use a **DB-First** workflow. Please refer to the [Database Workflow](./docs/d
 To create a production version of your app:
 
 ```bash
-npm run build
+bun run build
 ```
 
-You can preview the production build with `npm run preview`.
+You can preview the production build with `bun run preview`.

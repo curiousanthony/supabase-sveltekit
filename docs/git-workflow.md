@@ -70,7 +70,7 @@ Production deploys from `main` only. To release:
 
 **Release frequency**: Release when a logical batch is validated on staging (`develop` Preview). Avoid letting `develop` accumulate many weeks of work.
 
-**Note**: You do NOT need to run `npm version` (or `bun` equivalent) manually. Just merge `develop` into `main`.
+**Note**: You do NOT need to run `bun version` manually. Just merge `develop` into `main`.
 
 ## 5. Vercel
 

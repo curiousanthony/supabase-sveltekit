@@ -16,7 +16,7 @@ Effectuez vos changements de schéma (création de tables, ajout de colonnes, et
 Récupérez les changements de votre base de données locale vers votre fichier de schéma Drizzle.
 
 ```bash
-npm run db:pull
+bun run db:pull
 ```
 > **Ce que cela fait :** Introspecte votre base de données locale et met à jour `src/lib/db/schema.ts` pour qu'il corresponde.
 
@@ -24,7 +24,7 @@ npm run db:pull
 Créez un nouveau fichier de migration SQL basé sur les changements dans votre fichier de schéma.
 
 ```bash
-npm run db:generate
+bun run db:generate
 ```
 > **Ce que cela fait :** Compare votre nouveau `schema.ts` avec le dernier snapshot de migration et génère un fichier `.sql` horodaté dans `supabase/migrations/`.
 
@@ -59,7 +59,7 @@ postgresql://postgres:postgres@127.0.0.1:54322/supabase
 Définissez-la dans `.env` ou `.env.local` (et assurez-vous que le fichier est dans `.gitignore`).
 
 ### 🚫 NE PAS utiliser `db:push` ou `db:migrate`
-Nous avons désactivé `npm run db:push` et `npm run db:migrate`.
+Nous avons désactivé `bun run db:push` et `bun run db:migrate`.
 - **Raison :** Ces commandes contournent le suivi de l'historique des migrations de Supabase, ce qui entraîne des conflits "relation already exists" lorsque vous essayez de déployer plus tard.
 - **Toujours** utiliser le workflow ci-dessus pour garantir que Drizzle et Supabase restent synchronisés.
 
