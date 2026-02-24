@@ -15,7 +15,7 @@ Always treat this as the source of truth instead of ad‑hoc `db:push` or dashbo
 
 Use this skill when:
 
-- Editing `src/lib/db/schema.ts` (adding/removing tables, columns, relations, indexes).
+- Editing `src/lib/db/schema/` (adding/removing tables, columns, relations, indexes).
 - Creating, updating, or reviewing Supabase migrations under `supabase/migrations/`.
 - The user mentions:
   - "add a table/column/index/relation"
@@ -33,7 +33,7 @@ If in doubt, assume this skill applies whenever schema changes are involved.
 Agents MUST follow this schema-first workflow for any schema change. Do **not** assume the local database has the latest migrations.
 
 1. **Edit schema in code**
-   - Make schema changes in `src/lib/db/schema.ts`:
+   - Make schema changes in `src/lib/db/schema/` (e.g. the relevant domain file, or new file):
      - Add or modify tables, columns, relations, indexes, constraints.
    - Ensure types are accurate and consistent with how the app uses the data.
 
@@ -50,7 +50,7 @@ Agents MUST follow this schema-first workflow for any schema change. Do **not** 
    ```bash
    supabase db reset
    ```
-   - This ensures the local database schema matches `schema.ts` and the migrations, so the app works on first run.
+   - This ensures the local database schema matches the schema in `src/lib/db/schema/` and the migrations, so the app works on first run.
    - Never skip this step after adding or pulling new migrations.
 
 4. **Deploy migrations to remote (when integrating/releasing)**
@@ -67,7 +67,7 @@ Agents MUST follow this schema-first workflow for any schema change. Do **not** 
 - **NEVER** run:
   - `bun run db:push`
   - `bun run db:migrate`
-- Do **not** bypass the schema-first flow by editing the database only in the Supabase Dashboard without reflecting changes in `schema.ts`.
+- Do **not** bypass the schema-first flow by editing the database only in the Supabase Dashboard without reflecting changes in `src/lib/db/schema/`.
 - Do **not** assume local DB is current; always run `supabase db reset` after new migrations are added or pulled.
 
 ---
@@ -76,7 +76,7 @@ Agents MUST follow this schema-first workflow for any schema change. Do **not** 
 
 When implementing a feature that touches the DB, follow this checklist:
 
-1. [ ] Update `src/lib/db/schema.ts` to reflect the desired schema.
+1. [ ] Update the relevant file(s) in `src/lib/db/schema/` to reflect the desired schema.
 2. [ ] Run `bun run db:generate` to create a new migration.
 3. [ ] Run `supabase db reset` so the local DB matches the new migrations.
 4. [ ] Run tests / start the app and verify the feature against the updated DB.
@@ -89,5 +89,5 @@ When implementing a feature that touches the DB, follow this checklist:
 - **Agents**: Must always use this **schema-first** workflow.
 - **Humans (solo dev)**: May sometimes use a DB‑first workflow (edit in Supabase Dashboard → `db:pull` → `db:generate`), as documented in `docs/database.md`, but agents should **not** rely on that path.
 
-If the user explicitly asks you to follow the human DB‑first flow, confirm in chat and restate the implications (schema must still match `schema.ts` and migrations).
+If the user explicitly asks you to follow the human DB‑first flow, confirm in chat and restate the implications (schema must still match `src/lib/db/schema/` and migrations).
 
