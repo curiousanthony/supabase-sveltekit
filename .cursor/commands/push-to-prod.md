@@ -1,0 +1,1 @@
+Follow the **push-to-prod** workflow in `.agent/workflows/push-to-prod.md`: if you're on `develop` with uncommitted changes, commit them first; then merge `develop` → `main`, push `main`, and sync `develop` with `main` so they match.

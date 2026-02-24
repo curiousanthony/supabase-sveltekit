@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Executes Git workflows for main/develop/feature branching. Use when the user says "start feature", "commit", "push", "integrate", "merge", "release", "ship to prod", or when the agent is about to run any git commands.
+description: Executes Git workflows for main/develop/feature branching. Use when the user says "start feature", "commit", "push", "integrate", "merge", "release", "ship to prod", "/push-to-prod", or when the agent is about to run any git commands.
 ---
 
 # Git Workflow
@@ -86,9 +86,11 @@ PRs to `main` are only for releases (see Release). Day-to-day integration is int
 
 ## 4. Release (ship to prod)
 
-**When**: User explicitly says "Release" or "Ship to prod". Do **not** merge to `main` or push otherwise.
+**When**: User explicitly says "Release", "Ship to prod", "Push to prod", or runs **`/push-to-prod`**. Do **not** merge to `main` or push otherwise.
 
-**Steps**:
+For **`/push-to-prod`**: Use the workflow in `.agent/workflows/push-to-prod.md` (commit uncommitted on `develop` first if on that branch, then merge develop → main, push main, sync develop with main).
+
+**Steps** (otherwise):
 
 1. Ensure `develop` is up to date and validated on staging.
 2. Merge `develop` into `main` using a **merge** (not squash), so Semantic Release sees `feat`/`fix` commits:
