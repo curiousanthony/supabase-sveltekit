@@ -1,0 +1,256 @@
+{
+  "version": "2.8",
+  "children": [
+    {
+      "type": "frame",
+      "id": "root",
+      "x": 0,
+      "y": 0,
+      "name": "Root",
+      "clip": true,
+      "width": 360,
+      "height": 560,
+      "fill": "#FAFAFA",
+      "layout": "vertical",
+      "padding": 40,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "card",
+          "name": "Card (shadcn)",
+          "clip": true,
+          "width": 320,
+          "height": 460,
+          "fill": "#FFFFFF",
+          "cornerRadius": 14,
+          "stroke": {
+            "align": "inside",
+            "thickness": 1,
+            "fill": "#E8E7E9"
+          },
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "#0A0A0A1A",
+            "offset": {
+              "x": 0,
+              "y": 1
+            },
+            "blur": 3
+          },
+          "layout": "vertical",
+          "gap": 24,
+          "padding": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "cardHeader",
+              "name": "Card.Header",
+              "clip": true,
+              "width": 272,
+              "height": 32,
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cardTitle",
+                  "name": "Card.Title",
+                  "fill": "#242424",
+                  "textGrowth": "fixed-width-height",
+                  "width": 272,
+                  "height": 26,
+                  "content": "Ravi de vous revoir",
+                  "fontFamily": "Inter",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "cardContent",
+              "name": "Card.Content",
+              "clip": true,
+              "width": 272,
+              "height": 362,
+              "layout": "vertical",
+              "gap": 28,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "emailField",
+                  "name": "Field (Email)",
+                  "clip": true,
+                  "width": 272,
+                  "height": 66,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "emailLabel",
+                      "name": "FieldLabel",
+                      "fill": "#242424",
+                      "textGrowth": "fixed-width-height",
+                      "width": 272,
+                      "height": 20,
+                      "content": "E-mail",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "emailInput",
+                      "name": "Input",
+                      "clip": true,
+                      "width": 272,
+                      "height": 36,
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 8,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E8E7E9"
+                      },
+                      "layout": "none"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "passwordField",
+                  "name": "Field (Password)",
+                  "clip": true,
+                  "width": 272,
+                  "height": 66,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "passwordFieldRow",
+                      "name": "FieldLabel row",
+                      "clip": true,
+                      "width": 272,
+                      "height": 20,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "passwordLabel",
+                          "name": "FieldLabel",
+                          "fill": "#242424",
+                          "textGrowth": "fixed-width-height",
+                          "width": 80,
+                          "height": 20,
+                          "content": "Mot de passe",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "forgotLink",
+                          "name": "Link",
+                          "fill": "#D45D2F",
+                          "textGrowth": "fixed-width-height",
+                          "width": 140,
+                          "height": 20,
+                          "content": "Mot de passe oublié ?",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "passwordInput",
+                      "name": "Input",
+                      "clip": true,
+                      "width": 272,
+                      "height": 36,
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 8,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E8E7E9"
+                      },
+                      "layout": "none"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "submitField",
+                  "name": "Field (Submit)",
+                  "width": 272,
+                  "height": 80,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "signInBtn",
+                      "name": "Button (default)",
+                      "clip": true,
+                      "width": 272,
+                      "height": 36,
+                      "fill": "#D45D2F",
+                      "cornerRadius": 8,
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "#0A0A0A14",
+                        "offset": {
+                          "x": 0,
+                          "y": 1
+                        },
+                        "blur": 2
+                      },
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "signInBtnLabel",
+                          "name": "Button label",
+                          "fill": "#F8F6F3",
+                          "textGrowth": "fixed-width-height",
+                          "width": 72,
+                          "height": 20,
+                          "content": "Connexion",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "signUpPrompt",
+                      "name": "FieldDescription",
+                      "fill": "#6B6B6F",
+                      "textGrowth": "fixed-width-height",
+                      "width": 272,
+                      "height": 20,
+                      "content": "Pas encore de compte ? Créer mon compte",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

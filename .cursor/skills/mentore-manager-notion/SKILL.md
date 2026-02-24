@@ -90,6 +90,36 @@ Use **Notion MCP** tools: `notion-search`, `notion-fetch`, `notion-update-data-s
 
 ---
 
+## 4. Implémenter un ticket (du Suivi de projet)
+
+**When**: L'agent s'apprête à coder une fonctionnalité issue d'un ticket Notion (typiquement après avoir utilisé le skill `suivi-de-projet` pour identifier le ticket).
+
+**Règle fondamentale** : avant d'écrire la moindre ligne de code, chercher et lire la page prototype correspondante dans **Prototype Mentore Manager**. Le prototype est la spécification vivante de l'UI, du schéma DB et des relations.
+
+**Steps**:
+
+1. **Lire le ticket**
+   - Fetch le ticket depuis Notion (via le skill `suivi-de-projet`) : titre, description, type, projet associé.
+   - Identifier le nom de la fonctionnalité / entité cible (ex. "CRM", "Clients", "Formations").
+
+2. **Chercher la page prototype**
+   - `notion-search` dans le scope Prototype Mentore Manager avec le nom de la fonctionnalité.
+   - Confirmer que la page trouvée est bien sous "Prototype Mentore Manager" (vérifier `ancestor-path`).
+   - Si aucune page prototype n'est trouvée : **demander à l'utilisateur** plutôt que de supposer. Ne pas inventer de specs.
+
+3. **Lire les specs du prototype**
+   - `notion-fetch` sur la page prototype → lire le contenu : UI, flux, propriétés, bases de données liées (`(mm)` ou `(mm biblio)`).
+   - Pour les bases de données liées : fetch leur schéma (propriétés, types, relations) — c'est la source de vérité pour le schéma Drizzle/Supabase.
+
+4. **Implémenter**
+   - Coder la fonctionnalité en suivant le prototype (UI avec svelte5-stack, DB avec supabase-database-migration).
+   - Reproduire fidèlement les propriétés et relations telles qu'elles apparaissent dans le prototype.
+
+5. **Mettre à jour le ticket**
+   - Après implémentation validée : utiliser le skill `suivi-de-projet` (Workflow 4) pour passer le ticket à `⏳ En cours` au début, puis `✅ Fait` une fois terminé et testé.
+
+---
+
 ## Additional resources
 
 - Trigger phrases, scope summary, and Notion→app type mapping: [reference.md](reference.md)
