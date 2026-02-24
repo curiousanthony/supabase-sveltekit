@@ -74,6 +74,50 @@ Avant le premier appel MCP de chaque session : lire [reference.md](reference.md)
 
 ---
 
+---
+
+## Workflow 6 — Créer un ou plusieurs tickets
+
+**Déclencheurs** : "crée un ticket", "ajoute un ticket", "nouveaux tickets", "génère les tickets pour".
+
+### Propriétés obligatoires à toujours remplir
+
+| Propriété | Notes |
+|-----------|-------|
+| `Nom` | Titre clair et actionnable |
+| `Statut` | `📜 Liste d'attente` ou `🔜 Prochainement` par défaut |
+| `Type` | `Fonctionnalité`, `Bug`, `Amélioration`, `Infrastructure`, etc. |
+| `Priorité` | `Haute` par défaut pour les nouvelles fonctionnalités |
+| `Effort estimé` | `XS`/`S`/`M`/`L`/`XL` — estimer honnêtement |
+| `Projet` | **Toujours** lier au projet concerné |
+| `Assigné à` | Assigner à l'utilisateur par défaut (Anthony = `9ef44abf-97be-482f-82b4-8ab7886ddd78`) |
+| `Cycle` | Assigner au sprint pertinent : Sprint actuel si fondation urgente, Sprint suivant si suite logique. Laisser vide si trop lointain. |
+| `Bloque` | Lister les tickets que CE ticket débloque (relation → Issues) |
+| `Bloqué par` | Lister les tickets dont CE ticket dépend (relation → Issues) |
+
+### Contenu de la page (obligatoire)
+
+Chaque ticket doit avoir un contenu de page détaillé en Notion Markdown avec :
+1. **🎯 Objectif** — 1-2 phrases décrivant le but
+2. **📋 Prérequis** — tickets/conditions qui doivent être satisfaits avant (avec ✅ ou ⚡)
+3. **✅ Checklist** — liste exhaustive des tâches techniques (sous-sections si nécessaire) : routes à créer, requêtes DB, composants, actions serveur, validations, UX, etc.
+4. **🔗 Références** — liens vers le prototype Notion, skills à utiliser, collections concernées
+
+### Règles pour les dépendances (Bloque / Bloqué par)
+
+- Schéma DB → bloque toujours les vues et formulaires correspondants
+- Vue liste → bloque la page détail (navigation entry point)
+- Ticket parent → pas de dépendances directes (les sous-tâches les portent)
+- Les relations `Bloque`/`Bloqué par` sont bidirectionnelles : si A bloque B, B est bloqué par A
+
+### Règles pour les sprints
+
+- **Sprint actuel** : uniquement les tickets de fondation (schéma DB, routing de base) déjà en dynamique
+- **Sprint suivant** : vues liste et formulaires principaux
+- **Pas de sprint** : pages détail, fonctionnalités secondaires, tickets parents
+
+---
+
 ## Additional resources
 
 - IDs canoniques, vocabulaire complet, exemples d'appels MCP : [reference.md](reference.md)
