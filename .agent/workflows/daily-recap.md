@@ -48,6 +48,12 @@ description: Generate a daily progress recap in French for the non-dev team (com
    - Show the full French report in your reply.
    - Say they can copy it into their Slack channel, or use the optional Slack step below.
 
+5b. **Optional — Post recap as a comment on a ticket page (Notion)**
+   - If the user asks to add this recap to the Notion page of a ticket (Suivi de projet), **do not** add it to the page body/content. Instead, add it as a **comment** on the ticket page:
+     - Use the skill `suivi-de-projet`, **Workflow 7 — Ajouter un récap à un ticket (en commentaire)**.
+     - Use `notion-create-comment` on the ticket page with: (1) a clear prefix that it is the agent leaving a recap (e.g. « 🤖 Récap de l'agent : »), (2) a mention of Anthony (user id in suivi-de-projet reference.md), (3) the recap text in French.
+     - Confirm with the user before creating the comment if not already clear from context.
+
 6. **Optional — Post to Slack**
    - If the user has set `SLACK_WEBHOOK_URL` in `.env` (or in the environment), post the same report to Slack:
      - Load the webhook URL from `.env` (do not hardcode it).

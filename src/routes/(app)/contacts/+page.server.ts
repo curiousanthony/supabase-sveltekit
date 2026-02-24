@@ -1,6 +1,6 @@
 import { db } from '$lib/db';
 import { contacts, companies, contactCompanies } from '$lib/db/schema';
-import { getUserWorkspace } from '$lib/auth';
+import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
 import { eq, desc, and, inArray, sql } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
@@ -225,27 +225,43 @@ export const actions: Actions = {
 			return fail(400, { message: 'Poste invalide' });
 		}
 
-		const [{ id: contactId }] = await db
-			.insert(contacts)
-			.values({
-				workspaceId,
-				firstName: parsed.data.firstName,
-				lastName: parsed.data.lastName,
-				email: parsed.data.email,
-				phone: parsed.data.phone ?? null,
-				poste: poste ? (poste as (typeof posteOptions)[number]) : null,
-				linkedinUrl: parsed.data.linkedinUrl ?? null,
-				internalNotes: parsed.data.internalNotes ?? null,
-				createdBy: user.id
-			})
-			.returning({ id: contacts.id });
+		await ensureUserInPublicUsers(locals);
 
-		if (parsed.data.companyIds.length > 0) {
-			await db.insert(contactCompanies).values(
-				parsed.data.companyIds.map((companyId) => ({ contactId, companyId }))
-			);
+		try {
+			const inserted = await db
+				.insert(contacts)
+				.values({
+					workspaceId,
+					firstName: parsed.data.firstName,
+					lastName: parsed.data.lastName,
+					email: parsed.data.email,
+					phone: parsed.data.phone ?? null,
+					poste: poste ? (poste as (typeof posteOptions)[number]) : null,
+					linkedinUrl: parsed.data.linkedinUrl ?? null,
+					internalNotes: parsed.data.internalNotes ?? null,
+					createdBy: user.id
+				})
+				.returning({ id: contacts.id });
+
+			const contactId = inserted[0]?.id;
+			if (!contactId) {
+				return fail(500, { message: 'Création du contact échouée' });
+			}
+
+			if (parsed.data.companyIds.length > 0) {
+				await db.insert(contactCompanies).values(
+					parsed.data.companyIds.map((companyId) => ({ contactId, companyId }))
+				);
+			}
+			return { success: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : '';
+			console.error('[CRM createContact]', message, cause || '');
+			return fail(500, {
+				message: cause || message || 'Impossible de créer le contact. Réessayez.'
+			});
 		}
-		return { success: true };
 	},
 
 	updateContact: async ({ request, locals }) => {

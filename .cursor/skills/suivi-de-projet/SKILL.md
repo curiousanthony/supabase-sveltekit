@@ -1,6 +1,6 @@
 ---
 name: suivi-de-projet
-description: Manages Agile sprint-based project tracking in Notion for the Mentore Manager project. Use when the user asks about sprint status, current tickets, what to work on next, ticket prioritization, assigning tickets to the current sprint, updating ticket/project/objective status, or overall project progress. Trigger phrases: "tickets en cours", "sprint actuel", "what's next", "qu'est-ce qu'on fait", "assigne au sprint", "marque comme fait", "backlog", "priorités", "que reste-t-il à faire", "état du projet", "projets actifs", "objectifs actifs", "planning sprint".
+description: Manages Agile sprint-based project tracking in Notion for the Mentore Manager project. Use when the user asks about sprint status, current tickets, what to work on next, ticket prioritization, assigning tickets to the current sprint, updating ticket/project/objective status, adding a recap to a ticket page (as a comment, not page content), or overall project progress. Trigger phrases: "tickets en cours", "sprint actuel", "what's next", "qu'est-ce qu'on fait", "assigne au sprint", "marque comme fait", "backlog", "priorités", "que reste-t-il à faire", "état du projet", "projets actifs", "objectifs actifs", "planning sprint", "récap sur le ticket", "ajoute un récap dans Notion", "poste le récap sur le ticket".
 ---
 
 # Suivi de projet — Agile Notion
@@ -16,6 +16,7 @@ Avant le premier appel MCP de chaque session : lire [reference.md](reference.md)
 - `notion-search` : recherche sémantique, avec `data_source_url` pour cibler une base ou `page_url` pour chercher dans une hiérarchie.
 - `notion-fetch` : lire le contenu ou schéma d'une page/data source par ID ou URL.
 - `notion-update-page` : mettre à jour les propriétés (`update_properties`). **Toujours confirmer avec l'utilisateur avant d'écrire.**
+- `notion-create-comment` : ajouter un commentaire sur une page (ex. récap sur un ticket). Utiliser pour les récaps, jamais modifier le contenu de la page pour y mettre un récap.
 
 ---
 
@@ -115,6 +116,20 @@ Chaque ticket doit avoir un contenu de page détaillé en Notion Markdown avec :
 - **Sprint actuel** : uniquement les tickets de fondation (schéma DB, routing de base) déjà en dynamique
 - **Sprint suivant** : vues liste et formulaires principaux
 - **Pas de sprint** : pages détail, fonctionnalités secondaires, tickets parents
+
+---
+
+## Workflow 7 — Ajouter un récap à un ticket (en commentaire)
+
+**Déclencheurs** : "ajoute un récap sur le ticket", "écris le récap dans Notion", "poste le récap sur le ticket", "récap sur la page du ticket", ou toute instruction demandant de mettre un récap en français sur la page Notion d'un ticket du Suivi de projet.
+
+**Règle** : ne jamais ajouter le récap dans le **contenu** de la page Notion. Toujours l'ajouter en **commentaire** sur la page du ticket.
+
+1. Utiliser `notion-create-comment` sur la page du ticket (`page_id` = ID de la page du ticket).
+2. **Préfixe obligatoire** : le commentaire doit commencer par une phrase qui indique clairement que c'est l'agent qui laisse le commentaire et rédige un récap, par ex. : **« 🤖 Récap de l'agent : »** ou **« [Agent — récap] »**.
+3. **Mention** : mentionner l'utilisateur Anthony dans le commentaire (pour notification) — voir [reference.md](reference.md) pour l'ID utilisateur et l'exemple de `rich_text` avec mention.
+4. Contenu : après le préfixe et la mention, écrire le récap en français (ce qui a été fait, livré, impact utilisateur, etc.).
+5. **Confirmer avec l'utilisateur** avant de créer le commentaire si le contexte ne l'indique pas déjà.
 
 ---
 
