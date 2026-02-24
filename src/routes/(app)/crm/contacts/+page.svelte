@@ -5,15 +5,31 @@
 	import * as Input from '$lib/components/ui/input';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import * as Select from '$lib/components/ui/select';
+	import ContactSheet from '$lib/components/crm/ContactSheet.svelte';
 	import { goto } from '$app/navigation';
 
 	let { data }: PageProps = $props();
 	let search = $state('');
 	let posteFilter = $state<string>('all');
+	let contactSheetOpen = $state(false);
+	let contactSheetContact = $state<typeof data.editContact>(null);
 
 	$effect(() => {
 		search = data?.query ?? '';
 		posteFilter = data?.poste && data.poste !== '' ? data.poste : 'all';
+	});
+
+	$effect(() => {
+		if (data?.editContact) {
+			contactSheetOpen = true;
+			contactSheetContact = data.editContact;
+			// Retirer ?edit= de l’URL pour que, après enregistrement, le sheet ne se rouvre pas
+			const params = new URLSearchParams();
+			if (data?.query) params.set('q', data.query);
+			if (data?.poste && data.poste !== 'all') params.set('poste', data.poste);
+			const qs = params.toString();
+			goto(qs ? `/crm/contacts?${qs}` : '/crm/contacts', { replaceState: true });
+		}
 	});
 
 	const contacts = $derived(data?.contacts ?? []);
@@ -101,7 +117,11 @@
 						{#each contacts as c (c.id)}
 							<Table.Row
 								class="cursor-pointer hover:bg-muted/50"
+								tabindex={0}
+								role="link"
+								aria-label={fullName(c)}
 								onclick={() => goto(`/crm/contacts/${c.id}`)}
+								onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && goto(`/crm/contacts/${c.id}`)}
 							>
 								<Table.Cell class="font-medium">{fullName(c)}</Table.Cell>
 								<Table.Cell>
@@ -133,4 +153,6 @@
 			</div>
 		{/if}
 	</div>
+
+	<ContactSheet bind:open={contactSheetOpen} contact={contactSheetContact} companies={companies} />
 {/if}

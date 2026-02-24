@@ -1,4 +1,5 @@
-import { pgTable, foreignKey, timestamp, uuid, text } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable, foreignKey, timestamp, uuid, text, unique } from 'drizzle-orm/pg-core';
 import { contactRole } from './enums';
 import { users } from './users';
 import { workspaces } from './workspaces';
@@ -22,6 +23,7 @@ export const contacts = pgTable(
 			.notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
+			.$onUpdateFn(() => sql`now()`)
 			.notNull(),
 		createdBy: uuid('created_by').notNull()
 	},
@@ -44,6 +46,7 @@ export const contacts = pgTable(
 			columns: [table.createdBy],
 			foreignColumns: [users.id],
 			name: 'contacts_created_by_fkey'
-		})
+		}),
+		unique('unique_contact_workspace_email').on(table.workspaceId, table.email)
 	]
 );
