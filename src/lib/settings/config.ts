@@ -14,6 +14,14 @@ import Wrench from '@lucide/svelte/icons/wrench';
 import Users from '@lucide/svelte/icons/users';
 import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 
+/**
+ * Nav items hidden from the sidebar (e.g. for MVP when features are not ready).
+ * - Use URL path to hide a sitemap/shortcut item (e.g. '/messagerie', '/qualiopi').
+ * - Use 'credits' to hide the credits balance in the secondary nav.
+ * Toggle via the Cursor command "Sidebar: hide/unhide nav items".
+ */
+export const sidebarHidden: (string | 'credits')[] = ['/messagerie', '/qualiopi', '/outils', 'credits'];
+
 /** Permission required per nav URL. Undefined = visible to all. */
 export const sitemapPermissions: Record<
 	string,
@@ -59,6 +67,11 @@ export const sitemap = [
 		icon: MessageCircle
 	},
 	{
+		title: 'Deals',
+		url: '/deals',
+		icon: Handshake
+	},
+	{
 		title: 'Formations',
 		url: '/formations',
 		icon: GraduationCap
@@ -69,14 +82,9 @@ export const sitemap = [
 		icon: Calendar
 	},
 	{
-		title: 'Contacts',
+		title: 'CRM',
 		url: '/contacts',
 		icon: Users
-	},
-	{
-		title: 'Deals',
-		url: '/deals',
-		icon: Handshake
 	},
 	{
 		title: 'Gestion qualité',
@@ -97,5 +105,6 @@ export const sitemap = [
 
 export default {
 	appInfo,
-	sitemap
+	sitemap,
+	sidebarHidden
 };

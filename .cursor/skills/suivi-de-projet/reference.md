@@ -201,3 +201,22 @@
   }
 }
 ```
+
+### Ajouter un récap en commentaire sur un ticket (Workflow 7)
+
+Ne jamais mettre le récap dans le contenu de la page. Utiliser `notion-create-comment` avec un préfixe explicite (« 🤖 Récap de l'agent : » ou « [Agent — récap] ») et une mention @Anthony pour la notification.
+
+Anthony (user id) : `9ef44abf-97be-482f-82b4-8ab7886ddd78`
+
+Exemple d'appel — commentaire page-level avec préfixe + mention + récap :
+
+```json
+{
+  "page_id": "<uuid-du-ticket>",
+  "rich_text": [
+    { "type": "text", "text": { "content": "🤖 Récap de l'agent : " } },
+    { "type": "mention", "mention": { "type": "user", "user": { "id": "9ef44abf-97be-482f-82b4-8ab7886ddd78" } } },
+    { "type": "text", "text": { "content": "\n\n<texte du récap en français>" } }
+  ]
+}
+```

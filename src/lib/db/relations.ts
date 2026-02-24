@@ -2,6 +2,10 @@ import { relations } from 'drizzle-orm/relations';
 import {
 	users,
 	clients,
+	contacts,
+	companies,
+	contactCompanies,
+	dealCompanies,
 	workspaces,
 	workspacesUsers,
 	workspaceInvites,
@@ -26,8 +30,62 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
 	deals: many(deals)
 }));
 
+export const contactsRelations = relations(contacts, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [contacts.workspaceId],
+		references: [workspaces.id]
+	}),
+	owner: one(users, {
+		fields: [contacts.ownerId],
+		references: [users.id],
+		relationName: 'contact_owner'
+	}),
+	createdByUser: one(users, {
+		fields: [contacts.createdBy],
+		references: [users.id]
+	}),
+	contactCompanies: many(contactCompanies),
+	deals: many(deals)
+}));
+
+export const companiesRelations = relations(companies, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [companies.workspaceId],
+		references: [workspaces.id]
+	}),
+	owner: one(users, {
+		fields: [companies.ownerId],
+		references: [users.id]
+	}),
+	contactCompanies: many(contactCompanies),
+	dealCompanies: many(dealCompanies)
+}));
+
+export const contactCompaniesRelations = relations(contactCompanies, ({ one }) => ({
+	contact: one(contacts, {
+		fields: [contactCompanies.contactId],
+		references: [contacts.id]
+	}),
+	company: one(companies, {
+		fields: [contactCompanies.companyId],
+		references: [companies.id]
+	})
+}));
+
+export const dealCompaniesRelations = relations(dealCompanies, ({ one }) => ({
+	deal: one(deals, {
+		fields: [dealCompanies.dealId],
+		references: [deals.id]
+	}),
+	company: one(companies, {
+		fields: [dealCompanies.companyId],
+		references: [companies.id]
+	})
+}));
+
 export const usersRelations = relations(users, ({ many }) => ({
 	clients: many(clients),
+	contactsOwned: many(contacts, { relationName: 'contact_owner' }),
 	workspacesUsers: many(workspacesUsers),
 	formations: many(formations),
 	modules: many(modules),
@@ -39,7 +97,8 @@ export const usersRelations = relations(users, ({ many }) => ({
 	}),
 	formateurs: many(formateurs),
 	deals_owner: many(deals, { relationName: 'deals_owner' }),
-	deals_createdBy: many(deals, { relationName: 'deals_createdBy' })
+	deals_createdBy: many(deals, { relationName: 'deals_createdBy' }),
+	deals_commercial: many(deals, { relationName: 'deals_commercial' })
 }));
 
 export const workspacesUsersRelations = relations(workspacesUsers, ({ one }) => ({
@@ -56,6 +115,8 @@ export const workspacesUsersRelations = relations(workspacesUsers, ({ one }) => 
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
 	workspacesUsers: many(workspacesUsers),
 	formations: many(formations),
+	contacts: many(contacts),
+	companies: many(companies),
 	deals: many(deals),
 	invites: many(workspaceInvites)
 }));
@@ -177,7 +238,7 @@ export const formateursThematiquesRelations = relations(formateursThematiques, (
 	})
 }));
 
-export const dealsRelations = relations(deals, ({ one }) => ({
+export const dealsRelations = relations(deals, ({ one, many }) => ({
 	workspace: one(workspaces, {
 		fields: [deals.workspaceId],
 		references: [workspaces.id]
@@ -185,6 +246,14 @@ export const dealsRelations = relations(deals, ({ one }) => ({
 	client: one(clients, {
 		fields: [deals.clientId],
 		references: [clients.id]
+	}),
+	contact: one(contacts, {
+		fields: [deals.contactId],
+		references: [contacts.id]
+	}),
+	company: one(companies, {
+		fields: [deals.companyId],
+		references: [companies.id]
 	}),
 	owner: one(users, {
 		fields: [deals.ownerId],
@@ -196,8 +265,14 @@ export const dealsRelations = relations(deals, ({ one }) => ({
 		references: [users.id],
 		relationName: 'deals_createdBy'
 	}),
+	commercial: one(users, {
+		fields: [deals.commercialId],
+		references: [users.id],
+		relationName: 'deals_commercial'
+	}),
 	formation: one(formations, {
 		fields: [deals.formationId],
 		references: [formations.id]
-	})
+	}),
+	dealCompanies: many(dealCompanies)
 }));

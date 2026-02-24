@@ -118,6 +118,9 @@ Use **Notion MCP** tools: `notion-search`, `notion-fetch`, `notion-update-data-s
 5. **Mettre à jour le ticket**
    - Après implémentation validée : utiliser le skill `suivi-de-projet` (Workflow 4) pour passer le ticket à `⏳ En cours` au début, puis `✅ Fait` une fois terminé et testé.
 
+6. **Ajouter un récap sur le ticket**
+   - Si l'utilisateur demande d'ajouter un récap (en français) sur la page Notion du ticket : ne jamais l'ajouter au contenu de la page. Toujours utiliser le skill `suivi-de-projet`, **Workflow 7** : ajouter un **commentaire** sur la page du ticket, avec un préfixe indiquant clairement que c'est l'agent qui laisse le récap, et en mentionnant Anthony.
+
 ---
 
 ## Additional resources

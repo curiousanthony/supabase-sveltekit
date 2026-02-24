@@ -4,7 +4,7 @@
 	import SiteHeader from '$lib/components/site-header.svelte';
 	import { Toaster } from 'svelte-sonner';
 	import * as Command from '$lib/components/ui/command/index.js';
-	import { sitemap } from '$lib/settings/config';
+	import { sitemap, sidebarHidden } from '$lib/settings/config';
 	// import { page } from '$app/state';
 
 	import { ModeWatcher } from 'mode-watcher';
@@ -175,9 +175,7 @@
 			<!-- <Command.Separator /> -->
 		{/if}
 		<Command.Group heading="Principal">
-			<!-- <Command.LinkItem href="/formations">Formations</Command.LinkItem> -->
-			{#each sitemap as item (item.url)}
-				<!-- Render below link item if url pathname is NOT the same as the current page's pathname-->
+			{#each sitemap.filter((item) => !sidebarHidden.includes(item.url)) as item (item.url)}
 				{#if item.url !== page.url.pathname}
 					<Command.LinkItem href={item.url} onSelect={() => (open = false)} class="cursor-pointer">
 						<item.icon />
