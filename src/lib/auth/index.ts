@@ -70,3 +70,40 @@ export const getUserWorkspace = async (locals: App.Locals) => {
 	// Workspace creation is now handled by the onboarding flow
 	return null;
 };
+
+/**
+ * Ensures the current session user has a row in public.users (same id as auth.users).
+ * Use before any insert that references users.id (e.g. contacts.created_by) so FK constraints pass.
+ */
+export const ensureUserInPublicUsers = async (locals: App.Locals): Promise<boolean> => {
+	const { user } = await locals.safeGetSession();
+	if (!user) return false;
+
+	await db
+		.insert(users)
+		.values({
+			id: user.id,
+			email: user.email ?? '',
+			firstName:
+				user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
+			lastName:
+				(user.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
+					user.user_metadata?.family_name) ??
+				null,
+			avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
+		})
+		.onConflictDoUpdate({
+			target: users.id,
+			set: {
+				email: user.email ?? '',
+				firstName:
+					user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
+				lastName:
+					(user.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
+						user.user_metadata?.family_name) ??
+					null,
+				avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
+			}
+		});
+	return true;
+};

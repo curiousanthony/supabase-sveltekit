@@ -8,7 +8,7 @@
 	import { page } from '$app/state';
 
 	const currentPath = $derived(page?.url?.pathname ?? '');
-	import { sitemap } from '$lib/settings/config';
+	import { sitemap, sidebarHidden } from '$lib/settings/config';
 	import VersionSwitcher from './workspace-switcher.svelte';
 	import { openCommandPalette } from '$lib/stores/command-palette-store';
 	import Search from '@lucide/svelte/icons/search';
@@ -47,27 +47,22 @@
 	const fullNavItems = $derived(
 		allowedNavUrls?.length ? sitemap.filter((item) => allowedNavUrls.includes(item.url)) : sitemap
 	);
-	// Main nav excludes root, inbox, and messagerie (they live in shortcuts only)
+	// Main nav excludes root, inbox, messagerie (shortcuts), and any sidebarHidden URLs
 	const navItems = $derived(
-		fullNavItems.filter((item) => item.url !== '/' && item.url !== '/inbox' && item.url !== '/messagerie')
+		fullNavItems.filter(
+			(item) =>
+				item.url !== '/' &&
+				item.url !== '/inbox' &&
+				item.url !== '/messagerie' &&
+				!sidebarHidden.includes(item.url)
+		)
 	);
 
-	/** Main nav with collapsible Contacts and (hidden) Outils */
+	/** Main nav: CRM is a single link (tabs on the page). (hidden) Outils collapsible. */
 	const mainNav = $derived(
 		navItems.map((item) => {
 			if (item.url === '/contacts') {
-				return {
-					type: 'collapsible' as const,
-					title: item.title,
-					icon: item.icon,
-					children: [
-						{ title: 'Formateurs', url: '/contacts/formateurs' },
-						{ title: 'Clients', url: '/contacts/clients' },
-						{ title: 'Apprenants', url: '/contacts/apprenants' }
-					],
-					defaultOpen: true,
-					hidden: false
-				};
+				return { type: 'link' as const, title: 'CRM', url: '/contacts', icon: item.icon };
 			}
 			if (item.url === '/outils') {
 				return {
@@ -104,10 +99,14 @@
 		].filter((a) => a.show)
 	);
 
-	// Credits nav item (dummy value; will later reflect real balance)
-	const navSecondaryItems = $derived([
-		{ title: '1350 crédits', url: '/billing/credits', icon: Coins }
-	]);
+	// Credits nav item (dummy value; will later reflect real balance); hidden when 'credits' in sidebarHidden
+	const navSecondaryItems = $derived(
+		sidebarHidden.includes('credits')
+			? []
+			: [{ title: '1350 crédits', url: '/billing/credits', icon: Coins }]
+	);
+
+	const showMessagerieShortcut = $derived(!sidebarHidden.includes('/messagerie'));
 </script>
 
 <Sidebar.Root collapsible="icon" {...restProps}>
@@ -205,16 +204,18 @@
 							{/snippet}
 						</Sidebar.MenuButton>
 					</Sidebar.MenuItem>
-					<Sidebar.MenuItem>
-						<Sidebar.MenuButton tooltipContent="Messagerie" isActive={currentPath === '/messagerie'}>
-							{#snippet child({ props })}
-								<a href="/messagerie" {...props}>
-									<MessageCircle class="size-[1.1em] {currentPath === '/messagerie' ? 'text-primary' : ''}" />
-									<span class="text-[1.1em] {currentPath === '/messagerie' ? 'text-primary' : ''}">Messagerie</span>
-								</a>
-							{/snippet}
-						</Sidebar.MenuButton>
-					</Sidebar.MenuItem>
+					{#if showMessagerieShortcut}
+						<Sidebar.MenuItem>
+							<Sidebar.MenuButton tooltipContent="Messagerie" isActive={currentPath === '/messagerie'}>
+								{#snippet child({ props })}
+									<a href="/messagerie" {...props}>
+										<MessageCircle class="size-[1.1em] {currentPath === '/messagerie' ? 'text-primary' : ''}" />
+										<span class="text-[1.1em] {currentPath === '/messagerie' ? 'text-primary' : ''}">Messagerie</span>
+									</a>
+								{/snippet}
+							</Sidebar.MenuButton>
+						</Sidebar.MenuItem>
+					{/if}
 				</Sidebar.Menu>
 			</Sidebar.GroupContent>
 		</Sidebar.Group>
