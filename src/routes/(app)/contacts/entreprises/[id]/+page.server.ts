@@ -17,7 +17,6 @@ export const load = (async ({ params, locals }) => {
 
 	if (!company) throw error(404, 'Entreprise non trouvée');
 
-	// Contacts liés (via contact_companies)
 	const links = await db
 		.select({ contactId: contactCompanies.contactId })
 		.from(contactCompanies)
@@ -38,7 +37,6 @@ export const load = (async ({ params, locals }) => {
 					.where(and(eq(contacts.workspaceId, workspaceId), inArray(contacts.id, contactIds)))
 			: [];
 
-	// Deals liés (deals.companyId)
 	const linkedDeals = await db
 		.select({
 			id: deals.id,
@@ -58,14 +56,14 @@ export const load = (async ({ params, locals }) => {
 		header: {
 			pageName: company.name,
 			backButton: true,
-			backButtonLabel: 'CRM',
-			backButtonHref: '/contacts',
+			backButtonLabel: 'Entreprises',
+			backButtonHref: '/contacts/entreprises',
 			actions: [
 				{
 					type: 'button' as const,
 					icon: 'pencil',
 					text: 'Éditer',
-					href: `/contacts?editCompany=${company.id}`,
+					href: `/contacts/entreprises?editCompany=${company.id}`,
 					variant: 'secondary' as const
 				}
 			]
@@ -84,6 +82,6 @@ export const actions: Actions = {
 			.limit(1);
 		if (!company) throw error(404, 'Entreprise non trouvée');
 		await db.delete(companies).where(eq(companies.id, company.id));
-		throw redirect(303, '/contacts');
+		throw redirect(303, '/contacts/entreprises');
 	}
 };

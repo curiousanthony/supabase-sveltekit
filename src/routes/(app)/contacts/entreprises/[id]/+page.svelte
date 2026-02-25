@@ -29,7 +29,6 @@
 </svelte:head>
 
 <div class="space-y-8">
-	<!-- En-tête -->
 	<div class="flex flex-wrap items-start justify-between gap-4">
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight">{company?.name}</h1>
@@ -43,32 +42,27 @@
 			</div>
 		</div>
 		<div class="flex gap-2">
-			<Button.Root href="/contacts?editCompany={company?.id}" variant="secondary">
+			<Button.Root href="/contacts/entreprises?editCompany={company?.id}" variant="secondary">
 				Éditer
 			</Button.Root>
 			<Dialog.Root>
 				<Dialog.Trigger>
-					<Button.Root type="button" variant="destructive">
-						Supprimer
-					</Button.Root>
+					<Button.Root type="button" variant="destructive">Supprimer</Button.Root>
 				</Dialog.Trigger>
 				<Dialog.Content>
 					<Dialog.Header>
 						<Dialog.Title>Supprimer l&apos;entreprise</Dialog.Title>
 						<Dialog.Description>
-							Êtes-vous sûr de vouloir supprimer « {company?.name} » ? Cette action est irréversible.
+							Êtes-vous sûr de vouloir supprimer « {company?.name} » ? Cette action est
+							irréversible.
 						</Dialog.Description>
 					</Dialog.Header>
 					<form method="POST" action="?/deleteCompany" use:enhance>
 						<Dialog.Footer>
 							<Dialog.Close>
-								<Button.Root type="button" variant="outline">
-									Annuler
-								</Button.Root>
+								<Button.Root type="button" variant="outline">Annuler</Button.Root>
 							</Dialog.Close>
-							<Button.Root type="submit" variant="destructive">
-								Supprimer
-							</Button.Root>
+							<Button.Root type="submit" variant="destructive">Supprimer</Button.Root>
 						</Dialog.Footer>
 					</form>
 				</Dialog.Content>
@@ -76,7 +70,6 @@
 		</div>
 	</div>
 
-	<!-- Section Informations -->
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">Informations</h2>
 		<dl class="grid gap-2 text-sm sm:grid-cols-2">
@@ -94,8 +87,7 @@
 							href={company.websiteUrl}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="text-primary hover:underline"
-							>{company.websiteUrl}</a
+							class="text-primary hover:underline">{company.websiteUrl}</a
 						>
 					</dd>
 				</div>
@@ -137,13 +129,16 @@
 			{#if company?.internalNotes}
 				<div class="sm:col-span-2">
 					<dt class="text-muted-foreground">Commentaire interne</dt>
-					<dd class="whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-muted-foreground">{company.internalNotes}</dd>
+					<dd
+						class="whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-muted-foreground"
+					>
+						{company.internalNotes}
+					</dd>
 				</div>
 			{/if}
 		</dl>
 	</section>
 
-	<!-- Section Contacts liés -->
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">Contacts liés</h2>
 		{#if linkedContacts.length === 0}
@@ -163,7 +158,9 @@
 						{#each linkedContacts as c (c.id)}
 							<Table.Row>
 								<Table.Cell class="font-medium">
-									<a href="/crm/contacts/{c.id}" class="text-primary hover:underline">{fullName(c)}</a>
+									<a href="/contacts/{c.id}" class="text-primary hover:underline"
+										>{fullName(c)}</a
+									>
 								</Table.Cell>
 								<Table.Cell>{c.poste ?? '—'}</Table.Cell>
 								<Table.Cell>
@@ -182,7 +179,6 @@
 		{/if}
 	</section>
 
-	<!-- Section Deals liés -->
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">Deals liés</h2>
 		{#if linkedDeals.length === 0}
@@ -208,7 +204,7 @@
 									<Badge variant="outline">{d.stage ?? '—'}</Badge>
 								</Table.Cell>
 								<Table.Cell>{formatCurrency(d.dealAmount ?? d.value)}</Table.Cell>
-								<Table.Cell class="text-muted-foreground text-sm">
+								<Table.Cell class="text-sm text-muted-foreground">
 									{#if d.updatedAt}
 										{new Date(d.updatedAt).toLocaleDateString('fr-FR')}
 									{:else}

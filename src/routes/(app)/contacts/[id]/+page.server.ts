@@ -34,13 +34,13 @@ export const load = (async ({ params, locals }) => {
 			pageName,
 			backButton: true,
 			backButtonLabel: 'CRM',
-			backButtonHref: '/crm/contacts',
+			backButtonHref: '/contacts',
 			actions: [
 				{
 					type: 'button' as const,
 					icon: 'pencil',
 					text: 'Éditer',
-					href: `/crm/contacts?edit=${contact.id}`,
+					href: `/contacts?edit=${contact.id}`,
 					variant: 'secondary' as const
 				}
 			]
@@ -59,6 +59,6 @@ export const actions: Actions = {
 			.limit(1);
 		if (!contact) throw error(404, 'Contact non trouvé');
 		await db.delete(contacts).where(eq(contacts.id, contact.id));
-		throw redirect(303, '/crm/contacts');
+		throw redirect(303, '/contacts');
 	}
 };

@@ -45,7 +45,6 @@
 </svelte:head>
 
 <div class="space-y-8">
-	<!-- En-tête -->
 	<div class="flex flex-wrap items-start justify-between gap-4">
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight">{name}</h1>
@@ -55,7 +54,7 @@
 				{/if}
 				{#each companies as company (company.id)}
 					<a
-						href="/crm/entreprises/{company.id}"
+						href="/contacts/entreprises/{company.id}"
 						class="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
 					>
 						{company.name}
@@ -64,14 +63,10 @@
 			</div>
 		</div>
 		<div class="flex gap-2">
-			<Button.Root href="/crm/contacts?edit={contact?.id}" variant="secondary">
-				Éditer
-			</Button.Root>
+			<Button.Root href="/contacts?edit={contact?.id}" variant="secondary">Éditer</Button.Root>
 			<Dialog.Root>
 				<Dialog.Trigger>
-					<Button.Root type="button" variant="destructive">
-						Supprimer
-					</Button.Root>
+					<Button.Root type="button" variant="destructive">Supprimer</Button.Root>
 				</Dialog.Trigger>
 				<Dialog.Content>
 					<Dialog.Header>
@@ -83,13 +78,9 @@
 					<form method="POST" action="?/deleteContact" use:enhance>
 						<Dialog.Footer>
 							<Dialog.Close>
-								<Button.Root type="button" variant="outline">
-									Annuler
-								</Button.Root>
+								<Button.Root type="button" variant="outline">Annuler</Button.Root>
 							</Dialog.Close>
-							<Button.Root type="submit" variant="destructive">
-								Supprimer
-							</Button.Root>
+							<Button.Root type="submit" variant="destructive">Supprimer</Button.Root>
 						</Dialog.Footer>
 					</form>
 				</Dialog.Content>
@@ -97,7 +88,6 @@
 		</div>
 	</div>
 
-	<!-- Section Informations -->
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">Informations</h2>
 		<dl class="grid gap-2 text-sm sm:grid-cols-2">
@@ -105,7 +95,9 @@
 				<div>
 					<dt class="text-muted-foreground">E-mail</dt>
 					<dd>
-						<a href="mailto:{contact.email}" class="text-primary hover:underline">{contact.email}</a>
+						<a href="mailto:{contact.email}" class="text-primary hover:underline"
+							>{contact.email}</a
+						>
 					</dd>
 				</div>
 			{/if}
@@ -125,8 +117,7 @@
 							href={contact.linkedinUrl}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="text-primary hover:underline"
-							>Profil LinkedIn</a
+							class="text-primary hover:underline">Profil LinkedIn</a
 						>
 					</dd>
 				</div>
@@ -140,7 +131,9 @@
 			{#if contact?.internalNotes}
 				<div class="sm:col-span-2">
 					<dt class="text-muted-foreground">Commentaire interne</dt>
-					<dd class="whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-muted-foreground">
+					<dd
+						class="whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-muted-foreground"
+					>
 						{contact.internalNotes}
 					</dd>
 				</div>
@@ -148,7 +141,6 @@
 		</dl>
 	</section>
 
-	<!-- Section Entreprises liées -->
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">Entreprises liées</h2>
 		{#if companies.length === 0}
@@ -168,9 +160,8 @@
 							<Table.Row>
 								<Table.Cell class="font-medium">
 									<a
-										href="/crm/entreprises/{company.id}"
-										class="text-primary hover:underline"
-										>{company.name}</a
+										href="/contacts/entreprises/{company.id}"
+										class="text-primary hover:underline">{company.name}</a
 									>
 								</Table.Cell>
 								<Table.Cell>{company.industry ?? '—'}</Table.Cell>
@@ -187,12 +178,8 @@
 				</Table.Root>
 			</div>
 		{/if}
-		<p class="text-sm">
-			<a href="/crm/entreprises" class="text-primary hover:underline">Ajouter une entreprise</a>
-		</p>
 	</section>
 
-	<!-- Section Deals liés -->
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">Deals liés</h2>
 		{#if linkedDeals.length === 0}
@@ -218,7 +205,7 @@
 									<Badge variant="outline">{d.stage ?? '—'}</Badge>
 								</Table.Cell>
 								<Table.Cell>{formatCurrency(d.dealAmount ?? d.value)}</Table.Cell>
-								<Table.Cell class="text-muted-foreground text-sm">
+								<Table.Cell class="text-sm text-muted-foreground">
 									{#if d.createdAt}
 										{new Date(d.createdAt).toLocaleDateString('fr-FR')}
 									{:else}
@@ -238,7 +225,6 @@
 		</p>
 	</section>
 
-	<!-- Section Formations liées -->
 	<section class="space-y-3">
 		<h2 class="text-lg font-semibold">Formations liées</h2>
 		<p class="text-sm text-muted-foreground">
@@ -262,8 +248,8 @@
 								<Table.Cell>
 									<Badge variant="outline">{f.statut ?? '—'}</Badge>
 								</Table.Cell>
-								<Table.Cell class="text-muted-foreground text-sm">{f.dealName}</Table.Cell>
-								<Table.Cell class="text-muted-foreground text-sm">
+								<Table.Cell class="text-sm text-muted-foreground">{f.dealName}</Table.Cell>
+								<Table.Cell class="text-sm text-muted-foreground">
 									{#if f.createdAt}
 										{new Date(f.createdAt).toLocaleDateString('fr-FR')}
 									{:else}
