@@ -1,7 +1,7 @@
 import { db } from '$lib/db';
 import { companies } from '$lib/db/schema';
 import { getUserWorkspace } from '$lib/auth';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, ilike, or } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { companySchema } from '$lib/crm/company-schema';
@@ -11,6 +11,11 @@ import {
 	companySizeOptions
 } from '$lib/crm/company-form-options';
 
+function normalizeUrl(url: string): string {
+	if (!url) return url;
+	return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
 export const load = (async ({ locals, url }) => {
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) {
@@ -18,14 +23,43 @@ export const load = (async ({ locals, url }) => {
 			companies: [],
 			workspaceId: null,
 			editCompany: null,
-			header: { pageName: 'Entreprises', actions: [] }
+			query: '',
+			industry: '',
+			size: '',
+			openNewModal: false,
+			header: {
+				pageName: 'Entreprises',
+				actions: [{ type: 'button', text: '+ Nouvelle entreprise', href: '/contacts/entreprises?new=true' }]
+			}
 		};
 	}
 
-	const companiesData = await db.query.companies.findMany({
-		where: eq(companies.workspaceId, workspaceId),
-		orderBy: [desc(companies.updatedAt)]
-	});
+	const q = url.searchParams.get('q')?.trim() ?? '';
+	const industryFilter = url.searchParams.get('industry') ?? '';
+	const sizeFilter = url.searchParams.get('size') ?? '';
+	const openNewModal = url.searchParams.has('new');
+
+	let companiesData = await db
+		.select()
+		.from(companies)
+		.where(eq(companies.workspaceId, workspaceId))
+		.orderBy(desc(companies.updatedAt));
+
+	if (q) {
+		const lower = q.toLowerCase();
+		companiesData = companiesData.filter(
+			(c) =>
+				c.name.toLowerCase().includes(lower) ||
+				(c.city?.toLowerCase().includes(lower) ?? false) ||
+				(c.siret?.includes(q) ?? false)
+		);
+	}
+	if (industryFilter && industryFilter !== 'all') {
+		companiesData = companiesData.filter((c) => c.industry === industryFilter);
+	}
+	if (sizeFilter && sizeFilter !== 'all') {
+		companiesData = companiesData.filter((c) => c.companySize === sizeFilter);
+	}
 
 	const editCompanyId = url.searchParams.get('editCompany');
 	let editCompany: (typeof companiesData)[number] | null = null;
@@ -40,7 +74,14 @@ export const load = (async ({ locals, url }) => {
 		companies: companiesData,
 		workspaceId,
 		editCompany,
-		header: { pageName: 'Entreprises', actions: [] }
+		query: q,
+		industry: industryFilter,
+		size: sizeFilter,
+		openNewModal,
+		header: {
+			pageName: 'Entreprises',
+			actions: [{ type: 'button', text: '+ Nouvelle entreprise', href: '/contacts/entreprises?new=true' }]
+		}
 	};
 }) satisfies PageServerLoad;
 
@@ -52,13 +93,14 @@ export const actions: Actions = {
 		if (!workspaceId) return fail(400, { message: 'Aucun espace de travail' });
 
 		const fd = await request.formData();
+		const rawWebsite = (fd.get('websiteUrl') as string)?.trim() || undefined;
 		const raw = {
 			name: (fd.get('name') as string)?.trim() ?? '',
 			siret: (fd.get('siret') as string)?.trim() || undefined,
 			legalStatus: (fd.get('legalStatus') as string)?.trim() || undefined,
 			industry: (fd.get('industry') as string)?.trim() || undefined,
 			companySize: (fd.get('companySize') as string)?.trim() || undefined,
-			websiteUrl: (fd.get('websiteUrl') as string)?.trim() || undefined,
+			websiteUrl: rawWebsite ? normalizeUrl(rawWebsite) : undefined,
 			address: (fd.get('address') as string)?.trim() || undefined,
 			city: (fd.get('city') as string)?.trim() || undefined,
 			region: (fd.get('region') as string)?.trim() || undefined,
@@ -122,13 +164,14 @@ export const actions: Actions = {
 		const companyId = (fd.get('companyId') as string)?.trim();
 		if (!companyId) return fail(400, { message: 'Entreprise manquante' });
 
+		const rawWebsite = (fd.get('websiteUrl') as string)?.trim() || undefined;
 		const raw = {
 			name: (fd.get('name') as string)?.trim() ?? '',
 			siret: (fd.get('siret') as string)?.trim() || undefined,
 			legalStatus: (fd.get('legalStatus') as string)?.trim() || undefined,
 			industry: (fd.get('industry') as string)?.trim() || undefined,
 			companySize: (fd.get('companySize') as string)?.trim() || undefined,
-			websiteUrl: (fd.get('websiteUrl') as string)?.trim() || undefined,
+			websiteUrl: rawWebsite ? normalizeUrl(rawWebsite) : undefined,
 			address: (fd.get('address') as string)?.trim() || undefined,
 			city: (fd.get('city') as string)?.trim() || undefined,
 			region: (fd.get('region') as string)?.trim() || undefined,

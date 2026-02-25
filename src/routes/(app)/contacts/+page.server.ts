@@ -16,7 +16,11 @@ export const load = (async ({ locals, url }) => {
 			query: '',
 			poste: '',
 			editContact: null,
-			header: { pageName: 'CRM', actions: [] }
+			openNewModal: false,
+			header: {
+				pageName: 'CRM',
+				actions: [{ type: 'button', text: '+ Nouveau contact', href: '/contacts?new=true' }]
+			}
 		};
 	}
 
@@ -32,7 +36,11 @@ export const load = (async ({ locals, url }) => {
 			query: url.searchParams.get('q') ?? '',
 			poste: url.searchParams.get('poste') ?? '',
 			editContact: null,
-			header: { pageName: 'CRM', actions: [] },
+			openNewModal: false,
+			header: {
+				pageName: 'CRM',
+				actions: [{ type: 'button', text: '+ Nouveau contact', href: '/contacts?new=true' }]
+			},
 			loadError: message
 		};
 	}
@@ -45,7 +53,7 @@ type EditContact = {
 	lastName: string | null;
 	email: string | null;
 	phone: string | null;
-	poste: 'Responsable RH' | 'CEO' | 'Autre' | null;
+	poste: string | null;
 	linkedinUrl: string | null;
 	ownerId: string | null;
 	internalNotes: string | null;
@@ -147,6 +155,8 @@ async function loadClients(workspaceId: string, url: URL) {
 		columns: { id: true, name: true }
 	});
 
+	const openNewModal = url.searchParams.has('new');
+
 	return {
 		contacts: contactsData,
 		companies: companiesData,
@@ -154,7 +164,11 @@ async function loadClients(workspaceId: string, url: URL) {
 		query: url.searchParams.get('q') ?? '',
 		poste: posteParam ?? '',
 		editContact,
-		header: { pageName: 'CRM', actions: [] },
+		openNewModal,
+		header: {
+			pageName: 'CRM',
+			actions: [{ type: 'button', text: '+ Nouveau contact', href: '/contacts?new=true' }]
+		},
 		loadError: undefined
 	};
 }

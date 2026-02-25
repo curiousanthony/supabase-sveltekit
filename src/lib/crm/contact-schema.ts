@@ -1,6 +1,27 @@
 import { z } from 'zod';
 
-export const posteOptions = ['Responsable RH', 'CEO', 'Autre'] as const;
+export const posteOptions = [
+	'PDG / Président',
+	'Directeur Général',
+	'Directeur des Ressources Humaines',
+	'Responsable RH',
+	'Responsable Formation',
+	'Directeur Commercial',
+	'Responsable Commercial',
+	'Directeur Marketing',
+	'Directeur Financier',
+	'Directeur des Opérations',
+	'Directeur Technique',
+	'Office Manager',
+	'Assistante de Direction',
+	'Chef de Projet',
+	'Responsable des Achats',
+	'Consultant',
+	'Gérant',
+	'Associé',
+	'CEO',
+	'Autre'
+] as const;
 
 export const contactSchema = z.object({
 	firstName: z.string().min(1, 'Le prénom est requis'),

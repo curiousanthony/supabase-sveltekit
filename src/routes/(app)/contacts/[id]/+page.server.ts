@@ -1,9 +1,22 @@
 import { db } from '$lib/db';
-import { contacts } from '$lib/db/schema';
+import { contacts, companies, contactCompanies } from '$lib/db/schema';
 import { getUserWorkspace } from '$lib/auth';
-import { and, eq } from 'drizzle-orm';
-import { error, redirect } from '@sveltejs/kit';
+import { and, eq, desc } from 'drizzle-orm';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
+import { posteOptions } from '$lib/crm/contact-schema';
+
+const ALLOWED_FIELDS = [
+	'firstName',
+	'lastName',
+	'email',
+	'phone',
+	'poste',
+	'linkedinUrl',
+	'internalNotes'
+] as const;
+
+type AllowedField = (typeof ALLOWED_FIELDS)[number];
 
 export const load = (async ({ params, locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
@@ -26,24 +39,24 @@ export const load = (async ({ params, locals }) => {
 
 	if (!contact) throw error(404, 'Contact non trouvé');
 
+	// All workspace companies for the link combobox
+	const allCompanies = await db
+		.select({ id: companies.id, name: companies.name })
+		.from(companies)
+		.where(eq(companies.workspaceId, workspaceId))
+		.orderBy(desc(companies.updatedAt));
+
 	const pageName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Contact';
 
 	return {
 		contact,
+		allCompanies,
 		header: {
 			pageName,
 			backButton: true,
 			backButtonLabel: 'CRM',
 			backButtonHref: '/contacts',
-			actions: [
-				{
-					type: 'button' as const,
-					icon: 'pencil',
-					text: 'Éditer',
-					href: `/contacts?edit=${contact.id}`,
-					variant: 'secondary' as const
-				}
-			]
+			actions: []
 		}
 	};
 }) satisfies PageServerLoad;
@@ -60,5 +73,75 @@ export const actions: Actions = {
 		if (!contact) throw error(404, 'Contact non trouvé');
 		await db.delete(contacts).where(eq(contacts.id, contact.id));
 		throw redirect(303, '/contacts');
+	},
+
+	updateField: async ({ params, request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const fd = await request.formData();
+		const field = (fd.get('field') as string)?.trim() as AllowedField;
+		const value = (fd.get('value') as string)?.trim() ?? '';
+
+		if (!ALLOWED_FIELDS.includes(field)) {
+			return fail(400, { message: 'Champ invalide' });
+		}
+
+		// Validate enum for poste
+		if (field === 'poste' && value && !posteOptions.includes(value as (typeof posteOptions)[number])) {
+			return fail(400, { message: 'Poste invalide' });
+		}
+
+		await db
+			.update(contacts)
+			.set({ [field]: value || null, updatedAt: new Date().toISOString() })
+			.where(and(eq(contacts.id, params.id), eq(contacts.workspaceId, workspaceId)));
+
+		return { success: true };
+	},
+
+	linkCompany: async ({ params, request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const fd = await request.formData();
+		const companyId = (fd.get('companyId') as string)?.trim();
+		if (!companyId) return fail(400, { message: 'Entreprise manquante' });
+
+		// Verify company belongs to same workspace
+		const [company] = await db
+			.select({ id: companies.id })
+			.from(companies)
+			.where(and(eq(companies.id, companyId), eq(companies.workspaceId, workspaceId)))
+			.limit(1);
+		if (!company) return fail(404, { message: 'Entreprise non trouvée' });
+
+		// Insert, ignore if already linked (conflict on primary key)
+		await db
+			.insert(contactCompanies)
+			.values({ contactId: params.id, companyId })
+			.onConflictDoNothing();
+
+		return { success: true };
+	},
+
+	unlinkCompany: async ({ params, request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const fd = await request.formData();
+		const companyId = (fd.get('companyId') as string)?.trim();
+		if (!companyId) return fail(400, { message: 'Entreprise manquante' });
+
+		await db
+			.delete(contactCompanies)
+			.where(
+				and(
+					eq(contactCompanies.contactId, params.id),
+					eq(contactCompanies.companyId, companyId)
+				)
+			);
+
+		return { success: true };
 	}
 };
