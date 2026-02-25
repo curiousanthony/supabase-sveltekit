@@ -37,7 +37,7 @@
 	{#if isTabView}
 		<nav
 			class="sticky z-40 -mx-4 flex h-fit w-[calc(100%+2rem)] max-w-[calc(100%+2rem)] overflow-visible border-b bg-background px-4 before:absolute before:bottom-full before:left-0 before:right-0 before:z-0 before:block before:h-4 before:bg-background before:content-['']"
-			style="top: calc(var(--header-height) + var(--spacing) * 4)"
+			style="top: calc(var(--header-height, 0px) + var(--spacing, 0.25rem) * 4)"
 			aria-label="CRM sections"
 		>
 			<div class="relative z-10 min-w-0 flex-1 overflow-x-auto">

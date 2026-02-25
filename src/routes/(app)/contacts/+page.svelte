@@ -15,7 +15,7 @@
 	let contactModalContact = $state<typeof data.editContact>(null);
 	let modalClosed = $state(false);
 	let openNewModalConsumed = $state(false);
-	let prevModalOpen = $state(false);
+	let prevModalOpen = false;
 
 	// Detect user closing the modal (open goes true → false)
 	$effect(() => {
@@ -40,7 +40,7 @@
 	});
 
 	$effect(() => {
-		if (workspaceId && data?.editContact && !modalClosed && contactModalContact !== data.editContact) {
+		if (workspaceId && data?.editContact && !modalClosed && contactModalContact?.id !== data.editContact.id) {
 			contactModalOpen = true;
 			contactModalContact = data.editContact;
 		}
@@ -90,11 +90,14 @@
 	function companyBadges(
 		c: { contactCompanies: { companyId: string }[] },
 		companyList: { id: string; name: string }[]
-	) {
+	): { id: string; name: string }[] {
 		return (
 			c.contactCompanies
-				?.map((cc) => companyList.find((co) => co.id === cc.companyId)?.name)
-				.filter(Boolean) ?? []
+				?.map((cc) => {
+					const company = companyList.find((co) => co.id === cc.companyId);
+					return company ? { id: company.id, name: company.name } : null;
+				})
+				.filter((b): b is { id: string; name: string } => b != null) ?? []
 		);
 	}
 
@@ -233,7 +236,10 @@
 				<Table.Root>
 					<Table.Header>
 						<Table.Row class="hover:bg-transparent border-b">
-							<Table.Head class="w-[280px]">
+							<Table.Head
+								class="w-[280px]"
+								aria-sort={sortKey === 'name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+							>
 								<Table.SortableTableHead
 									label="Contact"
 									active={sortKey === 'name'}
@@ -243,7 +249,10 @@
 							</Table.Head>
 							<Table.Head>Entreprise(s)</Table.Head>
 							<Table.Head class="w-[140px]">Poste</Table.Head>
-							<Table.Head class="w-[220px]">
+							<Table.Head
+								class="w-[220px]"
+								aria-sort={sortKey === 'email' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+							>
 								<Table.SortableTableHead
 									label="Email"
 									active={sortKey === 'email'}
@@ -273,8 +282,8 @@
 								</Table.Cell>
 								<Table.Cell>
 									<div class="flex flex-wrap gap-1">
-										{#each badges as companyName (companyName)}
-											<Badge variant="secondary" class="text-xs">{companyName}</Badge>
+										{#each badges as badge (badge.id)}
+											<Badge variant="secondary" class="text-xs">{badge.name}</Badge>
 										{/each}
 										{#if badges.length === 0}
 											<span class="text-muted-foreground text-sm">—</span>

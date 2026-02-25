@@ -10,6 +10,7 @@
 	import CityCombobox from '$lib/components/crm/CityCombobox.svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import type { ActionResult } from '@sveltejs/kit';
 	import { toast } from 'svelte-sonner';
 	import {
 		legalStatusOptions,
@@ -59,6 +60,7 @@
 	let address = $state('');
 	let city = $state('');
 	let region = $state('');
+	let selectedCityCode = $state('');
 	let internalNotes = $state('');
 
 	// Contact linking state
@@ -85,7 +87,7 @@
 			internalNotes = company.internalNotes ?? '';
 		} else {
 			name = ''; siret = ''; legalStatus = ''; industry = ''; companySize = '';
-			websiteUrl = ''; address = ''; city = ''; region = ''; internalNotes = '';
+			websiteUrl = ''; address = ''; city = ''; region = ''; selectedCityCode = ''; internalNotes = '';
 		}
 		selectedContactIds = [];
 		contactSearch = '';
@@ -110,6 +112,7 @@
 		contacts.filter((c) => {
 			if (selectedContactIds.includes(c.id)) return false;
 			const q = contactSearch.toLowerCase();
+			if (!q) return true;
 			return (
 				(c.firstName?.toLowerCase().includes(q) ?? false) ||
 				(c.lastName?.toLowerCase().includes(q) ?? false) ||
@@ -131,14 +134,34 @@
 	});
 
 	function handleEnhance() {
-		return async ({ result }: { result: { type: string; data?: { message?: string } } }) => {
-			if (result.type === 'success') {
-				toast.success(isEdit ? 'Entreprise mise à jour' : 'Entreprise créée');
-				open = false;
-				await invalidateAll();
-			}
-			if (result.type === 'failure' && result.data?.message) {
-				toast.error(result.data.message as string);
+		type Result = ActionResult<Record<string, unknown>, { message?: string }>;
+		return async ({ result }: { result: Result }) => {
+			switch (result.type) {
+				case 'success':
+					toast.success(isEdit ? 'Entreprise mise à jour' : 'Entreprise créée');
+					open = false;
+					await invalidateAll();
+					break;
+				case 'failure':
+					toast.error(result.data?.message ?? 'Une erreur est survenue');
+					// keep modal open so the user can correct and resubmit
+					break;
+				case 'error': {
+					const msg =
+						typeof result.error === 'string'
+							? result.error
+							: (result.error as { message?: string })?.message ?? 'Une erreur est survenue';
+					toast.error(msg);
+					// keep modal open so the user can correct and resubmit
+					break;
+				}
+				case 'redirect':
+					window.location.href = result.location;
+					break;
+				default: {
+					const _: never = result;
+					break;
+				}
 			}
 		};
 	}
@@ -222,7 +245,7 @@
 			</div>
 			<input type="hidden" name="city" value={city} />
 			<input type="hidden" name="region" value={region} />
-			<CityCombobox {city} {region} onSelect={(c: string, r: string) => { city = c; region = r; }} />
+			<CityCombobox {city} {region} selectedCityCode={selectedCityCode} onSelect={(c: string, r: string, code?: string) => { city = c; region = r; selectedCityCode = code ?? ''; }} />
 
 			<!-- Contact linking (create mode only) -->
 			{#if !isEdit}

@@ -108,7 +108,7 @@ export const actions: Actions = {
 			.where(and(eq(contacts.id, params.id), eq(contacts.workspaceId, workspaceId)))
 			.returning({ id: contacts.id });
 
-		if (updated.length === 0) throw error(404, 'Contact non trouvé');
+		if (updated.length === 0) return fail(404, { message: 'Contact non trouvé' });
 
 		return { success: true };
 	},
@@ -159,14 +159,14 @@ export const actions: Actions = {
 			.from(contacts)
 			.where(and(eq(contacts.id, params.id), eq(contacts.workspaceId, workspaceId)))
 			.limit(1);
-		if (!contact) return fail(403, { message: 'Contact non trouvé ou accès refusé' });
+		if (!contact) return fail(404, { message: 'Contact non trouvé' });
 
 		const [company] = await db
 			.select({ id: companies.id })
 			.from(companies)
 			.where(and(eq(companies.id, companyId), eq(companies.workspaceId, workspaceId)))
 			.limit(1);
-		if (!company) return fail(403, { message: 'Entreprise non trouvée ou accès refusé' });
+		if (!company) return fail(404, { message: 'Entreprise non trouvée' });
 
 		await db
 			.delete(contactCompanies)

@@ -19,8 +19,10 @@ When they open that URL while logged in, the app **redeems** the invite: it veri
 
 ## Why we store a digest, not the raw token
 
-- **Security:** If the database is leaked, an attacker cannot use the stored value to accept invites; they would need the raw token that was sent to the user.
-- **Practice:** We never store or log the raw token. We store only a **keyed HMAC-SHA256 digest** (hex) in `token_digest`. Verification is done by recomputing the digest from the token supplied in the URL and comparing it to the stored value.
+- **Security:** If the database is leaked, an attacker cannot use the stored digest to accept invites; they would need the raw token that was sent to the user.
+- **Practice:** For new invites we never store or log the raw token. We store only a **keyed HMAC-SHA256 digest** (hex) in `token_digest`. Verification is done by recomputing the digest from the token supplied in the URL and comparing it to the stored value.
+
+> **Known exception / backward-compatibility:** Legacy invites (created before the digest migration) have the raw token stored in `token_digest`. The redeem path supports them by comparing the raw URL token directly against `token_digest` when the digest lookup fails (see [Legacy behavior](#legacy-behavior)). Until those invites expire or are redeemed, a database leak could expose usable tokens for them. New invites are unaffected.
 
 So:
 
@@ -70,9 +72,9 @@ This project is deployed on Vercel. You must add `INVITE_TOKEN_SECRET` there for
 
 The create action returns `{ success: true, token: rawToken }`. The UI uses that to build the invite URL (e.g. for a “Copy link” button). **Do not** log or persist the raw token on the server.
 
-## Legacy behavior
+## Legacy behavior (deprecated)
 
-Invites created **before** the digest migration had the raw token stored in the column that is now `token_digest`. The redeem logic supports those old invites by also matching `token_digest = <raw token from URL>` when the digest lookup fails. So existing invite links continue to work until they expire. New invites only ever store the digest.
+Invites created **before** the digest migration had the raw token stored in the column that is now `token_digest`. The redeem path **no longer** matches by raw token; it looks up only by digest (see `src/routes/invite/[token]/+page.server.ts`). Legacy invite links (pre-migration) will no longer redeem; those invites must be re-sent or have expired.
 
 ## Future: email sending
 

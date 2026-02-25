@@ -1,7 +1,7 @@
 import { db } from '$lib/db';
 import { companies, contacts, contactCompanies } from '$lib/db/schema';
 import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
-import { eq, desc, and, ilike, or, type SQL } from 'drizzle-orm';
+import { eq, desc, and, ilike, or, inArray, type SQL } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { companySchema, type CompanySchema } from '$lib/crm/company-schema';
@@ -100,12 +100,20 @@ export const load = (async ({ locals, url }) => {
 		);
 		if (qCond) conditions.push(qCond);
 	}
-	if (industryFilter && industryFilter !== 'all') {
+	if (
+		industryFilter &&
+		industryFilter !== 'all' &&
+		industryOptions.includes(industryFilter as (typeof industryOptions)[number])
+	) {
 		conditions.push(
 			eq(companies.industry, industryFilter as NonNullable<CompanySelect['industry']>)
 		);
 	}
-	if (sizeFilter && sizeFilter !== 'all') {
+	if (
+		sizeFilter &&
+		sizeFilter !== 'all' &&
+		companySizeOptions.includes(sizeFilter as (typeof companySizeOptions)[number])
+	) {
 		conditions.push(
 			eq(companies.companySize, sizeFilter as NonNullable<CompanySelect['companySize']>)
 		);
@@ -209,7 +217,11 @@ export const actions: Actions = {
 		const newContactFirstName = (fd.get('newContactFirstName') as string)?.trim();
 		const newContactLastName = (fd.get('newContactLastName') as string)?.trim();
 		const newContactEmail = (fd.get('newContactEmail') as string)?.trim();
-		const newContactPoste = (fd.get('newContactPoste') as string)?.trim();
+		const rawNewContactPoste = (fd.get('newContactPoste') as string)?.trim();
+		const newContactPoste =
+			rawNewContactPoste && posteOptions.includes(rawNewContactPoste as (typeof posteOptions)[number])
+				? (rawNewContactPoste as (typeof posteOptions)[number])
+				: null;
 
 		if (newContactFirstName || newContactEmail) {
 			await ensureUserInPublicUsers(locals);
@@ -220,7 +232,7 @@ export const actions: Actions = {
 					firstName: newContactFirstName || null,
 					lastName: newContactLastName || null,
 					email: newContactEmail || null,
-					poste: newContactPoste ? (newContactPoste as (typeof posteOptions)[number]) : null,
+					poste: newContactPoste,
 					createdBy: user.id
 				})
 				.returning({ id: contacts.id });
@@ -228,9 +240,18 @@ export const actions: Actions = {
 		}
 
 		if (allContactIds.length > 0) {
-			await db
-				.insert(contactCompanies)
-				.values(allContactIds.map((contactId) => ({ contactId, companyId })));
+			const validContacts = await db
+				.select({ id: contacts.id })
+				.from(contacts)
+				.where(
+					and(eq(contacts.workspaceId, workspaceId), inArray(contacts.id, allContactIds))
+				);
+			const validContactIds = validContacts.map((c) => c.id);
+			if (validContactIds.length > 0) {
+				await db
+					.insert(contactCompanies)
+					.values(validContactIds.map((contactId) => ({ contactId, companyId })));
+			}
 		}
 
 		return { success: true };
@@ -249,28 +270,37 @@ export const actions: Actions = {
 		const parsed = parseCompanyForm(fd);
 		if (!parsed.success) return fail(400, { message: parsed.error.message });
 
-		await db
-			.update(companies)
-			.set({
-				name: parsed.data.name,
-				siret: parsed.data.siret ?? null,
-				legalStatus: parsed.data.legalStatus
-					? (parsed.data.legalStatus as (typeof legalStatusOptions)[number])
-					: null,
-				industry: parsed.data.industry
-					? (parsed.data.industry as (typeof industryOptions)[number])
-					: null,
-				companySize: parsed.data.companySize
-					? (parsed.data.companySize as (typeof companySizeOptions)[number])
-					: null,
-				websiteUrl: parsed.data.websiteUrl ?? null,
-				address: parsed.data.address ?? null,
-				city: parsed.data.city ?? null,
-				region: parsed.data.region ?? null,
-				internalNotes: parsed.data.internalNotes ?? null,
-				updatedAt: new Date().toISOString()
-			})
-			.where(and(eq(companies.id, companyId), eq(companies.workspaceId, workspaceId)));
-		return { success: true };
+		try {
+			await db
+				.update(companies)
+				.set({
+					name: parsed.data.name,
+					siret: parsed.data.siret ?? null,
+					legalStatus: parsed.data.legalStatus
+						? (parsed.data.legalStatus as (typeof legalStatusOptions)[number])
+						: null,
+					industry: parsed.data.industry
+						? (parsed.data.industry as (typeof industryOptions)[number])
+						: null,
+					companySize: parsed.data.companySize
+						? (parsed.data.companySize as (typeof companySizeOptions)[number])
+						: null,
+					websiteUrl: parsed.data.websiteUrl ?? null,
+					address: parsed.data.address ?? null,
+					city: parsed.data.city ?? null,
+					region: parsed.data.region ?? null,
+					internalNotes: parsed.data.internalNotes ?? null,
+					updatedAt: new Date().toISOString()
+				})
+				.where(and(eq(companies.id, companyId), eq(companies.workspaceId, workspaceId)));
+			return { success: true };
+		} catch (e) {
+			console.error('[updateCompany] db.update(companies) failed', e);
+			return fail(500, {
+				success: false,
+				message: 'Could not update company',
+				error: e && typeof e === 'object' && 'message' in e ? (e as { message: string }).message : undefined
+			});
+		}
 	}
 };

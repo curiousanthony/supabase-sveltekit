@@ -15,7 +15,7 @@ export const clients = pgTable(
 		email: text(),
 		siret: integer(),
 		legalName: text('legal_name'),
-		workspaceId: uuid('workspace_id')
+		workspaceId: uuid('workspace_id').notNull()
 	},
 	(table) => [
 		foreignKey({
@@ -29,6 +29,6 @@ export const clients = pgTable(
 			name: 'clients_workspace_id_fkey'
 		})
 			.onUpdate('cascade')
-			.onDelete('set null')
+			.onDelete('cascade')
 	]
 );

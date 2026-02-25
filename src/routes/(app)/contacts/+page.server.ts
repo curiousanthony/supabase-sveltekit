@@ -279,28 +279,39 @@ export const actions: Actions = {
 			return fail(400, { message: 'Poste invalide' });
 		}
 
-		await db.transaction(async (tx) => {
-			await tx
-				.update(contacts)
-				.set({
-					firstName: parsed.data.firstName,
-					lastName: parsed.data.lastName,
-					email: parsed.data.email,
-					phone: parsed.data.phone ?? null,
-					poste: poste ? (poste as (typeof posteOptions)[number]) : null,
-					linkedinUrl: parsed.data.linkedinUrl ?? null,
-					internalNotes: parsed.data.internalNotes ?? null,
-					updatedAt: new Date().toISOString()
-				})
-				.where(and(eq(contacts.id, contactId), eq(contacts.workspaceId, workspaceId)));
+		try {
+			await db.transaction(async (tx) => {
+				const updated = await tx
+					.update(contacts)
+					.set({
+						firstName: parsed.data.firstName,
+						lastName: parsed.data.lastName,
+						email: parsed.data.email,
+						phone: parsed.data.phone ?? null,
+						poste: poste ? (poste as (typeof posteOptions)[number]) : null,
+						linkedinUrl: parsed.data.linkedinUrl ?? null,
+						internalNotes: parsed.data.internalNotes ?? null,
+						updatedAt: new Date().toISOString()
+					})
+					.where(and(eq(contacts.id, contactId), eq(contacts.workspaceId, workspaceId)))
+					.returning({ id: contacts.id });
 
-			await tx.delete(contactCompanies).where(eq(contactCompanies.contactId, contactId));
-			if (parsed.data.companyIds.length > 0) {
-				await tx
-					.insert(contactCompanies)
-					.values(parsed.data.companyIds.map((companyId) => ({ contactId, companyId })));
-			}
-		});
+				if (updated.length === 0) {
+					throw new Error('Contact non trouvé');
+				}
+
+				await tx.delete(contactCompanies).where(eq(contactCompanies.contactId, contactId));
+				if (parsed.data.companyIds.length > 0) {
+					await tx
+						.insert(contactCompanies)
+						.values(parsed.data.companyIds.map((companyId) => ({ contactId, companyId })));
+				}
+			});
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			if (message === 'Contact non trouvé') return fail(404, { message: 'Contact non trouvé' });
+			throw err;
+		}
 		return { success: true };
 	}
 };

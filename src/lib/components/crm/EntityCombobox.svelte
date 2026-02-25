@@ -5,6 +5,15 @@
 
 	type Item = { id: string; label: string };
 
+	interface Props {
+		items?: Item[];
+		linkedIds?: string[];
+		placeholder?: string;
+		buttonLabel?: string;
+		onLink: (id: string) => void;
+		loading?: boolean;
+	}
+
 	let {
 		items = [],
 		linkedIds = [],
@@ -12,14 +21,7 @@
 		buttonLabel = 'Lier un élément',
 		onLink,
 		loading = false
-	}: {
-		items: Item[];
-		linkedIds: string[];
-		placeholder?: string;
-		buttonLabel?: string;
-		onLink: (id: string) => void;
-		loading?: boolean;
-	} = $props();
+	}: Props = $props();
 
 	let open = $state(false);
 	let search = $state('');
@@ -35,9 +37,9 @@
 	);
 
 	const filtered = $derived(
-		search.trim()
+		search.trim().length > 0
 			? available.filter((item) =>
-					item.label.toLowerCase().includes(search.toLowerCase())
+					item.label.toLowerCase().includes(search.trim().toLowerCase())
 				)
 			: available
 	);

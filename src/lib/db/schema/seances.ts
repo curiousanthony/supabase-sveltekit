@@ -1,4 +1,5 @@
-import { pgTable, foreignKey, timestamp, uuid, text, time, date } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable, foreignKey, timestamp, uuid, text, time, date, check } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { modules } from './formations';
 
@@ -27,11 +28,12 @@ export const seances = pgTable(
 			columns: [table.moduleId],
 			foreignColumns: [modules.id],
 			name: 'seances_module_id_fkey'
-		}),
+		}).onDelete('cascade'),
 		foreignKey({
 			columns: [table.instructor],
 			foreignColumns: [users.id],
 			name: 'seances_instructor_fkey'
-		})
+		}),
+		check('seances_end_after_start_chk', sql`${table.endTime} > ${table.startTime}`)
 	]
 );

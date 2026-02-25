@@ -60,6 +60,7 @@
 	let newCompanyName = $state('');
 
 	$effect(() => {
+		if (!open) return;
 		if (contact) {
 			firstName = contact.firstName ?? '';
 			lastName = contact.lastName ?? '';
@@ -109,27 +110,44 @@
 	const isValid = $derived(
 		firstName.trim().length > 0 &&
 		lastName.trim().length > 0 &&
-		/\S+@\S+\.\S+/.test(email.trim())
+		/\S+@\S+\.\S+/.test(email.trim()) &&
+		(!newCompanyMode || newCompanyName.trim().length > 0)
 	);
 
-	let isDesktop = $state(true);
+	let isDesktop = $state<boolean | null>(null);
 	$effect(() => {
+		if (typeof window === 'undefined') return;
 		const mq = window.matchMedia('(min-width: 768px)');
-		isDesktop = mq.matches;
 		const handler = (e: MediaQueryListEvent) => (isDesktop = e.matches);
+		isDesktop = mq.matches;
 		mq.addEventListener('change', handler);
 		return () => mq.removeEventListener('change', handler);
 	});
 
 	function handleEnhance() {
-		return async ({ result }: { result: { type: string; data?: { message?: string } } }) => {
+		return async ({
+			result
+		}: {
+			result:
+				| { type: 'success'; data?: { message?: string } }
+				| { type: 'failure'; data?: { message?: string } }
+				| { type: 'error'; data?: { message?: string } }
+				| { type: 'redirect'; location: string };
+		}) => {
 			if (result.type === 'success') {
 				toast.success(isEdit ? 'Contact mis à jour' : 'Contact créé');
 				open = false;
 				await invalidateAll();
 			}
 			if (result.type === 'failure' && result.data?.message) {
-				toast.error(result.data.message as string);
+				toast.error(result.data.message);
+			}
+			if (result.type === 'error') {
+				toast.error(result.data?.message ?? 'Une erreur est survenue');
+				// keep modal open so the user can fix things
+			}
+			if (result.type === 'redirect') {
+				window.location.href = result.location;
 			}
 		};
 	}
@@ -278,7 +296,7 @@
 								<X class="size-3.5" />
 							</button>
 						</div>
-						<Input.Root placeholder="Nom de l'entreprise *" bind:value={newCompanyName} autofocus />
+						<Input.Root placeholder="Nom de l'entreprise{newCompanyMode ? ' *' : ''}" bind:value={newCompanyName} autofocus />
 						<p class="text-xs text-muted-foreground">Sera créée et liée automatiquement.</p>
 					</div>
 				{/if}
@@ -307,7 +325,9 @@
 	</form>
 {/snippet}
 
-{#if isDesktop}
+{#if isDesktop === null}
+	<!-- Defer Dialog/Drawer until after hydration to avoid SSR flash -->
+{:else if isDesktop}
 	<Dialog.Root bind:open>
 		<Dialog.Content class="flex flex-col gap-0 p-0 sm:max-w-lg max-h-[90vh] overflow-hidden">
 			<Dialog.Header class="shrink-0 border-b px-6 py-4 pr-12">

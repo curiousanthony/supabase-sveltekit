@@ -19,6 +19,10 @@
 		if (data?.editCompany) {
 			companyModalOpen = true;
 			companyModalCompany = data.editCompany;
+			// Clear ?editCompany= from URL so reloads don't re-open the modal
+			const url = new URL(window.location.href);
+			url.searchParams.delete('editCompany');
+			goto(url.pathname + (url.search ? url.search : ''), { replaceState: true, noScroll: true });
 		}
 	});
 
@@ -188,7 +192,10 @@
 				<Table.Root>
 					<Table.Header>
 						<Table.Row class="hover:bg-transparent border-b">
-							<Table.Head class="w-[260px]">
+							<Table.Head
+								class="w-[260px]"
+								aria-sort={sortKey === 'name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+							>
 								<Table.SortableTableHead
 									label="Entreprise"
 									active={sortKey === 'name'}
@@ -203,8 +210,8 @@
 					</Table.Header>
 					<Table.Body>
 						{#each sortedCompanies as company (company.id)}
-							{@const color = avatarColor(company.name)}
-							{@const ini = initial(company.name)}
+							{@const color = avatarColor(company.name ?? '')}
+							{@const ini = initial(company.name ?? '')}
 							<Table.Row
 								class="cursor-pointer hover:bg-muted/40 transition-colors"
 								onclick={() => goto(`/contacts/entreprises/${company.id}`)}
@@ -243,8 +250,8 @@
 			<!-- Mobile card list -->
 			<div class="flex flex-col gap-2 md:hidden">
 				{#each sortedCompanies as company (company.id)}
-					{@const color = avatarColor(company.name)}
-					{@const ini = initial(company.name)}
+					{@const color = avatarColor(company.name ?? '')}
+					{@const ini = initial(company.name ?? '')}
 					<button
 						type="button"
 						class="flex items-center gap-3 rounded-xl border bg-card p-4 text-left hover:bg-muted/40 transition-colors w-full"

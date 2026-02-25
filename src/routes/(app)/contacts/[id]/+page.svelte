@@ -42,6 +42,8 @@
 	let localPoste = $state('');
 	let localEmail = $state('');
 	let localPhone = $state('');
+	let localLinkedinUrl = $state('');
+	let localInternalNotes = $state('');
 
 	$effect(() => {
 		localFirstName = contact?.firstName ?? '';
@@ -49,6 +51,8 @@
 		localPoste = contact?.poste ?? '';
 		localEmail = contact?.email ?? '';
 		localPhone = contact?.phone ?? '';
+		localLinkedinUrl = contact?.linkedinUrl ?? '';
+		localInternalNotes = contact?.internalNotes ?? '';
 	});
 
 	const displayName = $derived(
@@ -181,6 +185,8 @@
 				return async ({ result }) => {
 					if (result.type === 'failure') {
 						toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+					} else if (result.type === 'error') {
+						toast.error('Erreur serveur. Veuillez réessayer.');
 					} else {
 						deleteDialogOpen = false;
 						toast.success('Contact supprimé');
@@ -317,11 +323,12 @@
 					/>
 					<InlineField
 						label="LinkedIn"
-						value={contact?.linkedinUrl ?? ''}
+						value={localLinkedinUrl}
 						field="linkedinUrl"
 						type="url"
 						placeholder="https://linkedin.com/in/..."
 						class="sm:col-span-2"
+						onSaved={(v: string) => { localLinkedinUrl = v; }}
 					/>
 				</div>
 			</section>
@@ -331,10 +338,11 @@
 				<h2 class="mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Notes internes</h2>
 				<InlineField
 					label=""
-					value={contact?.internalNotes ?? ''}
+					value={localInternalNotes}
 					field="internalNotes"
 					type="textarea"
 					placeholder="Ajouter une note..."
+					onSaved={(v: string) => { localInternalNotes = v; }}
 				/>
 			</section>
 		</div>

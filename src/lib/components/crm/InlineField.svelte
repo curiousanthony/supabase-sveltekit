@@ -101,9 +101,7 @@
 				toast.error((result.data as { message?: string })?.message ?? 'Erreur lors de la sauvegarde');
 			} else {
 				onSaved?.(newValue);
-				if (result.type === 'success') {
-					await applyAction(result);
-				}
+				await applyAction(result);
 			}
 		} catch {
 			value = prevValue;
@@ -115,6 +113,7 @@
 
 	async function saveSelect(newValue: string) {
 		if (newValue === (value ?? '')) return;
+		if (isSaving) return;
 		isSaving = true;
 		const prevValue = value;
 		value = newValue;
@@ -131,9 +130,7 @@
 				toast.error((result.data as { message?: string })?.message ?? 'Erreur lors de la sauvegarde');
 			} else {
 				onSaved?.(newValue);
-				if (result.type === 'success') {
-					await applyAction(result);
-				}
+				await applyAction(result);
 			}
 		} catch {
 			value = prevValue;
@@ -251,7 +248,12 @@
 				isSaving ? 'opacity-50' : 'hover:bg-muted/60'
 			)}
 			onclick={startEdit}
-			onkeydown={(e) => e.key === 'Enter' && startEdit()}
+			onkeydown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+					if (e.key === ' ' || e.key === 'Spacebar') e.preventDefault();
+					startEdit();
+				}
+			}}
 			role="button"
 			tabindex="0"
 			aria-label="Modifier {label}"

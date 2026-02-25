@@ -32,11 +32,14 @@
 	let {
 		city = '',
 		region = '',
+		selectedCityCode = '',
 		onSelect
 	}: {
 		city?: string;
 		region?: string;
-		onSelect: (city: string, region: string) => void;
+		/** When provided, the checkmark uses code comparison to avoid duplicate city names. */
+		selectedCityCode?: string;
+		onSelect: (city: string, region: string, cityCode?: string) => void;
 	} = $props();
 
 	let open = $state(false);
@@ -49,7 +52,10 @@
 		search = value;
 		if (debounceTimer) clearTimeout(debounceTimer);
 		if (!value.trim()) {
+			currentController?.abort();
+			currentController = null;
 			suggestions = [];
+			loading = false;
 			return;
 		}
 		debounceTimer = setTimeout(() => fetchCities(value), 300);
@@ -87,8 +93,8 @@
 		currentController = null;
 	});
 
-	function handleSelect(cityName: string, regionName: string) {
-		onSelect(cityName, regionName);
+	function handleSelect(cityName: string, regionName: string, cityCode?: string) {
+		onSelect(cityName, regionName, cityCode);
 		search = '';
 		suggestions = [];
 		open = false;
@@ -140,9 +146,9 @@
 						{#each suggestions as suggestion (suggestion.code)}
 							<Command.Item
 								value={suggestion.code}
-								onSelect={() => handleSelect(suggestion.nom, suggestion.region?.nom ?? '')}
+								onSelect={() => handleSelect(suggestion.nom, suggestion.region?.nom ?? '', suggestion.code)}
 							>
-								<Check class={`mr-2 size-4 ${city === suggestion.nom ? 'opacity-100' : 'opacity-0'}`} />
+								<Check class={`mr-2 size-4 ${(selectedCityCode ? selectedCityCode === suggestion.code : city === suggestion.nom) ? 'opacity-100' : 'opacity-0'}`} />
 								<span>{suggestion.nom}</span>
 								{#if suggestion.region?.nom}
 									<span class="ml-auto text-xs text-muted-foreground">{suggestion.region.nom}</span>

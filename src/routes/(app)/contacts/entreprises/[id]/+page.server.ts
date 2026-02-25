@@ -75,7 +75,7 @@ export const load = (async ({ params, locals }) => {
 		.from(deals)
 		.where(and(eq(deals.companyId, company.id), eq(deals.workspaceId, workspaceId)));
 
-	// All workspace contacts for the link combobox
+	// All workspace contacts for the link combobox — capped to avoid unbounded scans
 	const allContacts = await db
 		.select({
 			id: contacts.id,
@@ -85,7 +85,8 @@ export const load = (async ({ params, locals }) => {
 		})
 		.from(contacts)
 		.where(eq(contacts.workspaceId, workspaceId))
-		.orderBy(desc(contacts.updatedAt));
+		.orderBy(desc(contacts.updatedAt))
+		.limit(200);
 
 	return {
 		company,
@@ -121,40 +122,64 @@ export const actions: Actions = {
 		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
 
 		const fd = await request.formData();
-		const field = (fd.get('field') as string)?.trim() as AllowedField;
+		const field = (fd.get('field') as string | null)?.trim();
 		const value = (fd.get('value') as string)?.trim() ?? '';
 
-		if (!ALLOWED_FIELDS.includes(field)) {
+		if (typeof field !== 'string' || !(ALLOWED_FIELDS as readonly string[]).includes(field)) {
 			return fail(400, { message: 'Champ invalide' });
 		}
+		const safeField = field as AllowedField;
 
 		// Validate enum values
-		if (field === 'legalStatus' && value && !legalStatusOptions.includes(value as (typeof legalStatusOptions)[number])) {
+		if (safeField === 'legalStatus' && value && !legalStatusOptions.includes(value as (typeof legalStatusOptions)[number])) {
 			return fail(400, { message: 'Statut juridique invalide' });
 		}
-		if (field === 'industry' && value && !industryOptions.includes(value as (typeof industryOptions)[number])) {
+		if (safeField === 'industry' && value && !industryOptions.includes(value as (typeof industryOptions)[number])) {
 			return fail(400, { message: 'Industrie invalide' });
 		}
-		if (field === 'companySize' && value && !companySizeOptions.includes(value as (typeof companySizeOptions)[number])) {
+		if (safeField === 'companySize' && value && !companySizeOptions.includes(value as (typeof companySizeOptions)[number])) {
 			return fail(400, { message: 'Taille invalide' });
 		}
 		// SIRET: exactly 14 digits
-		if (field === 'siret' && value && !/^\d{14}$/.test(value)) {
+		if (safeField === 'siret' && value && !/^\d{14}$/.test(value)) {
 			return fail(400, { message: 'Le SIRET doit contenir exactement 14 chiffres' });
 		}
-		if (field === 'name' && !value) {
+		if (safeField === 'name' && !value) {
 			return fail(400, { message: 'Le nom est requis' });
 		}
 
-		const saveValue = field === 'websiteUrl' && value ? normalizeUrl(value) : (value || null);
+		const saveValue = safeField === 'websiteUrl' && value ? normalizeUrl(value) : (value || null);
 
 		const updated = await db
 			.update(companies)
-			.set({ [field]: saveValue, updatedAt: new Date().toISOString() })
+			.set({ [safeField]: saveValue, updatedAt: new Date().toISOString() })
 			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
 			.returning({ id: companies.id });
 
 		if (updated.length === 0) return fail(404, { message: 'Entreprise non trouvée' });
+
+		return { success: true };
+	},
+
+	updateCityRegion: async ({ params, request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const fd = await request.formData();
+		const city = (fd.get('city') as string)?.trim() ?? '';
+		const region = (fd.get('region') as string)?.trim() ?? '';
+
+		const [updated] = await db
+			.update(companies)
+			.set({
+				city: city || null,
+				region: region || null,
+				updatedAt: new Date().toISOString()
+			})
+			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
+			.returning({ id: companies.id });
+
+		if (!updated) return fail(404, { message: 'Entreprise non trouvée' });
 
 		return { success: true };
 	},
@@ -167,6 +192,14 @@ export const actions: Actions = {
 		const contactId = (fd.get('contactId') as string)?.trim();
 		if (!contactId) return fail(400, { message: 'Contact manquant' });
 
+		// Verify company belongs to same workspace
+		const [company] = await db
+			.select({ id: companies.id })
+			.from(companies)
+			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
+			.limit(1);
+		if (!company) return fail(404, { message: 'Société non trouvée' });
+
 		// Verify contact belongs to same workspace
 		const [contact] = await db
 			.select({ id: contacts.id })
@@ -177,7 +210,7 @@ export const actions: Actions = {
 
 		await db
 			.insert(contactCompanies)
-			.values({ contactId, companyId: params.id })
+			.values({ contactId, companyId: company.id })
 			.onConflictDoNothing();
 
 		return { success: true };

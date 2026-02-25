@@ -50,7 +50,7 @@
 					<Table.Row
 						class="cursor-pointer hover:bg-muted/40 transition-colors"
 						tabindex={0}
-						role="link"
+						role="row"
 						onclick={() => goto(`/contacts/formateurs/${formateur.id}`)}
 						onkeydown={(e: KeyboardEvent) => {
 							if (e.key === 'Enter' || e.key === ' ') {
@@ -60,7 +60,13 @@
 						}}
 					>
 						<Table.Cell>
-							<span class="font-medium text-sm">{name}</span>
+							<a
+								href="/contacts/formateurs/{formateur.id}"
+								class="font-medium text-sm hover:underline focus:outline-none focus:underline"
+								onclick={(e: MouseEvent) => e.stopPropagation()}
+							>
+								{name}
+							</a>
 						</Table.Cell>
 						<Table.Cell>
 							{#if formateur.disponible7J}

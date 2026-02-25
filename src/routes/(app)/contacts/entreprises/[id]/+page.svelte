@@ -148,35 +148,30 @@
 	// City / Region co-update
 	let localCity = $state('');
 	let localRegion = $state('');
+	let localCityCode = $state('');
 	$effect(() => {
 		localCity = company?.city ?? '';
 		localRegion = company?.region ?? '';
+		localCityCode = '';
 	});
 
-	async function saveCityRegion(cityValue: string, regionValue: string) {
-		const saveField = async (field: string, value: string) => {
+	async function saveCityRegion(cityValue: string, regionValue: string, cityCode?: string) {
+		try {
 			const fd = new FormData();
-			fd.append('field', field);
-			fd.append('value', value);
-			const res = await fetch('?/updateField', { method: 'POST', body: fd });
+			fd.append('city', cityValue);
+			fd.append('region', regionValue);
+			const res = await fetch('?/updateCityRegion', { method: 'POST', body: fd });
 			const result = deserialize(await res.text());
 			if (result.type === 'failure') {
 				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
-				return false;
+				return;
 			}
-			return true;
-		};
-		try {
-			const cityOk = await saveField('city', cityValue);
-			if (!cityOk) return;
-			const regionOk = await saveField('region', regionValue);
-			if (!regionOk) return;
 			localCity = cityValue;
 			localRegion = regionValue;
+			localCityCode = cityValue ? (cityCode ?? '') : '';
 			await invalidateAll();
 		} catch (err) {
 			toast.error('Erreur réseau ou serveur. Veuillez réessayer.');
-			return;
 		}
 	}
 </script>
@@ -333,6 +328,7 @@
 				<CityCombobox
 					city={localCity}
 					region={localRegion}
+					selectedCityCode={localCityCode}
 					onSelect={saveCityRegion}
 				/>
 				</div>
@@ -384,7 +380,7 @@
 									type="button"
 									onclick={() => unlinkContact(c.id)}
 									disabled={unlinkingContactId === c.id}
-									class="flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 group-hover/item:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all disabled:opacity-50"
+									class="flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all disabled:opacity-50"
 									aria-label="Retirer {fullName(c)}"
 								>
 									<X class="size-3" />
