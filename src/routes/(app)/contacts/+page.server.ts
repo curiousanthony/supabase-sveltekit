@@ -222,17 +222,30 @@ export const actions: Actions = {
 			const contactId = inserted[0]?.id;
 			if (!contactId) return fail(500, { message: 'Création du contact échouée' });
 
-			if (parsed.data.companyIds.length > 0) {
+			// Collect all company IDs to link (existing + newly created)
+			const allCompanyIds = [...parsed.data.companyIds];
+
+			// Create a new company inline if requested
+			const newCompanyName = (fd.get('newCompanyName') as string)?.trim();
+			if (newCompanyName) {
+				const [newCo] = await db
+					.insert(companies)
+					.values({ workspaceId, name: newCompanyName })
+					.returning({ id: companies.id });
+				if (newCo?.id) allCompanyIds.push(newCo.id);
+			}
+
+			if (allCompanyIds.length > 0) {
 				await db
 					.insert(contactCompanies)
-					.values(parsed.data.companyIds.map((companyId) => ({ contactId, companyId })));
+					.values(allCompanyIds.map((companyId) => ({ contactId, companyId })));
 			}
 			return { success: true };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : '';
 			console.error('[CRM createContact]', message, cause || '');
-			return fail(500, { message: cause || message || 'Impossible de créer le contact.' });
+			return fail(500, { message: 'Impossible de créer le contact.' });
 		}
 	},
 
@@ -266,26 +279,28 @@ export const actions: Actions = {
 			return fail(400, { message: 'Poste invalide' });
 		}
 
-		await db
-			.update(contacts)
-			.set({
-				firstName: parsed.data.firstName,
-				lastName: parsed.data.lastName,
-				email: parsed.data.email,
-				phone: parsed.data.phone ?? null,
-				poste: poste ? (poste as (typeof posteOptions)[number]) : null,
-				linkedinUrl: parsed.data.linkedinUrl ?? null,
-				internalNotes: parsed.data.internalNotes ?? null,
-				updatedAt: new Date().toISOString()
-			})
-			.where(and(eq(contacts.id, contactId), eq(contacts.workspaceId, workspaceId)));
+		await db.transaction(async (tx) => {
+			await tx
+				.update(contacts)
+				.set({
+					firstName: parsed.data.firstName,
+					lastName: parsed.data.lastName,
+					email: parsed.data.email,
+					phone: parsed.data.phone ?? null,
+					poste: poste ? (poste as (typeof posteOptions)[number]) : null,
+					linkedinUrl: parsed.data.linkedinUrl ?? null,
+					internalNotes: parsed.data.internalNotes ?? null,
+					updatedAt: new Date().toISOString()
+				})
+				.where(and(eq(contacts.id, contactId), eq(contacts.workspaceId, workspaceId)));
 
-		await db.delete(contactCompanies).where(eq(contactCompanies.contactId, contactId));
-		if (parsed.data.companyIds.length > 0) {
-			await db
-				.insert(contactCompanies)
-				.values(parsed.data.companyIds.map((companyId) => ({ contactId, companyId })));
-		}
+			await tx.delete(contactCompanies).where(eq(contactCompanies.contactId, contactId));
+			if (parsed.data.companyIds.length > 0) {
+				await tx
+					.insert(contactCompanies)
+					.values(parsed.data.companyIds.map((companyId) => ({ contactId, companyId })));
+			}
+		});
 		return { success: true };
 	}
 };

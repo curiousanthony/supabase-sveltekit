@@ -142,13 +142,19 @@ export const actions: Actions = {
 		if (field === 'siret' && value && !/^\d{14}$/.test(value)) {
 			return fail(400, { message: 'Le SIRET doit contenir exactement 14 chiffres' });
 		}
+		if (field === 'name' && !value) {
+			return fail(400, { message: 'Le nom est requis' });
+		}
 
 		const saveValue = field === 'websiteUrl' && value ? normalizeUrl(value) : (value || null);
 
-		await db
+		const updated = await db
 			.update(companies)
 			.set({ [field]: saveValue, updatedAt: new Date().toISOString() })
-			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)));
+			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
+			.returning({ id: companies.id });
+
+		if (updated.length === 0) return fail(404, { message: 'Entreprise non trouvée' });
 
 		return { success: true };
 	},
@@ -185,12 +191,19 @@ export const actions: Actions = {
 		const contactId = (fd.get('contactId') as string)?.trim();
 		if (!contactId) return fail(400, { message: 'Contact manquant' });
 
+		const [company] = await db
+			.select({ id: companies.id })
+			.from(companies)
+			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
+			.limit(1);
+		if (!company) return fail(403, { message: 'Non autorisé' });
+
 		await db
 			.delete(contactCompanies)
 			.where(
 				and(
 					eq(contactCompanies.contactId, contactId),
-					eq(contactCompanies.companyId, params.id)
+					eq(contactCompanies.companyId, company.id)
 				)
 			);
 

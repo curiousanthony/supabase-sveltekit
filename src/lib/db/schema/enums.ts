@@ -19,13 +19,12 @@ export const contactRole = pgEnum('contact_role', [
 	'Directeur des Opérations',
 	'Directeur Technique',
 	'Office Manager',
-	'Assistante de Direction',
+	'Assistant(e) de Direction',
 	'Chef de Projet',
 	'Responsable des Achats',
 	'Consultant',
 	'Gérant',
 	'Associé',
-	'CEO',
 	'Autre'
 ]);
 export const statutsFormation = pgEnum('statuts_formation', ['En attente', 'En cours', 'Terminée']);

@@ -4,7 +4,7 @@ import { getUserWorkspace } from '$lib/auth';
 import { and, eq, desc } from 'drizzle-orm';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { posteOptions } from '$lib/crm/contact-schema';
+import { posteOptions, validateContactName } from '$lib/crm/contact-schema';
 
 const ALLOWED_FIELDS = [
 	'firstName',
@@ -20,7 +20,7 @@ type AllowedField = (typeof ALLOWED_FIELDS)[number];
 
 export const load = (async ({ params, locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
-	if (!workspaceId) throw error(404, 'Espace non trouvé');
+	if (!workspaceId) throw error(401, 'Espace non trouvé');
 
 	const contact = await db.query.contacts.findFirst({
 		where: and(eq(contacts.id, params.id), eq(contacts.workspaceId, workspaceId)),
@@ -64,7 +64,7 @@ export const load = (async ({ params, locals }) => {
 export const actions: Actions = {
 	deleteContact: async ({ params, locals }) => {
 		const workspaceId = await getUserWorkspace(locals);
-		if (!workspaceId) throw error(403, 'Espace non trouvé');
+		if (!workspaceId) return fail(401, { message: 'Espace non trouvé' });
 		const [contact] = await db
 			.select({ id: contacts.id })
 			.from(contacts)
@@ -92,10 +92,23 @@ export const actions: Actions = {
 			return fail(400, { message: 'Poste invalide' });
 		}
 
-		await db
+		// Validate name fields (same rules as contact form)
+		if (field === 'firstName') {
+			const err = validateContactName(value, { requiredMessage: 'Le prénom est requis' });
+			if (err) return fail(400, { message: err });
+		}
+		if (field === 'lastName') {
+			const err = validateContactName(value, { requiredMessage: 'Le nom est requis' });
+			if (err) return fail(400, { message: err });
+		}
+
+		const updated = await db
 			.update(contacts)
 			.set({ [field]: value || null, updatedAt: new Date().toISOString() })
-			.where(and(eq(contacts.id, params.id), eq(contacts.workspaceId, workspaceId)));
+			.where(and(eq(contacts.id, params.id), eq(contacts.workspaceId, workspaceId)))
+			.returning({ id: contacts.id });
+
+		if (updated.length === 0) throw error(404, 'Contact non trouvé');
 
 		return { success: true };
 	},
@@ -108,6 +121,14 @@ export const actions: Actions = {
 		const companyId = (fd.get('companyId') as string)?.trim();
 		if (!companyId) return fail(400, { message: 'Entreprise manquante' });
 
+		// Verify contact belongs to same workspace (prevent IDOR)
+		const [contact] = await db
+			.select({ id: contacts.id })
+			.from(contacts)
+			.where(and(eq(contacts.id, params.id), eq(contacts.workspaceId, workspaceId)))
+			.limit(1);
+		if (!contact) return fail(404, { message: 'Contact non trouvé' });
+
 		// Verify company belongs to same workspace
 		const [company] = await db
 			.select({ id: companies.id })
@@ -119,7 +140,7 @@ export const actions: Actions = {
 		// Insert, ignore if already linked (conflict on primary key)
 		await db
 			.insert(contactCompanies)
-			.values({ contactId: params.id, companyId })
+			.values({ contactId: contact.id, companyId })
 			.onConflictDoNothing();
 
 		return { success: true };
@@ -132,6 +153,20 @@ export const actions: Actions = {
 		const fd = await request.formData();
 		const companyId = (fd.get('companyId') as string)?.trim();
 		if (!companyId) return fail(400, { message: 'Entreprise manquante' });
+
+		const [contact] = await db
+			.select({ id: contacts.id })
+			.from(contacts)
+			.where(and(eq(contacts.id, params.id), eq(contacts.workspaceId, workspaceId)))
+			.limit(1);
+		if (!contact) return fail(403, { message: 'Contact non trouvé ou accès refusé' });
+
+		const [company] = await db
+			.select({ id: companies.id })
+			.from(companies)
+			.where(and(eq(companies.id, companyId), eq(companies.workspaceId, workspaceId)))
+			.limit(1);
+		if (!company) return fail(403, { message: 'Entreprise non trouvée ou accès refusé' });
 
 		await db
 			.delete(contactCompanies)

@@ -9,18 +9,26 @@
 		items = [],
 		linkedIds = [],
 		placeholder = 'Rechercher...',
+		buttonLabel = 'Lier un élément',
 		onLink,
 		loading = false
 	}: {
 		items: Item[];
 		linkedIds: string[];
 		placeholder?: string;
+		buttonLabel?: string;
 		onLink: (id: string) => void;
 		loading?: boolean;
 	} = $props();
 
 	let open = $state(false);
 	let search = $state('');
+
+	$effect(() => {
+		if (!open) {
+			search = '';
+		}
+	});
 
 	const available = $derived(
 		items.filter((item) => !linkedIds.includes(item.id))
@@ -47,7 +55,7 @@
 			<button
 				{...props}
 				class="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
-				aria-label={placeholder}
+				aria-label={buttonLabel}
 				disabled={loading || available.length === 0}
 			>
 				<Plus class="size-3.5" />

@@ -27,7 +27,7 @@
 			companyModalCompany = null;
 			companyModalOpen = true;
 			// Clean ?new=true from URL
-			const url = new URL($page.url);
+			const url = new URL(window.location.href);
 			url.searchParams.delete('new');
 			goto(url.pathname + (url.search ? url.search : ''), { replaceState: true, noScroll: true });
 		}
@@ -39,25 +39,58 @@
 	}
 
 	const companies = $derived(data?.companies ?? []);
+	const allContacts = $derived(data?.allContacts ?? []);
 	const workspaceId = $derived(data?.workspaceId);
 
 	let search = $state('');
 	let industryFilter = $state<string>('all');
 	let sizeFilter = $state<string>('all');
+	let sortKey = $state<'name' | null>(null);
+	let sortDir = $state<'asc' | 'desc'>('asc');
 
 	$effect(() => {
 		search = data?.query ?? '';
 		industryFilter = data?.industry && data.industry !== '' ? data.industry : 'all';
 		sizeFilter = data?.size && data.size !== '' ? data.size : 'all';
 	});
-
 	function applyFilters() {
 		const params = new URLSearchParams();
 		if (search) params.set('q', search);
 		if (industryFilter && industryFilter !== 'all') params.set('industry', industryFilter);
 		if (sizeFilter && sizeFilter !== 'all') params.set('size', sizeFilter);
-		goto(`/contacts/entreprises?${params.toString()}`, { replaceState: true });
+		const qs = params.toString();
+		goto(`/contacts/entreprises${qs ? `?${qs}` : ''}`, { replaceState: true });
 	}
+
+	function clearFilters() {
+		goto('/contacts/entreprises', { replaceState: true });
+	}
+
+	function toggleSort(key: 'name') {
+		if (sortKey === key) {
+			if (sortDir === 'asc') {
+				sortDir = 'desc';
+			} else {
+				sortKey = null;
+				sortDir = 'asc';
+			}
+		} else {
+			sortKey = key;
+			sortDir = 'asc';
+		}
+	}
+
+	const sortedCompanies = $derived.by(() => {
+		if (!sortKey) return companies;
+		const list = [...companies];
+		const mult = sortDir === 'asc' ? 1 : -1;
+		list.sort((a, b) => mult * (a.name ?? '').localeCompare(b.name ?? '', undefined, { sensitivity: 'base' }));
+		return list;
+	});
+
+	const hasActiveFiltersOrSearch = $derived(
+		search.trim() !== '' || industryFilter !== 'all' || sizeFilter !== 'all'
+	);
 
 	const INDUSTRY_OPTIONS = [
 		{ value: 'all', label: 'Toutes les industries' },
@@ -92,21 +125,16 @@
 	<title>CRM – Entreprises</title>
 </svelte:head>
 
-{#if !workspaceId}
-	<div class="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-		<p class="text-sm">Aucun espace de travail assigné.</p>
-	</div>
-{:else}
-	<div class="flex min-h-0 flex-1 flex-col gap-4">
-		<!-- Search / filter bar -->
-		<div class="flex flex-wrap items-center gap-2">
-			<div class="relative flex-1 min-w-[180px] max-w-sm">
+<div class="flex w-full flex-col gap-4">
+	<div class="flex flex-wrap items-center gap-2">
+		<div class="relative flex-1 min-w-[180px] max-w-sm">
 				<Input.Root
 					type="search"
 					placeholder="Rechercher par nom, ville, SIRET..."
 					bind:value={search}
 					onkeydown={(e) => e.key === 'Enter' && applyFilters()}
 					class="pr-8"
+					aria-label="Rechercher par nom, ville, SIRET"
 				/>
 			</div>
 			<Select.Root type="single" bind:value={industryFilter}>
@@ -132,7 +160,18 @@
 			<Button.Root variant="secondary" onclick={() => applyFilters()}>Filtrer</Button.Root>
 		</div>
 
-		{#if companies.length === 0}
+	{#if companies.length === 0 && hasActiveFiltersOrSearch}
+			<div class="flex flex-col items-center justify-center rounded-xl border border-dashed p-12 text-center gap-3">
+				<div class="flex size-12 items-center justify-center rounded-full bg-muted">
+					<Building2 class="size-5 text-muted-foreground" />
+				</div>
+				<div>
+					<p class="font-medium text-sm">Aucun résultat pour cette recherche</p>
+					<p class="text-sm text-muted-foreground mt-1">Essayez d’autres critères ou effacez les filtres.</p>
+				</div>
+				<Button.Root variant="secondary" onclick={clearFilters}>Effacer les filtres</Button.Root>
+			</div>
+		{:else if companies.length === 0}
 			<div class="flex flex-col items-center justify-center rounded-xl border border-dashed p-12 text-center gap-3">
 				<div class="flex size-12 items-center justify-center rounded-full bg-muted">
 					<Building2 class="size-5 text-muted-foreground" />
@@ -149,14 +188,21 @@
 				<Table.Root>
 					<Table.Header>
 						<Table.Row class="hover:bg-transparent border-b">
-							<Table.Head class="w-[260px]">Entreprise</Table.Head>
+							<Table.Head class="w-[260px]">
+								<Table.SortableTableHead
+									label="Entreprise"
+									active={sortKey === 'name'}
+									direction={sortKey === 'name' ? sortDir : null}
+									onclick={() => toggleSort('name')}
+								/>
+							</Table.Head>
 							<Table.Head>Industrie</Table.Head>
 							<Table.Head class="w-[120px]">Taille</Table.Head>
 							<Table.Head class="w-[160px]">Ville</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
-						{#each companies as company (company.id)}
+						{#each sortedCompanies as company (company.id)}
 							{@const color = avatarColor(company.name)}
 							{@const ini = initial(company.name)}
 							<Table.Row
@@ -196,7 +242,7 @@
 
 			<!-- Mobile card list -->
 			<div class="flex flex-col gap-2 md:hidden">
-				{#each companies as company (company.id)}
+				{#each sortedCompanies as company (company.id)}
 					{@const color = avatarColor(company.name)}
 					{@const ini = initial(company.name)}
 					<button
@@ -218,7 +264,6 @@
 				{/each}
 			</div>
 		{/if}
-	</div>
-{/if}
+</div>
 
-<CompanyModal bind:open={companyModalOpen} company={companyModalCompany} />
+<CompanyModal bind:open={companyModalOpen} company={companyModalCompany} contacts={allContacts} />

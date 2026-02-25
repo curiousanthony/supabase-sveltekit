@@ -5,9 +5,9 @@
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import InlineField from '$lib/components/crm/InlineField.svelte';
 	import EntityCombobox from '$lib/components/crm/EntityCombobox.svelte';
-	import { enhance } from '$app/forms';
+	import { enhance, applyAction } from '$app/forms';
 	import { headerTitleText } from '$lib/stores/header-store';
-	import { posteOptions } from '$lib/crm/contact-schema';
+	import { posteOptions, validateContactName } from '$lib/crm/contact-schema';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import Briefcase from '@lucide/svelte/icons/briefcase';
 	import Mail from '@lucide/svelte/icons/mail';
@@ -36,13 +36,19 @@
 			.map((d) => ({ ...d.formation!, dealName: d.name }))
 	);
 
-	// Reactive local name state for header
+	// Reactive local state for header badges and display (synced from server, updated on InlineField save)
 	let localFirstName = $state('');
 	let localLastName = $state('');
+	let localPoste = $state('');
+	let localEmail = $state('');
+	let localPhone = $state('');
 
 	$effect(() => {
 		localFirstName = contact?.firstName ?? '';
 		localLastName = contact?.lastName ?? '';
+		localPoste = contact?.poste ?? '';
+		localEmail = contact?.email ?? '';
+		localPhone = contact?.phone ?? '';
 	});
 
 	const displayName = $derived(
@@ -58,32 +64,54 @@
 	let unlinkingCompanyId = $state<string | null>(null);
 	async function unlinkCompany(companyId: string) {
 		unlinkingCompanyId = companyId;
-		const fd = new FormData();
-		fd.append('companyId', companyId);
-		const res = await fetch('?/unlinkCompany', { method: 'POST', body: fd });
-		const result = deserialize(await res.text());
-		if (result.type === 'failure') {
-			toast.error((result.data as { message?: string })?.message ?? 'Erreur');
-		} else {
-			await invalidateAll();
+		try {
+			const fd = new FormData();
+			fd.append('companyId', companyId);
+			const res = await fetch('?/unlinkCompany', { method: 'POST', body: fd });
+			const result = deserialize(await res.text());
+			if (result.type === 'success') {
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+			} else if (result.type === 'error') {
+				const msg =
+					typeof result.error === 'string'
+						? result.error
+						: (result.error as { message?: string })?.message ?? 'Erreur serveur. Veuillez réessayer.';
+				toast.error(msg);
+			}
+		} catch (e) {
+			toast.error('Erreur de connexion. Veuillez réessayer.');
+		} finally {
+			unlinkingCompanyId = null;
 		}
-		unlinkingCompanyId = null;
 	}
 
 	// Link company
 	let linkingCompany = $state(false);
 	async function linkCompany(companyId: string) {
 		linkingCompany = true;
-		const fd = new FormData();
-		fd.append('companyId', companyId);
-		const res = await fetch('?/linkCompany', { method: 'POST', body: fd });
-		const result = deserialize(await res.text());
-		if (result.type === 'failure') {
-			toast.error((result.data as { message?: string })?.message ?? 'Erreur');
-		} else {
-			await invalidateAll();
+		try {
+			const fd = new FormData();
+			fd.append('companyId', companyId);
+			const res = await fetch('?/linkCompany', { method: 'POST', body: fd });
+			const result = deserialize(await res.text());
+			if (result.type === 'success') {
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+			} else if (result.type === 'error') {
+				const msg =
+					typeof result.error === 'string'
+						? result.error
+						: (result.error as { message?: string })?.message ?? 'Erreur serveur. Veuillez réessayer.';
+				toast.error(msg);
+			}
+		} catch (e) {
+			toast.error('Erreur de connexion. Veuillez réessayer.');
+		} finally {
+			linkingCompany = false;
 		}
-		linkingCompany = false;
 	}
 
 	const allCompanyItems = $derived(
@@ -146,7 +174,21 @@
 				Êtes-vous sûr de vouloir supprimer « {displayName} » ? Cette action est irréversible.
 			</Dialog.Description>
 		</Dialog.Header>
-		<form method="POST" action="?/deleteContact" use:enhance>
+		<form
+			method="POST"
+			action="?/deleteContact"
+			use:enhance={() => {
+				return async ({ result }) => {
+					if (result.type === 'failure') {
+						toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+					} else {
+						deleteDialogOpen = false;
+						toast.success('Contact supprimé');
+					}
+					await applyAction(result);
+				};
+			}}
+		>
 			<Dialog.Footer>
 				<Dialog.Close>
 					<Button.Root type="button" variant="outline">Annuler</Button.Root>
@@ -166,8 +208,8 @@
 			</div>
 			<div class="flex flex-col gap-1.5">
 				<div class="flex flex-wrap items-center gap-1.5">
-					{#if contact?.poste}
-						<Badge variant="secondary" class="text-xs">{contact.poste}</Badge>
+					{#if localPoste}
+						<Badge variant="secondary" class="text-xs">{localPoste}</Badge>
 					{/if}
 					{#each linkedCompanies as company (company?.id)}
 						{#if company}
@@ -182,22 +224,22 @@
 					{/each}
 				</div>
 				<div class="flex flex-wrap items-center gap-2">
-					{#if contact?.email}
+					{#if localEmail}
 						<a
-							href="mailto:{contact.email}"
+							href="mailto:{localEmail}"
 							class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
 						>
 							<Mail class="size-3" />
-							{contact.email}
+							{localEmail}
 						</a>
 					{/if}
-					{#if contact?.phone}
+					{#if localPhone}
 						<a
-							href="tel:{contact.phone}"
+							href="tel:{localPhone}"
 							class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
 						>
 							<Phone class="size-3" />
-							{contact.phone}
+							{localPhone}
 						</a>
 					{/if}
 				</div>
@@ -234,20 +276,23 @@
 						label="Prénom"
 						value={localFirstName}
 						field="firstName"
+						validate={(v) => validateContactName(v, { requiredMessage: 'Le prénom est requis' })}
 						onSaved={(v: string) => { localFirstName = v; }}
 					/>
 					<InlineField
 						label="Nom"
 						value={localLastName}
 						field="lastName"
+						validate={(v) => validateContactName(v, { requiredMessage: 'Le nom est requis' })}
 						onSaved={(v: string) => { localLastName = v; }}
 					/>
 					<InlineField
 						label="Poste"
-						value={contact?.poste ?? ''}
+						value={localPoste}
 						field="poste"
 						type="select"
 						options={posteSelectOptions}
+						onSaved={(v: string) => { localPoste = v; }}
 					/>
 				</div>
 			</section>
@@ -258,15 +303,17 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<InlineField
 						label="Email"
-						value={contact?.email ?? ''}
+						value={localEmail}
 						field="email"
 						type="email"
+						onSaved={(v: string) => { localEmail = v; }}
 					/>
 					<InlineField
 						label="Téléphone"
-						value={contact?.phone ?? ''}
+						value={localPhone}
 						field="phone"
 						type="tel"
+						onSaved={(v: string) => { localPhone = v; }}
 					/>
 					<InlineField
 						label="LinkedIn"
@@ -302,6 +349,7 @@
 						items={allCompanyItems}
 						linkedIds={linkedCompanyIds}
 						placeholder="Rechercher une entreprise..."
+						buttonLabel="Lier une entreprise"
 						onLink={linkCompany}
 						loading={linkingCompany}
 					/>
@@ -342,7 +390,7 @@
 				<div class="flex items-center justify-between mb-3">
 					<h2 class="text-sm font-semibold">Deals</h2>
 					<a
-						href="/deals/creer?contactId={contact?.id}"
+						href={contact?.id ? `/deals/creer?contactId=${contact.id}` : '/deals/creer'}
 						class="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
 						aria-label="Créer un deal"
 					>

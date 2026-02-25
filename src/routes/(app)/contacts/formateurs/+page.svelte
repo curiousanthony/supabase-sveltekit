@@ -49,7 +49,15 @@
 					{@const name = [formateur.user?.firstName, formateur.user?.lastName].filter(Boolean).join(' ') || '—'}
 					<Table.Row
 						class="cursor-pointer hover:bg-muted/40 transition-colors"
+						tabindex={0}
+						role="link"
 						onclick={() => goto(`/contacts/formateurs/${formateur.id}`)}
+						onkeydown={(e: KeyboardEvent) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								goto(`/contacts/formateurs/${formateur.id}`);
+							}
+						}}
 					>
 						<Table.Cell>
 							<span class="font-medium text-sm">{name}</span>
@@ -116,6 +124,11 @@
 							<span class="flex items-center gap-1 text-xs text-green-600 shrink-0">
 								<span class="relative inline-flex size-1.5 rounded-full bg-green-500"></span>
 								Disponible
+							</span>
+						{:else}
+							<span class="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+								<span class="relative inline-flex size-1.5 rounded-full bg-muted-foreground/50"></span>
+								Indisponible
 							</span>
 						{/if}
 					</div>

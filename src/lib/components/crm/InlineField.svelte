@@ -14,6 +14,17 @@
 		return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 	}
 
+	/** Safe href for URL type: only http(s), reject javascript:, data:, vbscript:, etc. */
+	function getSafeNormalizedUrl(val: string | null): string | null {
+		if (!val) return null;
+		const trimmed = val.trim();
+		if (!trimmed) return null;
+		if (/^https?:\/\//i.test(trimmed)) return trimmed;
+		// Reject any other scheme (javascript:, data:, vbscript:, etc.)
+		if (/^[a-z0-9+.-]+:/i.test(trimmed)) return null;
+		return `https://${trimmed}`;
+	}
+
 	type FieldType = 'text' | 'email' | 'tel' | 'url' | 'textarea' | 'select';
 
 	type SelectOption = { value: string; label: string };
@@ -27,6 +38,7 @@
 		action = '?/updateField',
 		placeholder = '—',
 		class: className = '',
+		validate,
 		onSaved
 	}: {
 		label: string;
@@ -37,6 +49,8 @@
 		action?: string;
 		placeholder?: string;
 		class?: string;
+		/** If provided, called before submit. Return error message to block save and show toast. */
+		validate?: (value: string) => string | null;
 		onSaved?: (newValue: string) => void;
 	} = $props();
 
@@ -64,6 +78,13 @@
 			cancel();
 			return;
 		}
+		if (validate) {
+			const err = validate(newValue);
+			if (err) {
+				toast.error(err);
+				return;
+			}
+		}
 		isEditing = false;
 		isSaving = true;
 		const prevValue = value;
@@ -80,8 +101,10 @@
 				toast.error((result.data as { message?: string })?.message ?? 'Erreur lors de la sauvegarde');
 			} else {
 				onSaved?.(newValue);
+				if (result.type === 'success') {
+					await applyAction(result);
+				}
 			}
-			await applyAction(result);
 		} catch {
 			value = prevValue;
 			toast.error('Erreur réseau');
@@ -108,8 +131,10 @@
 				toast.error((result.data as { message?: string })?.message ?? 'Erreur lors de la sauvegarde');
 			} else {
 				onSaved?.(newValue);
+				if (result.type === 'success') {
+					await applyAction(result);
+				}
 			}
-			await applyAction(result);
 		} catch {
 			value = prevValue;
 			toast.error('Erreur réseau');
@@ -135,13 +160,17 @@
 	}
 
 	const displayValue = $derived(value?.trim() || null);
+	const safeNormalizedUrl = $derived(
+		type === 'url' && displayValue ? getSafeNormalizedUrl(displayValue) : null
+	);
 	const optionLabel = $derived(
 		type === 'select' ? (options.find((o) => o.value === value)?.label ?? value ?? null) : null
 	);
+	const labelId = $derived(`inline-field-${String(field).replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_:.]/g, '')}`);
 </script>
 
 <div class={cn('group/field flex flex-col gap-0.5', className)}>
-	<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+	<span id={labelId} class="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
 
 	{#if type === 'select'}
 		<!-- Select: inline toggle without edit mode -->
@@ -155,6 +184,8 @@
 					onValueChange={(v) => saveSelect(v)}
 				>
 					<Select.Trigger
+						aria-labelledby={labelId}
+						aria-label={label}
 						class="h-8 min-w-[120px] border-transparent bg-transparent px-2 text-sm shadow-none hover:border-input hover:bg-muted/50 focus:border-input data-[state=open]:border-input data-[state=open]:bg-muted/50 transition-colors"
 					>
 						{#if optionLabel}
@@ -204,6 +235,7 @@
 			</button>
 			<button
 				type="button"
+				onmousedown={(e) => e.preventDefault()}
 				onclick={cancel}
 				class="mt-0.5 flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
 				aria-label="Annuler"
@@ -234,18 +266,24 @@
 					{displayValue ?? placeholder}
 				</span>
 			{:else if type === 'url' && displayValue}
-				<a
-					href={displayValue}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="flex-1 truncate text-sm text-primary hover:underline"
-					onclick={(e) => e.stopPropagation()}
-				>
-					{displayValue.replace(/^https?:\/\//, '')}
-				</a>
-				<ExternalLink
-					class="size-3 shrink-0 mt-0.5 text-muted-foreground opacity-0 group-hover/value:opacity-60 transition-opacity"
-				/>
+				{#if safeNormalizedUrl}
+					<a
+						href={safeNormalizedUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="flex-1 truncate text-sm text-primary hover:underline"
+						onclick={(e) => e.stopPropagation()}
+					>
+						{displayValue.replace(/^https?:\/\//, '')}
+					</a>
+					<ExternalLink
+						class="size-3 shrink-0 mt-0.5 text-muted-foreground opacity-0 group-hover/value:opacity-60 transition-opacity"
+					/>
+				{:else}
+					<span class="flex-1 truncate text-sm text-foreground">
+						{displayValue.replace(/^https?:\/\//, '')}
+					</span>
+				{/if}
 			{:else}
 				<span
 					class={cn(

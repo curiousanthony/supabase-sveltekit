@@ -1,4 +1,6 @@
--- Expand contact_role enum with comprehensive company role options
+-- Expand contact_role enum with comprehensive company role options.
+-- IMPORTANT: ALTER TYPE ... ADD VALUE must run outside a transaction block in PostgreSQL < 10.
+-- This file uses standalone ADD VALUE statements (no BEGIN/COMMIT) so it is safe with any runner.
 ALTER TYPE "public"."contact_role" ADD VALUE IF NOT EXISTS 'PDG / Président';
 ALTER TYPE "public"."contact_role" ADD VALUE IF NOT EXISTS 'Directeur Général';
 ALTER TYPE "public"."contact_role" ADD VALUE IF NOT EXISTS 'Directeur des Ressources Humaines';

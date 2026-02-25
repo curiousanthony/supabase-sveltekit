@@ -32,9 +32,19 @@
 	const linkedContacts = $derived(data?.linkedContacts ?? []);
 	const linkedDeals = $derived(data?.linkedDeals ?? []);
 
-	// Reactive name for header
+	// Reactive local state for header badges (synced from server, updated on InlineField save)
 	let localName = $state('');
-	$effect(() => { localName = company?.name ?? ''; });
+	let localIndustry = $state('');
+	let localLegalStatus = $state('');
+	let localCompanySize = $state('');
+	let localWebsiteUrl = $state('');
+	$effect(() => {
+		localName = company?.name ?? '';
+		localIndustry = company?.industry ?? '';
+		localLegalStatus = company?.legalStatus ?? '';
+		localCompanySize = company?.companySize ?? '';
+		localWebsiteUrl = company?.websiteUrl ?? '';
+	});
 
 	$effect(() => {
 		headerTitleText.set(localName || 'Entreprise');
@@ -58,36 +68,58 @@
 	const avatarBg = $derived(avatarColor(localName));
 	const initial = $derived(localName.trim()[0]?.toUpperCase() ?? '?');
 
+	function safeWebsiteHref(url: string): string | null {
+		const trimmed = url.trim();
+		// Bare domain — normalise to https://
+		const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+		try {
+			const { protocol } = new URL(withScheme);
+			return protocol === 'https:' || protocol === 'http:' ? withScheme : null;
+		} catch {
+			return null;
+		}
+	}
+
 	// Unlink contact
 	let unlinkingContactId = $state<string | null>(null);
 	async function unlinkContact(contactId: string) {
 		unlinkingContactId = contactId;
-		const fd = new FormData();
-		fd.append('contactId', contactId);
-		const res = await fetch('?/unlinkContact', { method: 'POST', body: fd });
-		const result = deserialize(await res.text());
-		if (result.type === 'failure') {
-			toast.error((result.data as { message?: string })?.message ?? 'Erreur');
-		} else {
-			await invalidateAll();
+		try {
+			const fd = new FormData();
+			fd.append('contactId', contactId);
+			const res = await fetch('?/unlinkContact', { method: 'POST', body: fd });
+			const result = deserialize(await res.text());
+			if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+			} else {
+				await invalidateAll();
+			}
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Erreur réseau');
+		} finally {
+			unlinkingContactId = null;
 		}
-		unlinkingContactId = null;
 	}
 
 	// Link contact
 	let linkingContact = $state(false);
 	async function linkContact(contactId: string) {
 		linkingContact = true;
-		const fd = new FormData();
-		fd.append('contactId', contactId);
-		const res = await fetch('?/linkContact', { method: 'POST', body: fd });
-		const result = deserialize(await res.text());
-		if (result.type === 'failure') {
-			toast.error((result.data as { message?: string })?.message ?? 'Erreur');
-		} else {
-			await invalidateAll();
+		try {
+			const fd = new FormData();
+			fd.append('contactId', contactId);
+			const res = await fetch('?/linkContact', { method: 'POST', body: fd });
+			const result = deserialize(await res.text());
+			if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+			} else {
+				await invalidateAll();
+			}
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Erreur réseau');
+		} finally {
+			linkingContact = false;
 		}
-		linkingContact = false;
 	}
 
 	const allContactItems = $derived(
@@ -101,7 +133,7 @@
 	}
 
 	function formatCurrency(value: string | null | undefined): string {
-		if (value == null) return '—';
+		if (value == null || value === '') return '—';
 		const n = Number(value);
 		if (Number.isNaN(n)) return '—';
 		return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
@@ -134,12 +166,17 @@
 			}
 			return true;
 		};
-		const cityOk = await saveField('city', cityValue);
-		if (cityOk) {
-			await saveField('region', regionValue);
+		try {
+			const cityOk = await saveField('city', cityValue);
+			if (!cityOk) return;
+			const regionOk = await saveField('region', regionValue);
+			if (!regionOk) return;
 			localCity = cityValue;
 			localRegion = regionValue;
 			await invalidateAll();
+		} catch (err) {
+			toast.error('Erreur réseau ou serveur. Veuillez réessayer.');
+			return;
 		}
 	}
 </script>
@@ -177,26 +214,34 @@
 			</div>
 			<div class="flex flex-col gap-1">
 				<div class="flex flex-wrap items-center gap-2">
-					{#if company?.industry}
-						<Badge variant="secondary">{company.industry}</Badge>
+					{#if localIndustry}
+						<Badge variant="secondary">{localIndustry}</Badge>
 					{/if}
-					{#if company?.legalStatus}
-						<Badge variant="outline">{company.legalStatus}</Badge>
+					{#if localLegalStatus}
+						<Badge variant="outline">{localLegalStatus}</Badge>
 					{/if}
-					{#if company?.companySize}
-						<Badge variant="outline">{company.companySize}</Badge>
+					{#if localCompanySize}
+						<Badge variant="outline">{localCompanySize}</Badge>
 					{/if}
 				</div>
-				{#if company?.websiteUrl}
-					<a
-						href={company.websiteUrl}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-					>
-						<Globe class="size-3" />
-						{company.websiteUrl.replace(/^https?:\/\//, '')}
-					</a>
+				{#if localWebsiteUrl}
+					{@const safeHref = safeWebsiteHref(localWebsiteUrl)}
+					{#if safeHref}
+						<a
+							href={safeHref}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+						>
+							<Globe class="size-3" />
+							{localWebsiteUrl.replace(/^https?:\/\//, '')}
+						</a>
+					{:else}
+						<span class="flex items-center gap-1 text-xs text-muted-foreground">
+							<Globe class="size-3" />
+							{localWebsiteUrl.replace(/^https?:\/\//, '')}
+						</span>
+					{/if}
 				{/if}
 			</div>
 		</div>
@@ -241,24 +286,27 @@
 					/>
 					<InlineField
 						label="Statut juridique"
-						value={company?.legalStatus ?? ''}
+						value={localLegalStatus}
 						field="legalStatus"
 						type="select"
 						options={legalStatusOpts}
+						onSaved={(v: string) => { localLegalStatus = v; }}
 					/>
 					<InlineField
 						label="Industrie"
-						value={company?.industry ?? ''}
+						value={localIndustry}
 						field="industry"
 						type="select"
 						options={industryOpts}
+						onSaved={(v: string) => { localIndustry = v; }}
 					/>
 					<InlineField
 						label="Taille"
-						value={company?.companySize ?? ''}
+						value={localCompanySize}
 						field="companySize"
 						type="select"
 						options={companySizeOpts}
+						onSaved={(v: string) => { localCompanySize = v; }}
 					/>
 				</div>
 			</section>
@@ -269,11 +317,12 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<InlineField
 						label="Site web"
-						value={company?.websiteUrl ?? ''}
+						value={localWebsiteUrl}
 						field="websiteUrl"
 						type="url"
 						placeholder="https://..."
 						class="sm:col-span-2"
+						onSaved={(v: string) => { localWebsiteUrl = v; }}
 					/>
 					<InlineField
 						label="Adresse"
@@ -312,6 +361,7 @@
 						items={allContactItems}
 						linkedIds={linkedContactIds}
 						placeholder="Rechercher un contact..."
+						buttonLabel="Lier un contact"
 						onLink={linkContact}
 						loading={linkingContact}
 					/>

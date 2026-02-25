@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import * as Popover from '$lib/components/ui/popover';
 	import * as Command from '$lib/components/ui/command';
 	import * as Select from '$lib/components/ui/select';
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import Check from '@lucide/svelte/icons/check';
+
+	let currentController: AbortController | null = null;
 
 	const FRENCH_REGIONS = [
 		'Auvergne-Rhône-Alpes',
@@ -38,7 +41,7 @@
 
 	let open = $state(false);
 	let search = $state('');
-	let suggestions = $state<{ nom: string; region: { nom: string } }[]>([]);
+	let suggestions = $state<{ code: string; nom: string; region: { nom: string } }[]>([]);
 	let loading = $state(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -53,20 +56,36 @@
 	}
 
 	async function fetchCities(q: string) {
+		currentController?.abort();
+		currentController = new AbortController();
+		const controller = currentController;
 		loading = true;
 		try {
 			const res = await fetch(
-				`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&fields=nom,region&boost=population&limit=10`
+				`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&fields=code,nom,region&boost=population&limit=10`,
+				{ signal: controller.signal }
 			);
 			if (res.ok) {
 				suggestions = await res.json();
+			} else {
+				suggestions = [];
 			}
-		} catch {
+		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') return;
 			suggestions = [];
 		} finally {
-			loading = false;
+			if (!controller.signal.aborted) loading = false;
 		}
 	}
+
+	onDestroy(() => {
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+			debounceTimer = null;
+		}
+		currentController?.abort();
+		currentController = null;
+	});
 
 	function handleSelect(cityName: string, regionName: string) {
 		onSelect(cityName, regionName);
@@ -118,9 +137,9 @@
 								<span class="text-muted-foreground">Effacer la ville</span>
 							</Command.Item>
 						{/if}
-						{#each suggestions as suggestion (suggestion.nom)}
+						{#each suggestions as suggestion (suggestion.code)}
 							<Command.Item
-								value={suggestion.nom}
+								value={suggestion.code}
 								onSelect={() => handleSelect(suggestion.nom, suggestion.region?.nom ?? '')}
 							>
 								<Check class={`mr-2 size-4 ${city === suggestion.nom ? 'opacity-100' : 'opacity-0'}`} />

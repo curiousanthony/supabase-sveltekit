@@ -78,7 +78,7 @@ We have disabled `bun run db:push` and `bun run db:migrate`.
 ### Troubleshooting
 
 **CRM page (/contacts) not loading in production**  
-If the page shows an error or fails to load in prod but works locally, the remote database is likely missing the CRM migrations. From the project root, run `supabase link --project-ref <your-project-ref>` (if needed), then `supabase db push` to apply all pending migrations (including `contacts`, `companies`, `contact_companies`) to the remote project.
+If the page shows an error or fails to load in production but works locally, the remote database is likely missing the CRM migrations. Follow the steps in the [Remote database (production)](#remote-database-production) section to link your project and push all pending migrations.
 
 If you encounter **"relation already exists"** errors during `supabase db push`:
 

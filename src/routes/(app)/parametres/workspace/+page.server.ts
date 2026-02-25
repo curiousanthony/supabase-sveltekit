@@ -8,6 +8,7 @@ import { workspacesUsers, users, workspaces, workspaceInvites } from '$lib/db/sc
 import { eq, and, gt } from 'drizzle-orm';
 import { getRoleLabel } from '$lib/i18n/roles';
 import { randomUUID } from 'crypto';
+import { hashInviteToken } from '$lib/server/invite-token';
 
 export const load = (async ({ locals, url }) => {
 	const { userId, workspaceId } = await requireWorkspace({ ...locals, url } as App.Locals);
@@ -137,7 +138,8 @@ export const actions: Actions = {
 			}
 		}
 
-		const token = randomUUID();
+		const rawToken = randomUUID();
+		const tokenDigest = hashInviteToken(rawToken);
 		const expiresAt = new Date();
 		expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
 
@@ -146,11 +148,11 @@ export const actions: Actions = {
 			email,
 			role: inviteRole as import('$lib/db/schema').workspaceRole,
 			invitedBy: userId,
-			token,
+			tokenDigest,
 			expiresAt: expiresAt.toISOString()
 		});
 
-		return { success: true, token };
+		return { success: true, token: rawToken };
 	},
 
 	cancelInvite: async ({ locals, request, url }) => {

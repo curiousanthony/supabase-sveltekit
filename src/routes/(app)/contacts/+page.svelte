@@ -13,16 +13,42 @@
 	let { data }: PageProps = $props();
 	let contactModalOpen = $state(false);
 	let contactModalContact = $state<typeof data.editContact>(null);
+	let modalClosed = $state(false);
+	let openNewModalConsumed = $state(false);
+	let prevModalOpen = $state(false);
+
+	// Detect user closing the modal (open goes true → false)
+	$effect(() => {
+		if (prevModalOpen && !contactModalOpen) {
+			modalClosed = true;
+		}
+		prevModalOpen = contactModalOpen;
+	});
+
+	// Reset modalClosed when leaving edit context so next edit can open
+	$effect(() => {
+		if (!data?.editContact) {
+			modalClosed = false;
+		}
+	});
+
+	// Reset openNewModalConsumed when URL no longer has ?new
+	$effect(() => {
+		if (!data?.openNewModal) {
+			openNewModalConsumed = false;
+		}
+	});
 
 	$effect(() => {
-		if (data?.editContact) {
+		if (workspaceId && data?.editContact && !modalClosed && contactModalContact !== data.editContact) {
 			contactModalOpen = true;
 			contactModalContact = data.editContact;
 		}
 	});
 
 	$effect(() => {
-		if (data?.openNewModal) {
+		if (workspaceId && data?.openNewModal && !openNewModalConsumed) {
+			openNewModalConsumed = true;
 			contactModalContact = null;
 			contactModalOpen = true;
 			// Clean ?new=true from URL
@@ -43,6 +69,8 @@
 
 	let search = $state('');
 	let posteFilter = $state<string>('all');
+	let sortKey = $state<'name' | 'email' | null>(null);
+	let sortDir = $state<'asc' | 'desc'>('asc');
 
 	$effect(() => {
 		search = data?.query ?? '';
@@ -84,13 +112,12 @@
 		{ value: 'Directeur des Opérations', label: 'Dir. des Opérations' },
 		{ value: 'Directeur Technique', label: 'Directeur Technique' },
 		{ value: 'Office Manager', label: 'Office Manager' },
-		{ value: 'Assistante de Direction', label: 'Assistante de Direction' },
+		{ value: 'Assistant(e) de Direction', label: 'Assistant(e) de Direction' },
 		{ value: 'Chef de Projet', label: 'Chef de Projet' },
 		{ value: 'Responsable des Achats', label: 'Resp. des Achats' },
 		{ value: 'Consultant', label: 'Consultant' },
 		{ value: 'Gérant', label: 'Gérant' },
 		{ value: 'Associé', label: 'Associé' },
-		{ value: 'CEO', label: 'CEO' },
 		{ value: 'Autre', label: 'Autre' }
 	];
 
@@ -100,6 +127,37 @@
 		if (posteFilter && posteFilter !== 'all') params.set('poste', posteFilter);
 		goto(`/contacts?${params.toString()}`, { replaceState: true });
 	}
+
+	function toggleSort(key: 'name' | 'email') {
+		if (sortKey === key) {
+			if (sortDir === 'asc') {
+				sortDir = 'desc';
+			} else {
+				sortKey = null;
+				sortDir = 'asc';
+			}
+		} else {
+			sortKey = key;
+			sortDir = 'asc';
+		}
+	}
+
+	const sortedContacts = $derived.by(() => {
+		if (!sortKey) return contacts;
+		const list = [...contacts];
+		const mult = sortDir === 'asc' ? 1 : -1;
+		list.sort((a, b) => {
+			if (sortKey === 'name') {
+				const na = fullName(a);
+				const nb = fullName(b);
+				return mult * na.localeCompare(nb, undefined, { sensitivity: 'base' });
+			}
+			const ea = (a.email ?? '').toLowerCase();
+			const eb = (b.email ?? '').toLowerCase();
+			return mult * ea.localeCompare(eb);
+		});
+		return list;
+	});
 
 	// Avatar color based on name
 	const avatarColors = [
@@ -175,17 +233,32 @@
 				<Table.Root>
 					<Table.Header>
 						<Table.Row class="hover:bg-transparent border-b">
-							<Table.Head class="w-[280px]">Contact</Table.Head>
+							<Table.Head class="w-[280px]">
+								<Table.SortableTableHead
+									label="Contact"
+									active={sortKey === 'name'}
+									direction={sortKey === 'name' ? sortDir : null}
+									onclick={() => toggleSort('name')}
+								/>
+							</Table.Head>
 							<Table.Head>Entreprise(s)</Table.Head>
 							<Table.Head class="w-[140px]">Poste</Table.Head>
-							<Table.Head class="w-[220px]">Email</Table.Head>
+							<Table.Head class="w-[220px]">
+								<Table.SortableTableHead
+									label="Email"
+									active={sortKey === 'email'}
+									direction={sortKey === 'email' ? sortDir : null}
+									onclick={() => toggleSort('email')}
+								/>
+							</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
-						{#each contacts as c (c.id)}
+						{#each sortedContacts as c (c.id)}
 							{@const name = fullName(c)}
 							{@const ini = initials(c)}
 							{@const color = avatarColor(name)}
+							{@const badges = companyBadges(c, companies)}
 							<Table.Row
 								class="cursor-pointer hover:bg-muted/40 transition-colors"
 								onclick={() => goto(`/contacts/${c.id}`)}
@@ -200,10 +273,10 @@
 								</Table.Cell>
 								<Table.Cell>
 									<div class="flex flex-wrap gap-1">
-										{#each companyBadges(c, companies) as name (name)}
-											<Badge variant="secondary" class="text-xs">{name}</Badge>
+										{#each badges as companyName (companyName)}
+											<Badge variant="secondary" class="text-xs">{companyName}</Badge>
 										{/each}
-										{#if companyBadges(c, companies).length === 0}
+										{#if badges.length === 0}
 											<span class="text-muted-foreground text-sm">—</span>
 										{/if}
 									</div>
@@ -234,7 +307,7 @@
 
 			<!-- Mobile card list -->
 			<div class="flex flex-col gap-2 md:hidden">
-				{#each contacts as c (c.id)}
+				{#each sortedContacts as c (c.id)}
 					{@const name = fullName(c)}
 					{@const ini = initials(c)}
 					{@const color = avatarColor(name)}
@@ -257,11 +330,11 @@
 				{/each}
 			</div>
 		{/if}
+
+		<ContactModal
+			bind:open={contactModalOpen}
+			contact={contactModalContact}
+			companies={companies.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }))}
+		/>
 	</div>
 {/if}
-
-<ContactModal
-	bind:open={contactModalOpen}
-	contact={contactModalContact}
-	companies={companies.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }))}
-/>

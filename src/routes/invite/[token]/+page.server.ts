@@ -1,9 +1,10 @@
 import { redirect, error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/db';
-import { workspaceInvites, workspacesUsers, users } from '$lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { workspaceInvites, workspacesUsers } from '$lib/db/schema';
+import { eq, and, or } from 'drizzle-orm';
 import { setActiveWorkspace } from '$lib/server/workspace';
+import { hashInviteToken } from '$lib/server/invite-token';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { session, user } = await locals.safeGetSession();
@@ -18,9 +19,13 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		throw error(400, 'Token invalide');
 	}
 
-	// Find invite by token
+	// Look up by digest (HMAC of raw token). Legacy: rows created before digest migration have raw token in token_digest, so also match by raw token.
+	const digest = hashInviteToken(token);
 	const invite = await db.query.workspaceInvites.findFirst({
-		where: eq(workspaceInvites.token, token),
+		where: or(
+			eq(workspaceInvites.tokenDigest, digest),
+			eq(workspaceInvites.tokenDigest, token)
+		),
 		columns: {
 			id: true,
 			workspaceId: true,
