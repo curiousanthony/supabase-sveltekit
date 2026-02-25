@@ -17,7 +17,20 @@
 	import BackButton from './custom/backButton.svelte';
 	// import { sitemap } from '$lib/settings/config';
 
-	let { pageName = 'Default Page Name', header = null, title } = $props();
+	import type { Snippet } from 'svelte';
+
+	let {
+		pageName = 'Default Page Name',
+		header = null,
+		title,
+		actions: actionsSnippetProp = undefined
+	}: {
+		pageName?: string;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		header?: any;
+		title?: Snippet;
+		actions?: Snippet;
+	} = $props();
 </script>
 
 <header
@@ -66,9 +79,11 @@
 		<!-- <div class="flex items-center space-x-4">
 			{@render $slots.actions()}
 		</div> -->
-		{#if header?.actions}
-			{@render actions?.()}
-		{/if}
+	{#if actionsSnippetProp}
+		{@render actionsSnippetProp()}
+	{:else if header?.actions}
+		{@render actions?.()}
+	{/if}
 	</div>
 </header>
 

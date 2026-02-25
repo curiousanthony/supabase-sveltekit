@@ -19,7 +19,16 @@ import {
 	seances,
 	formateurs,
 	formateursThematiques,
-	deals
+	deals,
+	biblioModules,
+	biblioProgrammes,
+	biblioProgrammeModules,
+	biblioQuestionnaires,
+	biblioProgrammeQuestionnaires,
+	biblioModuleQuestionnaires,
+	biblioSupports,
+	biblioProgrammeSupports,
+	biblioModuleSupports
 } from './schema';
 
 export const industriesRelations = relations(industries, ({ many }) => ({
@@ -244,6 +253,123 @@ export const formateursThematiquesRelations = relations(formateursThematiques, (
 	formateur: one(formateurs, {
 		fields: [formateursThematiques.formateurId],
 		references: [formateurs.id]
+	})
+}));
+
+// --- Bibliothèque relations ---
+
+export const biblioModulesRelations = relations(biblioModules, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [biblioModules.workspaceId],
+		references: [workspaces.id]
+	}),
+	createdByUser: one(users, {
+		fields: [biblioModules.createdBy],
+		references: [users.id]
+	}),
+	programmeModules: many(biblioProgrammeModules),
+	moduleQuestionnaires: many(biblioModuleQuestionnaires),
+	moduleSupports: many(biblioModuleSupports)
+}));
+
+export const biblioProgrammesRelations = relations(biblioProgrammes, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [biblioProgrammes.workspaceId],
+		references: [workspaces.id]
+	}),
+	createdByUser: one(users, {
+		fields: [biblioProgrammes.createdBy],
+		references: [users.id]
+	}),
+	programmeModules: many(biblioProgrammeModules),
+	programmeQuestionnaires: many(biblioProgrammeQuestionnaires),
+	programmeSupports: many(biblioProgrammeSupports)
+}));
+
+export const biblioProgrammeModulesRelations = relations(biblioProgrammeModules, ({ one }) => ({
+	programme: one(biblioProgrammes, {
+		fields: [biblioProgrammeModules.programmeId],
+		references: [biblioProgrammes.id]
+	}),
+	module: one(biblioModules, {
+		fields: [biblioProgrammeModules.moduleId],
+		references: [biblioModules.id]
+	})
+}));
+
+export const biblioQuestionnairesRelations = relations(biblioQuestionnaires, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [biblioQuestionnaires.workspaceId],
+		references: [workspaces.id]
+	}),
+	createdByUser: one(users, {
+		fields: [biblioQuestionnaires.createdBy],
+		references: [users.id]
+	}),
+	programmeQuestionnaires: many(biblioProgrammeQuestionnaires),
+	moduleQuestionnaires: many(biblioModuleQuestionnaires)
+}));
+
+export const biblioProgrammeQuestionnairesRelations = relations(
+	biblioProgrammeQuestionnaires,
+	({ one }) => ({
+		programme: one(biblioProgrammes, {
+			fields: [biblioProgrammeQuestionnaires.programmeId],
+			references: [biblioProgrammes.id]
+		}),
+		questionnaire: one(biblioQuestionnaires, {
+			fields: [biblioProgrammeQuestionnaires.questionnaireId],
+			references: [biblioQuestionnaires.id]
+		})
+	})
+);
+
+export const biblioModuleQuestionnairesRelations = relations(
+	biblioModuleQuestionnaires,
+	({ one }) => ({
+		module: one(biblioModules, {
+			fields: [biblioModuleQuestionnaires.moduleId],
+			references: [biblioModules.id]
+		}),
+		questionnaire: one(biblioQuestionnaires, {
+			fields: [biblioModuleQuestionnaires.questionnaireId],
+			references: [biblioQuestionnaires.id]
+		})
+	})
+);
+
+export const biblioSupportsRelations = relations(biblioSupports, ({ one, many }) => ({
+	workspace: one(workspaces, {
+		fields: [biblioSupports.workspaceId],
+		references: [workspaces.id]
+	}),
+	createdByUser: one(users, {
+		fields: [biblioSupports.createdBy],
+		references: [users.id]
+	}),
+	programmeSupports: many(biblioProgrammeSupports),
+	moduleSupports: many(biblioModuleSupports)
+}));
+
+export const biblioProgrammeSupportsRelations = relations(biblioProgrammeSupports, ({ one }) => ({
+	programme: one(biblioProgrammes, {
+		fields: [biblioProgrammeSupports.programmeId],
+		references: [biblioProgrammes.id]
+	}),
+	support: one(biblioSupports, {
+		fields: [biblioProgrammeSupports.supportId],
+		references: [biblioSupports.id]
+	})
+}));
+
+export const biblioModuleSupportsRelations = relations(biblioModuleSupports, ({ one }) => ({
+	module: one(biblioModules, {
+		fields: [biblioModuleSupports.moduleId],
+		references: [biblioModules.id]
+	}),
+	support: one(biblioSupports, {
+		fields: [biblioModuleSupports.supportId],
+		references: [biblioSupports.id]
 	})
 }));
 

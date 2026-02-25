@@ -17,3 +17,7 @@ export * from './apprenants';
 export * from './seances';
 export * from './formateurs';
 export * from './deals';
+export * from './biblio-modules';
+export * from './biblio-programmes';
+export * from './biblio-questionnaires';
+export * from './biblio-supports';

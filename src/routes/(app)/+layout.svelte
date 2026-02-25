@@ -14,7 +14,7 @@
 	import { Kbd } from '$lib/components/ui/kbd/index.js';
 	import { IconArrowBack, IconSettings } from '@tabler/icons-svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
-	import { headerTitleSnippet, headerTitleText } from '$lib/stores/header-store';
+	import { headerTitleSnippet, headerTitleText, headerActionsSnippet } from '$lib/stores/header-store';
 	import { commandPaletteOpen } from '$lib/stores/command-palette-store';
 	import * as Button from '$lib/components/ui/button/index.js';
 	import EyeIcon from '@tabler/icons-svelte/icons/eye';
@@ -111,7 +111,7 @@
 		allowedNavUrls={data?.allowedNavUrls}
 	/>
 	<main class="flex h-screen w-full flex-col bg-background">
-		<SiteHeader pageName={$headerTitleText || pageTitle} {header} title={$headerTitleSnippet}>
+		<SiteHeader pageName={$headerTitleText || pageTitle} {header} title={$headerTitleSnippet ?? undefined} actions={$headerActionsSnippet ?? undefined}>
 			<!-- {#snippet actions()}
 				<p>Default Actions in (app) +layout.svelte</p>
 			{/snippet} -->

@@ -54,3 +54,20 @@ export const companySize = pgEnum('company_size', [
 	'50-249',
 	'250+'
 ]);
+export const modaliteEvaluation = pgEnum('modalite_evaluation', [
+	'QCM',
+	'QCU',
+	'Pratique',
+	'Projet'
+]);
+export const statutProgramme = pgEnum('statut_programme', [
+	'Brouillon',
+	'En cours',
+	'Publié',
+	'Archivé'
+]);
+export const typeQuestionnaire = pgEnum('type_questionnaire', [
+	'Test de niveau',
+	'Quiz / Exercice',
+	'Audit des besoins'
+]);
