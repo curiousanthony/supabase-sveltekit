@@ -1,7 +1,0 @@
-import type { PageServerLoad } from './$types';
-
-export const load = (async () => {
-	return {
-		header: { pageName: 'Entreprises', actions: [] }
-	};
-}) satisfies PageServerLoad;

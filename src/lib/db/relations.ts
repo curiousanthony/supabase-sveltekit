@@ -11,6 +11,7 @@ import {
 	workspaceInvites,
 	thematiques,
 	sousthematiques,
+	industries,
 	formations,
 	formationWorkflowSteps,
 	modules,
@@ -20,6 +21,10 @@ import {
 	formateursThematiques,
 	deals
 } from './schema';
+
+export const industriesRelations = relations(industries, ({ many }) => ({
+	companies: many(companies)
+}));
 
 export const clientsRelations = relations(clients, ({ one, many }) => ({
 	user: one(users, {
@@ -52,6 +57,10 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
 	workspace: one(workspaces, {
 		fields: [companies.workspaceId],
 		references: [workspaces.id]
+	}),
+	industry: one(industries, {
+		fields: [companies.industryId],
+		references: [industries.id]
 	}),
 	owner: one(users, {
 		fields: [companies.ownerId],

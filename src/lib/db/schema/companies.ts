@@ -1,8 +1,9 @@
 import { pgTable, uuid, text, numeric, timestamp, primaryKey } from 'drizzle-orm/pg-core';
-import { legalStatus, companyIndustry, companySize } from './enums';
+import { legalStatus, companySize } from './enums';
 import { users } from './users';
 import { workspaces } from './workspaces';
 import { contacts } from './contacts';
+import { industries } from './industries';
 
 /** CRM companies (prototype "Entreprises (mm)"). */
 export const companies = pgTable('companies', {
@@ -13,7 +14,7 @@ export const companies = pgTable('companies', {
 	name: text('name').notNull(),
 	siret: text('siret'),
 	legalStatus: legalStatus('legal_status'),
-	industry: companyIndustry('industry'),
+	industryId: uuid('industry_id').references(() => industries.id, { onUpdate: 'cascade', onDelete: 'set null' }),
 	companySize: companySize('company_size'),
 	websiteUrl: text('website_url'),
 	address: text('address'),

@@ -46,12 +46,17 @@ Agents MUST follow this schema-first workflow for any schema change. Do **not** 
      - `postgresql://postgres:postgres@127.0.0.1:54322/supabase`
 
 3. **Apply migrations locally (REQUIRED)**
-   - After generating (or pulling) new migrations, always reset and apply them to the local DB:
+   - **Option A – apply only new migrations (keeps existing data):**
+   ```bash
+   supabase migration up
+   ```
+   - Use this when you want to run pending migrations without wiping the local database (e.g. to keep test data).
+   - **Option B – full reset (wipes all data, applies all migrations from scratch):**
    ```bash
    supabase db reset
    ```
-   - This ensures the local database schema matches the schema in `src/lib/db/schema/` and the migrations, so the app works on first run.
-   - Never skip this step after adding or pulling new migrations.
+   - Use this for a clean state, when the DB is broken, or when you need seed data from `supabase/seed.sql`.
+   - Never skip applying new migrations; use `migration up` or `db reset` as appropriate.
 
 4. **Deploy migrations to remote (when integrating/releasing)**
    - Only when integrating a branch to `develop` or releasing to `main`, push migrations to the remote Supabase project:
@@ -68,7 +73,7 @@ Agents MUST follow this schema-first workflow for any schema change. Do **not** 
   - `bun run db:push`
   - `bun run db:migrate`
 - Do **not** bypass the schema-first flow by editing the database only in the Supabase Dashboard without reflecting changes in `src/lib/db/schema/`.
-- Do **not** assume local DB is current; always run `supabase db reset` after new migrations are added or pulled.
+- Do **not** assume local DB is current; run `supabase migration up` or `supabase db reset` after new migrations are added or pulled.
 
 ---
 
@@ -78,7 +83,7 @@ When implementing a feature that touches the DB, follow this checklist:
 
 1. [ ] Update the relevant file(s) in `src/lib/db/schema/` to reflect the desired schema.
 2. [ ] Run `bun run db:generate` to create a new migration.
-3. [ ] Run `supabase db reset` so the local DB matches the new migrations.
+3. [ ] Apply migrations: `supabase migration up` (keeps data) or `supabase db reset` (clean slate + seed).
 4. [ ] Run tests / start the app and verify the feature against the updated DB.
 5. [ ] When integrating or releasing, run `supabase db push` to apply migrations to remote.
 

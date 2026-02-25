@@ -70,7 +70,11 @@ export const formations = pgTable(
 		})
 			.onUpdate('cascade')
 			.onDelete('set null'),
-		unique('courses_id2_key').on(table.id)
+		unique('courses_id2_key').on(table.id),
+		unique('formations_workspace_id_in_workspace_unique').on(
+			table.workspaceId,
+			table.idInWorkspace
+		)
 	]
 );
 

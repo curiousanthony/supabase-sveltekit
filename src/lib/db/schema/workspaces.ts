@@ -6,7 +6,7 @@ export const workspaces = pgTable(
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
 			.notNull(),
-		name: varchar(),
+		name: varchar().notNull(),
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		logoUrl: text('logo_url'),
 		legalName: text('legal_name'),
