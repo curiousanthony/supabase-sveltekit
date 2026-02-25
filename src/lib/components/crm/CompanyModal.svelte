@@ -12,11 +12,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import type { ActionResult } from '@sveltejs/kit';
 	import { toast } from 'svelte-sonner';
-	import {
-		legalStatusOptions,
-		industryOptions,
-		companySizeOptions
-	} from '$lib/crm/company-form-options';
+	import { legalStatusOptions, companySizeOptions } from '$lib/crm/company-form-options';
 	import { posteOptions } from '$lib/crm/contact-schema';
 	import X from '@lucide/svelte/icons/x';
 	import Users from '@lucide/svelte/icons/users';
@@ -28,7 +24,8 @@
 		name?: string | null;
 		siret?: string | null;
 		legalStatus?: string | null;
-		industry?: string | null;
+		industryId?: string | null;
+		industry?: { id: string; name: string } | null;
 		companySize?: string | null;
 		websiteUrl?: string | null;
 		address?: string | null;
@@ -37,16 +34,19 @@
 		internalNotes?: string | null;
 	};
 
+	type Industry = { id: string; name: string };
 	type Contact = { id: string; firstName?: string | null; lastName?: string | null; email?: string | null };
 
 	let {
 		open = $bindable(false),
 		company = null as CompanyForForm | null,
-		contacts = [] as Contact[]
+		contacts = [] as Contact[],
+		industries = [] as Industry[]
 	}: {
 		open?: boolean;
 		company?: CompanyForForm | null;
 		contacts?: Contact[];
+		industries?: Industry[];
 	} = $props();
 
 	const isEdit = $derived(!!company?.id);
@@ -54,7 +54,7 @@
 	let name = $state('');
 	let siret = $state('');
 	let legalStatus = $state<string>('');
-	let industry = $state<string>('');
+	let industryId = $state<string>('');
 	let companySize = $state<string>('');
 	let websiteUrl = $state('');
 	let address = $state('');
@@ -78,7 +78,7 @@
 			name = company.name ?? '';
 			siret = company.siret ?? '';
 			legalStatus = company.legalStatus ?? '';
-			industry = company.industry ?? '';
+			industryId = company.industryId ?? company.industry?.id ?? '';
 			companySize = company.companySize ?? '';
 			websiteUrl = company.websiteUrl ?? '';
 			address = company.address ?? '';
@@ -86,7 +86,7 @@
 			region = company.region ?? '';
 			internalNotes = company.internalNotes ?? '';
 		} else {
-			name = ''; siret = ''; legalStatus = ''; industry = ''; companySize = '';
+			name = ''; siret = ''; legalStatus = ''; industryId = ''; companySize = '';
 			websiteUrl = ''; address = ''; city = ''; region = ''; selectedCityCode = ''; internalNotes = '';
 		}
 		selectedContactIds = [];
@@ -94,6 +94,10 @@
 		newContactMode = false;
 		newContactFirstName = ''; newContactLastName = ''; newContactEmail = ''; newContactPoste = '';
 	});
+
+	const industryLabel = $derived(
+		industryId ? industries.find((i) => i.id === industryId)?.name ?? '' : ''
+	);
 
 	function fullName(c: Contact) {
 		const n = [c.firstName, c.lastName].filter(Boolean).join(' ');
@@ -181,6 +185,7 @@
 		{#if company?.id}
 			<input type="hidden" name="companyId" value={company.id} />
 		{/if}
+		<input type="hidden" name="industryId" value={industryId} />
 		{#each selectedContactIds as id (id)}
 			<input type="hidden" name="contactIds" value={id} />
 		{/each}
@@ -216,11 +221,13 @@
 				</div>
 				<div class="space-y-1.5">
 					<Label.Root for="cmo-industry">Industrie</Label.Root>
-					<Select.Root type="single" bind:value={industry} name="industry">
-						<Select.Trigger id="cmo-industry" class="w-full">{industry || 'Sélectionner'}</Select.Trigger>
+					<Select.Root type="single" bind:value={industryId}>
+						<Select.Trigger id="cmo-industry" class="w-full">{industryLabel || 'Sélectionner'}</Select.Trigger>
 						<Select.Content>
 							<Select.Item value="">—</Select.Item>
-							{#each industryOptions as opt (opt)}<Select.Item value={opt}>{opt}</Select.Item>{/each}
+							{#each industries as ind (ind.id)}
+								<Select.Item value={ind.id}>{ind.name}</Select.Item>
+							{/each}
 						</Select.Content>
 					</Select.Root>
 				</div>

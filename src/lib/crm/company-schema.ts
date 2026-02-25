@@ -9,7 +9,7 @@ export const companySchema = z.object({
 		.or(z.literal(''))
 		.transform((v) => (v === '' ? undefined : v)),
 	legalStatus: z.string().optional(),
-	industry: z.string().optional(),
+	industryId: z.string().optional().transform((v) => (v === '' || !v ? undefined : v)),
 	companySize: z.string().optional(),
 	websiteUrl: z.string().optional(),
 	address: z.string().optional(),

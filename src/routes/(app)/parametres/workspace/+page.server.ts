@@ -119,9 +119,23 @@ export const actions: Actions = {
 			return fail(400, { message: 'Email et rôle requis' });
 		}
 
+		const emailNormalized = email.trim().toLowerCase();
+
+		// Check for existing pending invite for this workspace + email
+		const existingInvite = await db.query.workspaceInvites.findFirst({
+			where: and(
+				eq(workspaceInvites.workspaceId, workspaceId),
+				eq(workspaceInvites.email, emailNormalized)
+			),
+			columns: { id: true }
+		});
+		if (existingInvite) {
+			return fail(400, { message: 'Une invitation a déjà été envoyée à cet email pour cet espace.' });
+		}
+
 		// Check if user is already a member
 		const existingUser = await db.query.users.findFirst({
-			where: eq(users.email, email),
+			where: eq(users.email, emailNormalized),
 			columns: { id: true }
 		});
 
@@ -145,7 +159,7 @@ export const actions: Actions = {
 
 		await db.insert(workspaceInvites).values({
 			workspaceId,
-			email,
+			email: emailNormalized,
 			role: inviteRole as import('$lib/db/schema').workspaceRole,
 			invitedBy: userId,
 			tokenDigest,

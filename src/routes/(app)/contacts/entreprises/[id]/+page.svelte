@@ -8,11 +8,7 @@
 	import CityCombobox from '$lib/components/crm/CityCombobox.svelte';
 	import { enhance } from '$app/forms';
 	import { headerTitleText } from '$lib/stores/header-store';
-	import {
-		legalStatusOptions,
-		industryOptions,
-		companySizeOptions
-	} from '$lib/crm/company-form-options';
+	import { legalStatusOptions, companySizeOptions } from '$lib/crm/company-form-options';
 	import Users from '@lucide/svelte/icons/users';
 	import Briefcase from '@lucide/svelte/icons/briefcase';
 	import X from '@lucide/svelte/icons/x';
@@ -40,7 +36,7 @@
 	let localWebsiteUrl = $state('');
 	$effect(() => {
 		localName = company?.name ?? '';
-		localIndustry = company?.industry ?? '';
+		localIndustry = company?.industry?.name ?? '';
 		localLegalStatus = company?.legalStatus ?? '';
 		localCompanySize = company?.companySize ?? '';
 		localWebsiteUrl = company?.websiteUrl ?? '';
@@ -140,7 +136,9 @@
 	}
 
 	const legalStatusOpts = legalStatusOptions.map((o) => ({ value: o, label: o }));
-	const industryOpts = industryOptions.map((o) => ({ value: o, label: o }));
+	const industryOpts = $derived(
+		(data?.industries ?? []).map((i) => ({ value: i.id, label: i.name }))
+	);
 	const companySizeOpts = companySizeOptions.map((o) => ({ value: o, label: o }));
 
 	let deleteDialogOpen = $state(false);
@@ -289,11 +287,14 @@
 					/>
 					<InlineField
 						label="Industrie"
-						value={localIndustry}
-						field="industry"
+						value={company?.industryId ?? ''}
+						field="industryId"
 						type="select"
 						options={industryOpts}
-						onSaved={(v: string) => { localIndustry = v; }}
+						onSaved={(id: string) => {
+							const name = data?.industries?.find((i) => i.id === id)?.name;
+							if (name) localIndustry = name;
+						}}
 					/>
 					<InlineField
 						label="Taille"

@@ -1,13 +1,12 @@
 import { db } from '$lib/db';
-import { companies, contacts, contactCompanies } from '$lib/db/schema';
+import { companies, contacts, contactCompanies, industries } from '$lib/db/schema';
 import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
-import { eq, desc, and, ilike, or, inArray, type SQL } from 'drizzle-orm';
+import { eq, desc, and, ilike, or, inArray, type SQL, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { companySchema, type CompanySchema } from '$lib/crm/company-schema';
 import {
 	legalStatusOptions,
-	industryOptions,
 	companySizeOptions
 } from '$lib/crm/company-form-options';
 import { posteOptions } from '$lib/crm/contact-schema';
@@ -27,7 +26,7 @@ function parseCompanyForm(fd: FormData): ParseCompanyResult {
 		name: (fd.get('name') as string)?.trim() ?? '',
 		siret: (fd.get('siret') as string)?.trim() || undefined,
 		legalStatus: (fd.get('legalStatus') as string)?.trim() || undefined,
-		industry: (fd.get('industry') as string)?.trim() || undefined,
+		industryId: (fd.get('industryId') as string)?.trim() || undefined,
 		companySize: (fd.get('companySize') as string)?.trim() || undefined,
 		websiteUrl: rawWebsite ? normalizeUrl(rawWebsite) : undefined,
 		address: (fd.get('address') as string)?.trim() || undefined,
@@ -49,12 +48,7 @@ function parseCompanyForm(fd: FormData): ParseCompanyResult {
 	) {
 		return { success: false, error: { message: 'Statut juridique invalide' } };
 	}
-	if (
-		parsed.data.industry &&
-		!industryOptions.includes(parsed.data.industry as (typeof industryOptions)[number])
-	) {
-		return { success: false, error: { message: 'Industrie invalide' } };
-	}
+	// industryId validated in action against DB industries list
 	if (
 		parsed.data.companySize &&
 		!companySizeOptions.includes(
@@ -90,7 +84,11 @@ export const load = (async ({ locals, url }) => {
 	const sizeFilter = url.searchParams.get('size') ?? '';
 	const openNewModal = url.searchParams.has('new');
 
-	type CompanySelect = typeof companies.$inferSelect;
+	const industriesList = await db
+		.select({ id: industries.id, name: industries.name })
+		.from(industries)
+		.orderBy(asc(industries.displayOrder), asc(industries.name));
+
 	const conditions: SQL[] = [eq(companies.workspaceId, workspaceId)];
 	if (q) {
 		const qCond = or(
@@ -100,14 +98,11 @@ export const load = (async ({ locals, url }) => {
 		);
 		if (qCond) conditions.push(qCond);
 	}
-	if (
-		industryFilter &&
-		industryFilter !== 'all' &&
-		industryOptions.includes(industryFilter as (typeof industryOptions)[number])
-	) {
-		conditions.push(
-			eq(companies.industry, industryFilter as NonNullable<CompanySelect['industry']>)
-		);
+	if (industryFilter && industryFilter !== 'all') {
+		const validIds = new Set(industriesList.map((i) => i.id));
+		if (validIds.has(industryFilter)) {
+			conditions.push(eq(companies.industryId, industryFilter));
+		}
 	}
 	if (
 		sizeFilter &&
@@ -115,21 +110,42 @@ export const load = (async ({ locals, url }) => {
 		companySizeOptions.includes(sizeFilter as (typeof companySizeOptions)[number])
 	) {
 		conditions.push(
-			eq(companies.companySize, sizeFilter as NonNullable<CompanySelect['companySize']>)
+			eq(companies.companySize, sizeFilter as NonNullable<(typeof companies.$inferSelect)['companySize']>)
 		);
 	}
 
-	const companiesData = await db
-		.select()
-		.from(companies)
-		.where(and(...conditions))
-		.orderBy(desc(companies.updatedAt));
+	const companiesData = await db.query.companies.findMany({
+		where: and(...conditions),
+		orderBy: desc(companies.updatedAt),
+		columns: {
+			id: true,
+			workspaceId: true,
+			name: true,
+			siret: true,
+			legalStatus: true,
+			industryId: true,
+			companySize: true,
+			websiteUrl: true,
+			address: true,
+			city: true,
+			region: true,
+			estimatedBudget: true,
+			fundingDevices: true,
+			opcoId: true,
+			ownerId: true,
+			internalNotes: true,
+			createdAt: true,
+			updatedAt: true
+		},
+		with: { industry: { columns: { id: true, name: true } } }
+	});
 
 	const editCompanyId = url.searchParams.get('editCompany');
 	let editCompany: (typeof companiesData)[number] | null = null;
 	if (editCompanyId) {
 		const co = await db.query.companies.findFirst({
-			where: and(eq(companies.id, editCompanyId), eq(companies.workspaceId, workspaceId))
+			where: and(eq(companies.id, editCompanyId), eq(companies.workspaceId, workspaceId)),
+			with: { industry: { columns: { id: true, name: true } } }
 		});
 		if (co) editCompany = co;
 	}
@@ -147,6 +163,7 @@ export const load = (async ({ locals, url }) => {
 
 	return {
 		companies: companiesData,
+		industries: industriesList,
 		allContacts,
 		workspaceId,
 		editCompany,
@@ -172,6 +189,16 @@ export const actions: Actions = {
 		const parsed = parseCompanyForm(fd);
 		if (!parsed.success) return fail(400, { message: parsed.error.message });
 
+		const validIndustryIds = new Set(
+			(await db.select({ id: industries.id }).from(industries)).map((r) => r.id)
+		);
+		if (
+			parsed.data.industryId &&
+			!validIndustryIds.has(parsed.data.industryId)
+		) {
+			return fail(400, { message: 'Industrie invalide' });
+		}
+
 		let insertedCompany: { id: string } | undefined;
 		try {
 			[insertedCompany] = await db
@@ -183,9 +210,7 @@ export const actions: Actions = {
 					legalStatus: parsed.data.legalStatus
 						? (parsed.data.legalStatus as (typeof legalStatusOptions)[number])
 						: null,
-					industry: parsed.data.industry
-						? (parsed.data.industry as (typeof industryOptions)[number])
-						: null,
+					industryId: parsed.data.industryId ?? null,
 					companySize: parsed.data.companySize
 						? (parsed.data.companySize as (typeof companySizeOptions)[number])
 						: null,
@@ -270,6 +295,15 @@ export const actions: Actions = {
 		const parsed = parseCompanyForm(fd);
 		if (!parsed.success) return fail(400, { message: parsed.error.message });
 
+		if (parsed.data.industryId) {
+			const validIndustryIds = new Set(
+				(await db.select({ id: industries.id }).from(industries)).map((r) => r.id)
+			);
+			if (!validIndustryIds.has(parsed.data.industryId)) {
+				return fail(400, { message: 'Industrie invalide' });
+			}
+		}
+
 		try {
 			await db
 				.update(companies)
@@ -279,9 +313,7 @@ export const actions: Actions = {
 					legalStatus: parsed.data.legalStatus
 						? (parsed.data.legalStatus as (typeof legalStatusOptions)[number])
 						: null,
-					industry: parsed.data.industry
-						? (parsed.data.industry as (typeof industryOptions)[number])
-						: null,
+					industryId: parsed.data.industryId ?? null,
 					companySize: parsed.data.companySize
 						? (parsed.data.companySize as (typeof companySizeOptions)[number])
 						: null,

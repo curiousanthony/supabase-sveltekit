@@ -4,6 +4,7 @@ import {
 	timestamp,
 	uuid,
 	text,
+	unique,
 	uniqueIndex
 } from 'drizzle-orm/pg-core';
 import { workspaceRole } from './enums';
@@ -60,6 +61,7 @@ export const workspaceInvites = pgTable(
 	},
 	(table) => [
 		uniqueIndex('idx_workspace_invites_token_digest').on(table.tokenDigest),
+		unique('workspace_invites_workspace_id_email_key').on(table.workspaceId, table.email),
 		foreignKey({
 			columns: [table.workspaceId],
 			foreignColumns: [workspaces.id],

@@ -1205,15 +1205,15 @@
 					"primaryKey": false,
 					"notNull": true
 				},
-				"start_time": {
-					"name": "start_time",
-					"type": "time",
+				"start_at": {
+					"name": "start_at",
+					"type": "timestamp with time zone",
 					"primaryKey": false,
 					"notNull": true
 				},
-				"end_time": {
-					"name": "end_time",
-					"type": "time",
+				"end_at": {
+					"name": "end_at",
+					"type": "timestamp with time zone",
 					"primaryKey": false,
 					"notNull": true
 				},
@@ -1228,12 +1228,6 @@
 					"type": "uuid",
 					"primaryKey": false,
 					"notNull": false
-				},
-				"date": {
-					"name": "date",
-					"type": "date",
-					"primaryKey": false,
-					"notNull": true
 				}
 			},
 			"indexes": {},
@@ -1272,7 +1266,7 @@
 			"checkConstraints": {
 				"seances_end_after_start_chk": {
 					"name": "seances_end_after_start_chk",
-					"expression": "(\"end_time\" > \"start_time\")"
+					"expression": "(\"end_at\" > \"start_at\")"
 				}
 			},
 			"isRLSEnabled": false
@@ -1359,7 +1353,12 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"policies": {},
-			"checkConstraints": {},
+			"checkConstraints": {
+				"rating_range_check": {
+					"name": "rating_range_check",
+					"expression": "(\"rating\" >= 0 AND \"rating\" <= 5)"
+				}
+			},
 			"isRLSEnabled": false
 		},
 		"public.formateurs_thematiques": {

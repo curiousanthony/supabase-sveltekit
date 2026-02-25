@@ -47,11 +47,6 @@ export const dealFormat = pgEnum('deal_format', ['Individuel', 'Collectif']);
 export const dealIntraInter = pgEnum('deal_intra_inter', ['Intra', 'Inter']);
 export const workspaceRole = pgEnum('workspace_role', ['owner', 'admin', 'sales', 'secretary']);
 export const legalStatus = pgEnum('legal_status', ['Indépendant', 'Entreprise']);
-export const companyIndustry = pgEnum('company_industry', [
-	'Éducation et formation',
-	'Restauration',
-	'Autre'
-]);
 export const companySize = pgEnum('company_size', [
 	'0 - Solo',
 	'1-10 - TPE',

@@ -5,14 +5,13 @@ function normalizeUrl(url: string): string {
 	return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
-import { companies, contactCompanies, contacts, deals } from '$lib/db/schema';
+import { companies, contactCompanies, contacts, deals, industries } from '$lib/db/schema';
 import { getUserWorkspace } from '$lib/auth';
-import { eq, and, inArray, desc } from 'drizzle-orm';
+import { eq, and, inArray, desc, asc } from 'drizzle-orm';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import {
 	legalStatusOptions,
-	industryOptions,
 	companySizeOptions
 } from '$lib/crm/company-form-options';
 
@@ -20,7 +19,7 @@ const ALLOWED_FIELDS = [
 	'name',
 	'siret',
 	'legalStatus',
-	'industry',
+	'industryId',
 	'companySize',
 	'websiteUrl',
 	'address',
@@ -35,13 +34,18 @@ export const load = (async ({ params, locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) throw error(404, 'Espace non trouvé');
 
-	const [company] = await db
-		.select()
-		.from(companies)
-		.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
-		.limit(1);
+	const companyResult = await db.query.companies.findFirst({
+		where: and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)),
+		with: { industry: { columns: { id: true, name: true } } }
+	});
 
-	if (!company) throw error(404, 'Entreprise non trouvée');
+	if (!companyResult) throw error(404, 'Entreprise non trouvée');
+	const company = companyResult;
+
+	const industriesList = await db
+		.select({ id: industries.id, name: industries.name })
+		.from(industries)
+		.orderBy(asc(industries.displayOrder), asc(industries.name));
 
 	const links = await db
 		.select({ contactId: contactCompanies.contactId })
@@ -90,6 +94,7 @@ export const load = (async ({ params, locals }) => {
 
 	return {
 		company,
+		industries: industriesList,
 		linkedContacts,
 		linkedDeals,
 		allContacts,
@@ -134,8 +139,11 @@ export const actions: Actions = {
 		if (safeField === 'legalStatus' && value && !legalStatusOptions.includes(value as (typeof legalStatusOptions)[number])) {
 			return fail(400, { message: 'Statut juridique invalide' });
 		}
-		if (safeField === 'industry' && value && !industryOptions.includes(value as (typeof industryOptions)[number])) {
-			return fail(400, { message: 'Industrie invalide' });
+		if (safeField === 'industryId' && value) {
+			const validIds = new Set(
+				(await db.select({ id: industries.id }).from(industries)).map((r) => r.id)
+			);
+			if (!validIds.has(value)) return fail(400, { message: 'Industrie invalide' });
 		}
 		if (safeField === 'companySize' && value && !companySizeOptions.includes(value as (typeof companySizeOptions)[number])) {
 			return fail(400, { message: 'Taille invalide' });
@@ -148,7 +156,12 @@ export const actions: Actions = {
 			return fail(400, { message: 'Le nom est requis' });
 		}
 
-		const saveValue = safeField === 'websiteUrl' && value ? normalizeUrl(value) : (value || null);
+		const saveValue =
+			safeField === 'websiteUrl' && value
+				? normalizeUrl(value)
+				: safeField === 'industryId'
+					? (value || null)
+					: (value || null);
 
 		const updated = await db
 			.update(companies)

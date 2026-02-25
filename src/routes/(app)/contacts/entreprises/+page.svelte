@@ -9,7 +9,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import Building2 from '@lucide/svelte/icons/building-2';
-	import { industryOptions, companySizeOptions } from '$lib/crm/company-form-options';
+	import { companySizeOptions } from '$lib/crm/company-form-options';
 
 	let { data }: PageProps = $props();
 	let companyModalOpen = $state(false);
@@ -96,10 +96,10 @@
 		search.trim() !== '' || industryFilter !== 'all' || sizeFilter !== 'all'
 	);
 
-	const INDUSTRY_OPTIONS = [
+	const INDUSTRY_OPTIONS = $derived([
 		{ value: 'all', label: 'Toutes les industries' },
-		...industryOptions.map((v) => ({ value: v, label: v }))
-	];
+		...(data?.industries ?? []).map((i) => ({ value: i.id, label: i.name }))
+	]);
 
 	const SIZE_OPTIONS = [
 		{ value: 'all', label: 'Toutes les tailles' },
@@ -225,8 +225,8 @@
 									</div>
 								</Table.Cell>
 								<Table.Cell>
-									{#if company.industry}
-										<Badge variant="secondary" class="text-xs">{company.industry}</Badge>
+									{#if company.industry?.name}
+										<Badge variant="secondary" class="text-xs">{company.industry.name}</Badge>
 									{:else}
 										<span class="text-muted-foreground text-sm">—</span>
 									{/if}
@@ -262,7 +262,7 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<p class="font-medium text-sm truncate">{company.name}</p>
-							<p class="text-xs text-muted-foreground truncate">{company.city ?? company.industry ?? '—'}</p>
+							<p class="text-xs text-muted-foreground truncate">{company.city ?? company.industry?.name ?? '—'}</p>
 						</div>
 						{#if company.companySize}
 							<Badge variant="outline" class="text-xs shrink-0">{company.companySize}</Badge>
@@ -273,4 +273,4 @@
 		{/if}
 </div>
 
-<CompanyModal bind:open={companyModalOpen} company={companyModalCompany} contacts={allContacts} />
+<CompanyModal bind:open={companyModalOpen} company={companyModalCompany} contacts={allContacts} industries={data?.industries ?? []} />

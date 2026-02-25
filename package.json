@@ -16,7 +16,8 @@
 		"db:generate": "drizzle-kit generate",
 		"db:pull": "drizzle-kit pull --config drizzle.pull.config.ts",
 		"db:push": "echo 'Error: Use supabase db push instead' && exit 1",
-		"db:migrate": "echo 'Error: Use supabase migration up (local) or supabase db push (remote) instead' && exit 1"
+		"db:migrate": "echo 'Error: Use supabase migration up (local) or supabase db push (remote) instead' && exit 1",
+		"db:up": "supabase migration up"
 	},
 	"devDependencies": {
 		"@dnd-kit-svelte/svelte": "^0.1.3",
