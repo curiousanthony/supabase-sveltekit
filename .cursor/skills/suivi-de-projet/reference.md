@@ -130,6 +130,35 @@
 | Projet | ID | URL |
 |--------|----|-----|
 | CRM | `311a9fc7-55ff-80b1-9c99-fc0a19637032` | `https://www.notion.so/311a9fc755ff80b19c99fc0a19637032` |
+| Bibliothèque | `310a9fc7-55ff-80d6-bcc3-dfe4a0094895` | `https://www.notion.so/310a9fc755ff80d6bcc3dfe4a0094895` |
+
+---
+
+## Tickets Bibliothèque (PJT-1)
+
+| Rôle | Titre court | URL |
+|------|-------------|-----|
+| AA (parent) | Initialiser la section Bibliothèque | `https://www.notion.so/312a9fc755ff81fc91dffc4607a8ffb9` |
+| AB (parent) | Schéma DB Bibliothèque | `https://www.notion.so/312a9fc755ff8184b260eafc07a0e131` |
+| AB1 | Schéma Drizzle `biblio_modules` | `https://www.notion.so/312a9fc755ff81c094b1f0fc84aa9449` |
+| AB2 | Schéma Drizzle `biblio_programmes` + jonction | `https://www.notion.so/312a9fc755ff81e0a52ed71e9fbe9cee` |
+| AB3 | Schéma Drizzle `biblio_questionnaires` + jonctions | `https://www.notion.so/312a9fc755ff81d3bc1bfe37ffaf5204` |
+| AB4 | Schéma Drizzle `biblio_supports` + jonctions | `https://www.notion.so/312a9fc755ff8138927edbba0e25e21e` |
+| AC (parent) | Gestion des Modules | `https://www.notion.so/312a9fc755ff81308877d04d58ee6690` |
+| AC1 | Vue liste Modules `/bibliotheque/modules` | `https://www.notion.so/312a9fc755ff81a3ada2fb632b2813b1` |
+| AC2 | Formulaire Créer/Éditer Module | `https://www.notion.so/312a9fc755ff8144a653e07f05488e64` |
+| AC3 | Page détail Module `/bibliotheque/modules/[id]` | `https://www.notion.so/312a9fc755ff81d7905fd44b69673657` |
+| AD (parent) | Gestion des Programmes | `https://www.notion.so/312a9fc755ff817c8020f61a20eefde5` |
+| AD1 | Vue liste Programmes `/bibliotheque/programmes` | `https://www.notion.so/312a9fc755ff8115a00cce1385e0be7e` |
+| AD2 | Formulaire Créer/Éditer Programme (D&D modules) | `https://www.notion.so/312a9fc755ff81fd9d4fc1f510c705d7` |
+| AD3 | Page détail Programme `/bibliotheque/programmes/[id]` | `https://www.notion.so/312a9fc755ff81aca8d8c416f5d54cd4` |
+| AE (parent) | Gestion des Questionnaires | `https://www.notion.so/312a9fc755ff816bb3e8fa2dad5ff1f3` |
+| AE1 | Vue liste Questionnaires `/bibliotheque/questionnaires` | `https://www.notion.so/312a9fc755ff8156b2bddca7846a2e72` |
+| AE2 | Formulaire Créer/Éditer Questionnaire | `https://www.notion.so/312a9fc755ff81bfa00bd4f725f39981` |
+| AE3 | Page détail Questionnaire `/bibliotheque/questionnaires/[id]` | `https://www.notion.so/312a9fc755ff8122838dc86be1aa16af` |
+| AF (parent) | Gestion des Supports | `https://www.notion.so/312a9fc755ff8106855ec3b1f3c9fc0a` |
+| AF1 | Vue liste Supports + upload `/bibliotheque/supports` | `https://www.notion.so/312a9fc755ff81478a4efe7418662941` |
+| AF2 | Page détail Support `/bibliotheque/supports/[id]` | `https://www.notion.so/312a9fc755ff81e88252c27c215cf718` |
 
 ---
 
