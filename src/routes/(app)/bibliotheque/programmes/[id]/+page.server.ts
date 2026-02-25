@@ -6,8 +6,8 @@ import {
 	biblioModules,
 	biblioSupports
 } from '$lib/db/schema';
-import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
-import { eq, and, desc, asc } from 'drizzle-orm';
+import { getUserWorkspace } from '$lib/auth';
+import { eq, and, desc, asc, inArray } from 'drizzle-orm';
 import { fail, redirect, error } from '@sveltejs/kit';
 import { programmeSchema } from '$lib/bibliotheque/programme-schema';
 import type { PageServerLoad, Actions } from './$types';
@@ -17,10 +17,7 @@ export const load = (async ({ params, locals }) => {
 	if (!workspaceId) throw error(403, 'Aucun espace de travail');
 
 	const programme = await db.query.biblioProgrammes.findFirst({
-		where: and(
-			eq(biblioProgrammes.id, params.id),
-			eq(biblioProgrammes.workspaceId, workspaceId)
-		)
+		where: and(eq(biblioProgrammes.id, params.id), eq(biblioProgrammes.workspaceId, workspaceId))
 	});
 	if (!programme) throw error(404, 'Programme non trouvé');
 
@@ -37,7 +34,11 @@ export const load = (async ({ params, locals }) => {
 		.orderBy(asc(biblioProgrammeModules.orderIndex));
 
 	const allModules = await db
-		.select({ id: biblioModules.id, titre: biblioModules.titre, dureeHeures: biblioModules.dureeHeures })
+		.select({
+			id: biblioModules.id,
+			titre: biblioModules.titre,
+			dureeHeures: biblioModules.dureeHeures
+		})
 		.from(biblioModules)
 		.where(eq(biblioModules.workspaceId, workspaceId))
 		.orderBy(desc(biblioModules.updatedAt));
@@ -48,7 +49,12 @@ export const load = (async ({ params, locals }) => {
 		.where(eq(biblioProgrammeSupports.programmeId, params.id));
 
 	const allSupports = await db
-		.select({ id: biblioSupports.id, titre: biblioSupports.titre, url: biblioSupports.url, filePath: biblioSupports.filePath })
+		.select({
+			id: biblioSupports.id,
+			titre: biblioSupports.titre,
+			url: biblioSupports.url,
+			filePath: biblioSupports.filePath
+		})
 		.from(biblioSupports)
 		.where(eq(biblioSupports.workspaceId, workspaceId))
 		.orderBy(desc(biblioSupports.updatedAt));
@@ -79,7 +85,21 @@ export const actions: Actions = {
 		const fd = await request.formData();
 		const moduleIdsRaw = fd.get('moduleIds') as string;
 		const supportIdsRaw = fd.get('supportIds') as string;
-		const supportIds: string[] = supportIdsRaw ? JSON.parse(supportIdsRaw) : [];
+
+		let supportIds: string[];
+		try {
+			supportIds = supportIdsRaw ? JSON.parse(supportIdsRaw) : [];
+		} catch {
+			return fail(400, { message: 'supportIds invalide (JSON attendu)' });
+		}
+
+		let moduleIds: string[];
+		try {
+			moduleIds = moduleIdsRaw ? JSON.parse(moduleIdsRaw) : [];
+		} catch {
+			return fail(400, { message: 'moduleIds invalide (JSON attendu)' });
+		}
+
 		const raw = {
 			titre: (fd.get('titre') as string)?.trim() ?? '',
 			description: (fd.get('description') as string)?.trim() || undefined,
@@ -88,7 +108,7 @@ export const actions: Actions = {
 			statut: (fd.get('statut') as string) || 'Brouillon',
 			prerequis: (fd.get('prerequis') as string)?.trim() || undefined,
 			dureeHeures: fd.get('dureeHeures') ? Number(fd.get('dureeHeures')) : undefined,
-			moduleIds: moduleIdsRaw ? JSON.parse(moduleIdsRaw) : []
+			moduleIds
 		};
 
 		const parsed = programmeSchema.safeParse(raw);
@@ -96,52 +116,108 @@ export const actions: Actions = {
 			return fail(400, { message: parsed.error.errors.map((e) => e.message).join(', ') });
 		}
 
-		await db.transaction(async (tx) => {
-			await tx
-				.update(biblioProgrammes)
-				.set({
-					titre: parsed.data.titre,
-					description: parsed.data.description ?? null,
-					modalite: parsed.data.modalite ?? null,
-					prixPublic: parsed.data.prixPublic?.toString() ?? null,
-					statut: parsed.data.statut,
-					prerequis: parsed.data.prerequis ?? null,
-					dureeHeures: parsed.data.dureeHeures?.toString() ?? null
-				})
-				.where(
-					and(
-						eq(biblioProgrammes.id, params.id),
-						eq(biblioProgrammes.workspaceId, workspaceId)
-					)
-				);
+		try {
+			await db.transaction(async (tx) => {
+				await tx
+					.update(biblioProgrammes)
+					.set({
+						titre: parsed.data.titre,
+						description: parsed.data.description ?? null,
+						modalite: parsed.data.modalite ?? null,
+						prixPublic: parsed.data.prixPublic?.toString() ?? null,
+						statut: parsed.data.statut,
+						prerequis:
+							parsed.data.prerequis?.length ? JSON.stringify(parsed.data.prerequis) : null,
+						dureeHeures: parsed.data.dureeHeures?.toString() ?? null
+					})
+					.where(
+						and(eq(biblioProgrammes.id, params.id), eq(biblioProgrammes.workspaceId, workspaceId))
+					);
 
-			await tx
-				.delete(biblioProgrammeModules)
-				.where(eq(biblioProgrammeModules.programmeId, params.id));
+				await tx
+					.delete(biblioProgrammeModules)
+					.where(eq(biblioProgrammeModules.programmeId, params.id));
 
-			if (parsed.data.moduleIds.length > 0) {
-				await tx.insert(biblioProgrammeModules).values(
-					parsed.data.moduleIds.map((moduleId, index) => ({
-						programmeId: params.id,
-						moduleId,
-						orderIndex: index
-					}))
-				);
+				await tx
+					.delete(biblioProgrammeSupports)
+					.where(eq(biblioProgrammeSupports.programmeId, params.id));
+
+				if (parsed.data.moduleIds.length > 0) {
+					const allowedModules = await tx
+						.select({ id: biblioModules.id })
+						.from(biblioModules)
+						.where(
+							and(
+								eq(biblioModules.workspaceId, workspaceId),
+								inArray(biblioModules.id, parsed.data.moduleIds)
+							)
+						);
+					const allowedModuleIds = new Set(allowedModules.map((r) => r.id));
+					const invalid =
+						allowedModuleIds.size !== parsed.data.moduleIds.length ||
+						parsed.data.moduleIds.some((id) => !allowedModuleIds.has(id));
+					if (invalid) {
+						throw new Error('INVALID_MODULES');
+					}
+				}
+
+				if (supportIds.length > 0) {
+					const allowedSupports = await tx
+						.select({ id: biblioSupports.id })
+						.from(biblioSupports)
+						.where(
+							and(
+								eq(biblioSupports.workspaceId, workspaceId),
+								inArray(biblioSupports.id, supportIds)
+							)
+						);
+					const allowedSupportIds = new Set(allowedSupports.map((r) => r.id));
+					const invalid =
+						allowedSupportIds.size !== supportIds.length ||
+						supportIds.some((id) => !allowedSupportIds.has(id));
+					if (invalid) {
+						throw new Error('INVALID_SUPPORTS');
+					}
+				}
+
+				if (parsed.data.moduleIds.length > 0) {
+					await tx.insert(biblioProgrammeModules).values(
+						parsed.data.moduleIds.map((moduleId, index) => ({
+							programmeId: params.id,
+							moduleId,
+							orderIndex: index
+						}))
+					);
+				}
+
+				if (supportIds.length > 0) {
+					await tx.insert(biblioProgrammeSupports).values(
+						supportIds.map((supportId) => ({
+							programmeId: params.id,
+							supportId
+						}))
+					);
+				}
+			});
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : '';
+			if (msg === 'INVALID_MODULES') {
+				return fail(400, {
+					message: 'Un ou plusieurs modules n’appartiennent pas à cet espace de travail.'
+				});
 			}
-
-			await tx
-				.delete(biblioProgrammeSupports)
-				.where(eq(biblioProgrammeSupports.programmeId, params.id));
-
-			if (supportIds.length > 0) {
-				await tx.insert(biblioProgrammeSupports).values(
-					supportIds.map((supportId) => ({
-						programmeId: params.id,
-						supportId
-					}))
-				);
+			if (msg === 'INVALID_SUPPORTS') {
+				return fail(400, {
+					message: 'Un ou plusieurs supports n’appartiennent pas à cet espace de travail.'
+				});
 			}
-		});
+			console.error('[programmes update] transaction failed', {
+				error: err,
+				programmeId: params.id,
+				workspaceId
+			});
+			return fail(500, { message: 'Erreur lors de la mise à jour du programme.' });
+		}
 
 		return { success: true };
 	},
@@ -155,10 +231,7 @@ export const actions: Actions = {
 		await db
 			.delete(biblioProgrammes)
 			.where(
-				and(
-					eq(biblioProgrammes.id, params.id),
-					eq(biblioProgrammes.workspaceId, workspaceId)
-				)
+				and(eq(biblioProgrammes.id, params.id), eq(biblioProgrammes.workspaceId, workspaceId))
 			);
 
 		throw redirect(303, '/bibliotheque/programmes');

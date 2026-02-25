@@ -7,10 +7,26 @@ import {
 	biblioModules
 } from '$lib/db/schema';
 import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { fail, redirect, error } from '@sveltejs/kit';
 import { questionnaireSchema } from '$lib/bibliotheque/questionnaire-schema';
 import type { PageServerLoad, Actions } from './$types';
+
+function safeParseJsonArray(
+	input: string | null | undefined,
+	fieldName: string
+): { ok: true; value: string[] } | { ok: false; message: string } {
+	const str = (typeof input === 'string' ? input : '')?.trim() || '[]';
+	try {
+		const parsed = JSON.parse(str);
+		if (!Array.isArray(parsed)) {
+			return { ok: false, message: `Invalid JSON for ${fieldName}: expected array` };
+		}
+		return { ok: true, value: parsed };
+	} catch {
+		return { ok: false, message: `Invalid JSON for ${fieldName}` };
+	}
+}
 
 export const load = (async ({ params, locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
@@ -71,12 +87,20 @@ export const actions: Actions = {
 		if (!workspaceId) return fail(400, { message: 'Aucun espace de travail' });
 
 		const fd = await request.formData();
+		const programmeIdsResult = safeParseJsonArray(fd.get('programmeIds') as string, 'programmeIds');
+		if (!programmeIdsResult.ok) {
+			return fail(400, { message: programmeIdsResult.message });
+		}
+		const moduleIdsResult = safeParseJsonArray(fd.get('moduleIds') as string, 'moduleIds');
+		if (!moduleIdsResult.ok) {
+			return fail(400, { message: moduleIdsResult.message });
+		}
 		const raw = {
 			titre: (fd.get('titre') as string)?.trim() ?? '',
 			type: (fd.get('type') as string) || undefined,
 			urlTest: (fd.get('urlTest') as string)?.trim() || undefined,
-			programmeIds: JSON.parse((fd.get('programmeIds') as string) || '[]'),
-			moduleIds: JSON.parse((fd.get('moduleIds') as string) || '[]')
+			programmeIds: programmeIdsResult.value,
+			moduleIds: moduleIdsResult.value
 		};
 
 		const parsed = questionnaireSchema.safeParse(raw);
@@ -84,45 +108,90 @@ export const actions: Actions = {
 			return fail(400, { message: parsed.error.errors.map((e) => e.message).join(', ') });
 		}
 
-		await db.transaction(async (tx) => {
-			await tx
-				.update(biblioQuestionnaires)
-				.set({
-					titre: parsed.data.titre,
-					type: parsed.data.type ?? null,
-					urlTest: parsed.data.urlTest || null
-				})
-				.where(
-					and(
-						eq(biblioQuestionnaires.id, params.id),
-						eq(biblioQuestionnaires.workspaceId, workspaceId)
-					)
-				);
+		try {
+			await db.transaction(async (tx) => {
+				const programmeIds = parsed.data.programmeIds;
+				const moduleIds = parsed.data.moduleIds;
 
-			await tx
-				.delete(biblioProgrammeQuestionnaires)
-				.where(eq(biblioProgrammeQuestionnaires.questionnaireId, params.id));
-			if (parsed.data.programmeIds.length > 0) {
-				await tx.insert(biblioProgrammeQuestionnaires).values(
-					parsed.data.programmeIds.map((programmeId) => ({
-						programmeId,
-						questionnaireId: params.id
-					}))
-				);
-			}
+				const [allowedProgrammeRows, allowedModuleRows] = await Promise.all([
+					programmeIds.length > 0
+						? tx
+								.select({ id: biblioProgrammes.id })
+								.from(biblioProgrammes)
+								.where(
+									and(
+										eq(biblioProgrammes.workspaceId, workspaceId),
+										inArray(biblioProgrammes.id, programmeIds)
+									)
+								)
+						: Promise.resolve([]),
+					moduleIds.length > 0
+						? tx
+								.select({ id: biblioModules.id })
+								.from(biblioModules)
+								.where(
+									and(
+										eq(biblioModules.workspaceId, workspaceId),
+										inArray(biblioModules.id, moduleIds)
+									)
+								)
+						: Promise.resolve([])
+				]);
 
-			await tx
-				.delete(biblioModuleQuestionnaires)
-				.where(eq(biblioModuleQuestionnaires.questionnaireId, params.id));
-			if (parsed.data.moduleIds.length > 0) {
-				await tx.insert(biblioModuleQuestionnaires).values(
-					parsed.data.moduleIds.map((moduleId) => ({
-						moduleId,
-						questionnaireId: params.id
-					}))
-				);
-			}
-		});
+				const allowedProgrammeIds = new Set(allowedProgrammeRows.map((r) => r.id));
+				const allowedModuleIds = new Set(allowedModuleRows.map((r) => r.id));
+				const invalidProgrammeIds = programmeIds.filter((id) => !allowedProgrammeIds.has(id));
+				const invalidModuleIds = moduleIds.filter((id) => !allowedModuleIds.has(id));
+
+				if (invalidProgrammeIds.length > 0 || invalidModuleIds.length > 0) {
+					const parts: string[] = [];
+					if (invalidProgrammeIds.length > 0) parts.push('programmes invalides ou non accessibles');
+					if (invalidModuleIds.length > 0) parts.push('modules invalides ou non accessibles');
+					throw new Error(parts.join(' ; '));
+				}
+
+				await tx
+					.update(biblioQuestionnaires)
+					.set({
+						titre: parsed.data.titre,
+						type: parsed.data.type ?? null,
+						urlTest: parsed.data.urlTest || null
+					})
+					.where(
+						and(
+							eq(biblioQuestionnaires.id, params.id),
+							eq(biblioQuestionnaires.workspaceId, workspaceId)
+						)
+					);
+
+				await tx
+					.delete(biblioProgrammeQuestionnaires)
+					.where(eq(biblioProgrammeQuestionnaires.questionnaireId, params.id));
+				if (programmeIds.length > 0) {
+					await tx.insert(biblioProgrammeQuestionnaires).values(
+						programmeIds.map((programmeId) => ({
+							programmeId,
+							questionnaireId: params.id
+						}))
+					);
+				}
+
+				await tx
+					.delete(biblioModuleQuestionnaires)
+					.where(eq(biblioModuleQuestionnaires.questionnaireId, params.id));
+				if (moduleIds.length > 0) {
+					await tx.insert(biblioModuleQuestionnaires).values(
+						moduleIds.map((moduleId) => ({
+							moduleId,
+							questionnaireId: params.id
+						}))
+					);
+				}
+			});
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour';
+			return fail(400, { message });
+		}
 
 		return { success: true };
 	},

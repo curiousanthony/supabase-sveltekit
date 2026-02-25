@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import { pgTable, foreignKey, timestamp, uuid, text, unique } from 'drizzle-orm/pg-core';
 import { typeQuestionnaire } from './enums';
 import { workspaces } from './workspaces';
@@ -11,16 +10,16 @@ export const biblioQuestionnaires = pgTable(
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		titre: text().notNull(),
-		type: typeQuestionnaire(),
+		type: typeQuestionnaire().notNull(),
 		urlTest: text('url_test'),
 		workspaceId: uuid('workspace_id').notNull(),
 		createdBy: uuid('created_by').notNull(),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
 			.notNull(),
-		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
 			.defaultNow()
-			.$onUpdateFn(() => sql`now()`)
+			.$onUpdate(() => new Date())
 			.notNull()
 	},
 	(table) => [
@@ -36,6 +35,8 @@ export const biblioQuestionnaires = pgTable(
 			foreignColumns: [users.id],
 			name: 'biblio_questionnaires_created_by_fkey'
 		})
+			.onUpdate('cascade')
+			.onDelete('restrict')
 	]
 );
 

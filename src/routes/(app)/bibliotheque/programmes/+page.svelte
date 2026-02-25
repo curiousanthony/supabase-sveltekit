@@ -23,15 +23,16 @@
 	};
 
 	function formatPrice(value: string | null) {
-		if (!value) return '—';
-		return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(
-			Number(value)
-		);
+		if (value == null || value === '') return '—';
+		const n = Number(value);
+		if (!Number.isFinite(n)) return '—';
+		return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
 	}
 
 	function formatDuration(value: string | null) {
-		if (!value) return '—';
+		if (value == null || value === '') return '—';
 		const n = Number(value);
+		if (!Number.isFinite(n)) return '—';
 		return `${n}h`;
 	}
 </script>
@@ -106,7 +107,7 @@
 									<DropdownMenu.Content align="end">
 										<DropdownMenu.Item>
 											{#snippet child({ props })}
-												<a href="/bibliotheque/programmes/{prog.id}" {...props}>
+												<a href="/bibliotheque/programmes/{prog.id}/modifier" {...props}>
 													<Pencil class="mr-2 size-4" />
 													Modifier
 												</a>
@@ -114,10 +115,7 @@
 										</DropdownMenu.Item>
 										<form method="POST" action="?/duplicate" use:enhance>
 											<input type="hidden" name="id" value={prog.id} />
-											<DropdownMenu.Item
-												type="submit"
-												onSelect={(e) => e.preventDefault()}
-											>
+											<DropdownMenu.Item onSelect={(e) => e.preventDefault()}>
 												<button type="submit" class="flex w-full items-center">
 													<Copy class="mr-2 size-4" />
 													Dupliquer
@@ -125,10 +123,22 @@
 											</DropdownMenu.Item>
 										</form>
 										<DropdownMenu.Separator />
-										<form method="POST" action="?/delete" use:enhance>
+										<form
+											method="POST"
+											action="?/delete"
+											use:enhance
+											onsubmit={(e) => {
+												const form = e.currentTarget as HTMLFormElement;
+												if (form.dataset.confirmed !== '1') {
+													e.preventDefault();
+													if (!confirm('Supprimer ce programme ? Cette action est irréversible.')) return;
+													form.dataset.confirmed = '1';
+													form.requestSubmit();
+												}
+											}}
+										>
 											<input type="hidden" name="id" value={prog.id} />
 											<DropdownMenu.Item
-												type="submit"
 												class="text-destructive"
 												onSelect={(e) => e.preventDefault()}
 											>

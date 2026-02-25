@@ -30,7 +30,7 @@
 	});
 
 	function formatSize(bytes: number | null) {
-		if (!bytes) return '—';
+		if (bytes == null) return '—';
 		if (bytes < 1024) return `${bytes} o`;
 		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
 		return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
@@ -138,9 +138,9 @@
 								<DropdownMenu.Root>
 									<DropdownMenu.Trigger>
 										{#snippet child({ props })}
-											<Button variant="ghost" size="icon" class="size-8" {...props}>
-												<MoreHorizontal class="size-4" />
-											</Button>
+										<Button variant="ghost" size="icon" class="size-8" aria-label="Actions du support" {...props}>
+											<MoreHorizontal class="size-4" />
+										</Button>
 										{/snippet}
 									</DropdownMenu.Trigger>
 									<DropdownMenu.Content align="end">
@@ -182,9 +182,11 @@
 			action="?/upload"
 			enctype="multipart/form-data"
 			use:enhance={() => {
-				return async ({ update }) => {
-					showUploadDialog = false;
+				return async ({ result, update }) => {
 					await update();
+					if (result.type === 'success') {
+						showUploadDialog = false;
+					}
 				};
 			}}
 		>
@@ -229,9 +231,11 @@
 			method="POST"
 			action="?/createLink"
 			use:enhance={() => {
-				return async ({ update }) => {
-					showLinkDialog = false;
+				return async ({ result, update }) => {
 					await update();
+					if (result.type === 'success') {
+						showLinkDialog = false;
+					}
 				};
 			}}
 		>
@@ -242,12 +246,13 @@
 				</div>
 				<div class="flex flex-col gap-2">
 					<Label for="link-url">URL</Label>
-					<Input
-						id="link-url"
-						name="url"
-						type="url"
-						placeholder="https://..."
-					/>
+						<Input
+							id="link-url"
+							name="url"
+							type="url"
+							placeholder="https://..."
+							required
+						/>
 				</div>
 			</div>
 			<Dialog.Footer>

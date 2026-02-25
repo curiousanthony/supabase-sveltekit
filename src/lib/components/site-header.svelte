@@ -80,102 +80,102 @@
 			{@render $slots.actions()}
 		</div> -->
 	{#if actionsSnippetProp}
-		{@render actionsSnippetProp()}
-	{:else if header?.actions}
-		{@render actions?.()}
+		<div class="ml-auto flex items-center gap-2">
+			{@render actionsSnippetProp()}
+		</div>
+	{:else if header?.actions?.length}
+		<div class="ml-auto flex items-center gap-2">
+			{@render actions()}
+		</div>
 	{/if}
 	</div>
 </header>
 
 {#snippet actions()}
-	<!-- Default empty area if parent doesn’t override -->
-	<div class="ml-auto flex items-center gap-2">
-		<!-- <p>Default actions from site-header.svelte</p> -->
-		<!-- <Button href={header.actions.href}>{header.actions.label}</Button> -->
-		{#each header?.actions ?? [] as action}
-			{#if action.type === 'button'}
+	<!-- Default actions from header.actions (button, formationButtonGroup, separator, etc.) -->
+	{#each header?.actions ?? [] as action}
+		{#if action.type === 'button'}
+			<Button
+				href={action?.href}
+				class={action?.className}
+				variant={action?.variant ?? 'default'}
+			>
+				{@render actionIcon(action)}
+				{action.text}
+			</Button>
+		{:else if action.type === 'formationButtonGroup'}
+			<!-- Formation header: share link, history, more-options dropdown (edit, copy, discuss, delete) -->
+			<ButtonGroup.Root aria-label="Actions formation" class="items-stretch">
+				<!-- Will: share the Formation link -->
 				<Button
-					href={action?.href}
-					class={action?.className}
-					variant={action?.variant ?? 'default'}
+					variant="outline"
+					size="icon"
+					aria-label="Partager le lien de la formation"
+					onclick={() => {}}
+					class="size-9 min-h-9 min-w-9 p-2"
 				>
-					{@render actionIcon(action)}
-					{action.text}
+					<Share class="size-4" />
 				</Button>
-			{:else if action.type === 'formationButtonGroup'}
-				<!-- Formation header: share link, history, more-options dropdown (edit, copy, discuss, delete) -->
-				<ButtonGroup.Root aria-label="Actions formation" class="items-stretch">
-					<!-- Will: share the Formation link -->
-					<Button
-						variant="outline"
-						size="icon"
-						aria-label="Partager le lien de la formation"
-						onclick={() => {}}
-						class="size-9 min-h-9 min-w-9 p-2"
-					>
-						<Share class="size-4" />
-					</Button>
-					<!-- Will: open modifications history logs -->
-					<Button
-						variant="outline"
-						size="icon"
-						aria-label="Voir l'historique des modifications"
-						onclick={() => {}}
-						class="size-9 min-h-9 min-w-9 p-2"
-					>
-						<History class="size-4" />
-					</Button>
-					<DropdownMenu.Root>
-						<DropdownMenu.Trigger>
-							{#snippet child({ props })}
-								<Button
-									{...props}
-									variant="outline"
-									size="icon"
-									aria-label="Plus d'options"
-									class="size-9 min-h-9 min-w-9 p-2 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
-								>
-									<DotsVertical class="size-4" />
-								</Button>
-							{/snippet}
-						</DropdownMenu.Trigger>
-						<DropdownMenu.Content align="end" class="w-56">
-							<DropdownMenu.Group>
-								<!-- Will: navigate to edit formation -->
-								<DropdownMenu.Item onclick={() => {}}>
-									<Pencil class="size-4" />
-									Modifier la formation
-								</DropdownMenu.Item>
-								<!-- Will: copy formation info to clipboard -->
-								<DropdownMenu.Item onclick={() => {}}>
-									<Copy class="size-4" />
-									Copier les informations
-								</DropdownMenu.Item>
-								<!-- Will: open discuss-with flow (e.g. share or message) -->
-								<DropdownMenu.Item onclick={() => {}}>
-									<MessageCircle class="size-4" />
-									En discuter avec...
-								</DropdownMenu.Item>
-							</DropdownMenu.Group>
-							<DropdownMenu.Separator />
-							<DropdownMenu.Group>
-								<!-- Will: delete the formation (with confirmation) -->
-								<DropdownMenu.Item variant="destructive" onclick={() => {}}>
-									<Trash class="size-4" />
-									Supprimer la formation
-								</DropdownMenu.Item>
-							</DropdownMenu.Group>
-						</DropdownMenu.Content>
-					</DropdownMenu.Root>
-				</ButtonGroup.Root>
-			{:else if action.type === 'separator'}
-				<Separator
-					orientation={action?.orientation ?? 'vertical'}
-					class="mx-2 data-[orientation=vertical]:h-4"
-				/>
-			{/if}
+				<!-- Will: open modifications history logs -->
+				<Button
+					variant="outline"
+					size="icon"
+					aria-label="Voir l'historique des modifications"
+					onclick={() => {}}
+					class="size-9 min-h-9 min-w-9 p-2"
+				>
+					<History class="size-4" />
+				</Button>
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger>
+						{#snippet child({ props })}
+							<Button
+								{...props}
+								variant="outline"
+								size="icon"
+								aria-label="Plus d'options"
+								class="size-9 min-h-9 min-w-9 p-2 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
+							>
+								<DotsVertical class="size-4" />
+							</Button>
+						{/snippet}
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content align="end" class="w-56">
+						<DropdownMenu.Group>
+							<!-- Will: navigate to edit formation -->
+							<DropdownMenu.Item onclick={() => {}}>
+								<Pencil class="size-4" />
+								Modifier la formation
+							</DropdownMenu.Item>
+							<!-- Will: copy formation info to clipboard -->
+							<DropdownMenu.Item onclick={() => {}}>
+								<Copy class="size-4" />
+								Copier les informations
+							</DropdownMenu.Item>
+							<!-- Will: open discuss-with flow (e.g. share or message) -->
+							<DropdownMenu.Item onclick={() => {}}>
+								<MessageCircle class="size-4" />
+								En discuter avec...
+							</DropdownMenu.Item>
+						</DropdownMenu.Group>
+						<DropdownMenu.Separator />
+						<DropdownMenu.Group>
+							<!-- Will: delete the formation (with confirmation) -->
+							<DropdownMenu.Item variant="destructive" onclick={() => {}}>
+								<Trash class="size-4" />
+								Supprimer la formation
+							</DropdownMenu.Item>
+						</DropdownMenu.Group>
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+			</ButtonGroup.Root>
+		{:else if action.type === 'separator'}
+			<Separator
+				orientation={action?.orientation ?? 'vertical'}
+				class="mx-2 data-[orientation=vertical]:h-4"
+			/>
+		{/if}
 		{/each}
-	</div>
 {/snippet}
 
 {#snippet actionIcon(action: { icon: string })}

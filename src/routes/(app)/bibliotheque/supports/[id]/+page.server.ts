@@ -39,13 +39,17 @@ export const actions: Actions = {
 
 		if (!titre) return fail(400, { message: 'Titre requis' });
 
-		await db
+		const updated = await db
 			.update(biblioSupports)
 			.set({ titre, url: url || null })
 			.where(
 				and(eq(biblioSupports.id, params.id), eq(biblioSupports.workspaceId, workspaceId))
-			);
+			)
+			.returning({ id: biblioSupports.id });
 
+		if (updated.length === 0) {
+			return fail(404, { message: 'Support not found' });
+		}
 		return { success: true };
 	},
 
@@ -61,10 +65,19 @@ export const actions: Actions = {
 				eq(biblioSupports.workspaceId, workspaceId)
 			)
 		});
+		if (!support) throw error(404, 'Support non trouvé');
 
-		if (support?.filePath) {
+		if (support.filePath) {
 			const { supabase } = locals;
-			await supabase.storage.from('bibliotheque-supports').remove([support.filePath]);
+			const { error: removeError } = await supabase.storage
+				.from('bibliotheque-supports')
+				.remove([support.filePath]);
+			if (removeError) {
+				console.error('[support delete] storage remove failed:', removeError);
+				return fail(500, {
+					message: 'Impossible de supprimer le fichier du support. Réessayez ou contactez le support.'
+				});
+			}
 		}
 
 		await db

@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import { pgTable, foreignKey, timestamp, uuid, text, integer, unique } from 'drizzle-orm/pg-core';
 import { workspaces } from './workspaces';
 import { users } from './users';
@@ -22,7 +21,7 @@ export const biblioSupports = pgTable(
 			.notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
-			.$onUpdateFn(() => sql`now()`)
+			.$onUpdate(() => new Date().toISOString())
 			.notNull()
 	},
 	(table) => [
@@ -38,6 +37,8 @@ export const biblioSupports = pgTable(
 			foreignColumns: [users.id],
 			name: 'biblio_supports_created_by_fkey'
 		})
+			.onUpdate('cascade')
+			.onDelete('restrict')
 	]
 );
 

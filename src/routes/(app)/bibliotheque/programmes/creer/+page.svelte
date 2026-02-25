@@ -90,7 +90,7 @@
 	<form method="POST" use:enhance class="flex flex-col gap-5">
 		<input type="hidden" name="modalite" value={modaliteArray[0] ?? ''} />
 		<input type="hidden" name="statut" value={statutArray[0] ?? 'Brouillon'} />
-		<input type="hidden" name="dureeHeures" value={dureeHeures || ''} />
+		<input type="hidden" name="dureeHeures" value={String(dureeHeures)} />
 		<input type="hidden" name="moduleIds" value={JSON.stringify(selectedModuleIds)} />
 		<input type="hidden" name="supportIds" value={JSON.stringify(selectedSupportIds)} />
 		<input type="hidden" name="prerequis" value={JSON.stringify(selectedPrereqs)} />
@@ -150,14 +150,16 @@
 		<div class="flex flex-col gap-2">
 			<Label>Pré-requis</Label>
 			<div class="flex flex-wrap gap-3">
-				{#each prerequisOptions as prereq}
-					<label class="flex items-center gap-2 text-sm">
+				{#each prerequisOptions as prereq, index}
+					{@const prereqId = `prereq-${index}`}
+					<div class="flex items-center gap-2 text-sm">
 						<Checkbox
+							id={prereqId}
 							checked={selectedPrereqs.includes(prereq)}
 							onCheckedChange={() => togglePrereq(prereq)}
 						/>
-						{prereq}
-					</label>
+						<label for={prereqId}>{prereq}</label>
+					</div>
 				{/each}
 			</div>
 		</div>

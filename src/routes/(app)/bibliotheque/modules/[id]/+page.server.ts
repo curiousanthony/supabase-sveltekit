@@ -1,12 +1,14 @@
 import { db } from '$lib/db';
 import { biblioModules } from '$lib/db/schema';
-import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
+import { getUserWorkspace } from '$lib/auth';
 import { eq, and } from 'drizzle-orm';
 import { fail, redirect, error } from '@sveltejs/kit';
 import { moduleSchema } from '$lib/bibliotheque/module-schema';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load = (async ({ params, locals }) => {
+	const { user } = await locals.safeGetSession();
+	if (!user) throw error(403, 'Non autorisé');
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) throw error(403, 'Aucun espace de travail');
 
@@ -39,10 +41,9 @@ export const actions: Actions = {
 		const raw = {
 			titre: (fd.get('titre') as string)?.trim() ?? '',
 			contenu: (fd.get('contenu') as string)?.trim() || undefined,
-			objectifsPedagogiques:
-				(fd.get('objectifsPedagogiques') as string)?.trim() || undefined,
+			objectifsPedagogiques: (fd.get('objectifsPedagogiques') as string)?.trim() || undefined,
 			modaliteEvaluation: (fd.get('modaliteEvaluation') as string) || undefined,
-			dureeHeures: fd.get('dureeHeures') ? Number(fd.get('dureeHeures')) : undefined
+			modaliteEvaluation: (fd.get('modaliteEvaluation') as string)?.trim() || undefined
 		};
 
 		const parsed = moduleSchema.safeParse(raw);
@@ -59,9 +60,7 @@ export const actions: Actions = {
 				modaliteEvaluation: parsed.data.modaliteEvaluation ?? null,
 				dureeHeures: parsed.data.dureeHeures?.toString() ?? null
 			})
-			.where(
-				and(eq(biblioModules.id, params.id), eq(biblioModules.workspaceId, workspaceId))
-			);
+			.where(and(eq(biblioModules.id, params.id), eq(biblioModules.workspaceId, workspaceId)));
 
 		return { success: true };
 	},
@@ -74,9 +73,7 @@ export const actions: Actions = {
 
 		await db
 			.delete(biblioModules)
-			.where(
-				and(eq(biblioModules.id, params.id), eq(biblioModules.workspaceId, workspaceId))
-			);
+			.where(and(eq(biblioModules.id, params.id), eq(biblioModules.workspaceId, workspaceId)));
 
 		throw redirect(303, '/bibliotheque/modules');
 	}

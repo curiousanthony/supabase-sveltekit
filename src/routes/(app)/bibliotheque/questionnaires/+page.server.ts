@@ -8,7 +8,11 @@ import type { PageServerLoad, Actions } from './$types';
 export const load = (async ({ locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) {
-		return { questionnaires: [], workspaceId: null };
+		return {
+			questionnaires: [],
+			workspaceId: null,
+			header: { pageName: 'Bibliothèque', actions: [] }
+		};
 	}
 
 	const rows = await db
@@ -47,10 +51,7 @@ export const actions: Actions = {
 		await db
 			.delete(biblioQuestionnaires)
 			.where(
-				and(
-					eq(biblioQuestionnaires.id, id),
-					eq(biblioQuestionnaires.workspaceId, workspaceId)
-				)
+				and(eq(biblioQuestionnaires.id, id), eq(biblioQuestionnaires.workspaceId, workspaceId))
 			);
 
 		return { success: true };
@@ -68,10 +69,7 @@ export const actions: Actions = {
 		if (!id) return fail(400, { message: 'ID manquant' });
 
 		const original = await db.query.biblioQuestionnaires.findFirst({
-			where: and(
-				eq(biblioQuestionnaires.id, id),
-				eq(biblioQuestionnaires.workspaceId, workspaceId)
-			)
+			where: and(eq(biblioQuestionnaires.id, id), eq(biblioQuestionnaires.workspaceId, workspaceId))
 		});
 		if (!original) return fail(404, { message: 'Questionnaire non trouvé' });
 

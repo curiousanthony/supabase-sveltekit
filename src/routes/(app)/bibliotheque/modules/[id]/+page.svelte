@@ -18,17 +18,28 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 
 	let { data, form }: PageProps = $props();
-	let { module: mod } = $derived(data);
+	const mod = $derived(data?.module);
 
-	let modaliteArray = $state<(string | number)[]>(
-		mod.modaliteEvaluation ? [mod.modaliteEvaluation] : []
-	);
-	let dureeHeures = $state(mod.dureeHeures ? Number(mod.dureeHeures) : 0);
+	let modaliteArray = $state<(string | number)[]>([]);
+	let dureeHeures = $state(0);
 	let showDeleteDialog = $state(false);
+
+	$effect(() => {
+		const m = mod;
+		if (!m) return;
+		modaliteArray = m.modaliteEvaluation ? [m.modaliteEvaluation] : [];
+		dureeHeures = m.dureeHeures ? Number(m.dureeHeures) : 0;
+	});
+
+	/** Single selected value for single-select; safe when bound value is array or scalar. */
+	function selectedModalite(): string {
+		const v = modaliteArray;
+		return Array.isArray(v) ? String(v[0] ?? '') : String(v ?? '');
+	}
 </script>
 
 <svelte:head>
-	<title>{mod.titre} — Modules — Bibliothèque</title>
+	<title>{mod?.titre ?? 'Module'} — Modules — Bibliothèque</title>
 </svelte:head>
 
 <div class="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -36,20 +47,19 @@
 		<div class="rounded-md border border-green-500/50 bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
 			Module mis à jour avec succès.
 		</div>
-	{/if}
-	{#if form?.message}
+	{:else if form?.message}
 		<div class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
 			{form.message}
 		</div>
 	{/if}
 
 	<form method="POST" action="?/update" use:enhance class="flex flex-col gap-5">
-		<input type="hidden" name="modaliteEvaluation" value={modaliteArray[0] ?? ''} />
-		<input type="hidden" name="dureeHeures" value={dureeHeures || ''} />
+		<input type="hidden" name="modaliteEvaluation" value={selectedModalite()} />
+		<input type="hidden" name="dureeHeures" value={String(dureeHeures ?? '')} />
 
 		<div class="flex flex-col gap-2">
 			<Label for="titre">Titre *</Label>
-			<Input id="titre" name="titre" required value={mod.titre} />
+			<Input id="titre" name="titre" required value={mod?.titre ?? ''} />
 		</div>
 
 		<div class="flex flex-col gap-2">
@@ -58,7 +68,7 @@
 				id="contenu"
 				name="contenu"
 				rows={6}
-				value={mod.contenu ?? ''}
+				value={mod?.contenu ?? ''}
 				placeholder="Ex : Introduction aux fondamentaux du sujet, présentation des concepts clés, démonstration des outils. Ce contenu est transmis via des exposés interactifs, des études de cas et des exercices pratiques guidés."
 			/>
 		</div>
@@ -69,14 +79,14 @@
 				id="objectifsPedagogiques"
 				name="objectifsPedagogiques"
 				rows={4}
-				value={mod.objectifsPedagogiques ?? ''}
+				value={mod?.objectifsPedagogiques ?? ''}
 				placeholder={"À l'issue de ce module, le stagiaire sera capable de :\n• [Verbe d'action] + [compétence mesurable]\n• Utiliser [outil/méthode] pour [objectif concret]\n• Évaluer [résultat attendu] dans un contexte professionnel"}
 			/>
 		</div>
 
 		<div class="flex flex-col gap-3">
-			<Label>Modalité d'évaluation</Label>
-			<CardCheckboxGroup multiple={false} bind:value={modaliteArray} class="grid-cols-2 sm:grid-cols-4 gap-4">
+			<Label id="modaliteLabel">Modalité d'évaluation</Label>
+			<CardCheckboxGroup multiple={false} bind:value={modaliteArray} class="grid-cols-2 sm:grid-cols-4 gap-4" aria-labelledby="modaliteLabel">
 				<CardCheckbox value="QCM" title="QCM" subtitle="Questions à choix multiples" icon={ClipboardList} />
 				<CardCheckbox value="QCU" title="QCU" subtitle="Question à choix unique" icon={CircleDot} />
 				<CardCheckbox value="Pratique" title="Pratique" subtitle="Mise en situation" icon={Wrench} />
@@ -85,7 +95,7 @@
 		</div>
 
 		<div class="flex flex-col gap-3">
-			<Label>Durée (heures)</Label>
+			<Label for="dureeHeures">Durée (heures)</Label>
 			<div class="flex flex-wrap items-center gap-2">
 				<div class="relative inline-flex items-center">
 					<Clock class="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
@@ -134,7 +144,16 @@
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>Annuler</AlertDialog.Cancel>
-			<form method="POST" action="?/delete" use:enhance>
+			<form
+				method="POST"
+				action="?/delete"
+				use:enhance={() => {
+					showDeleteDialog = false;
+					return async ({ result, update }) => {
+						await update();
+					};
+				}}
+			>
 				<AlertDialog.Action type="submit" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
 					Supprimer
 				</AlertDialog.Action>

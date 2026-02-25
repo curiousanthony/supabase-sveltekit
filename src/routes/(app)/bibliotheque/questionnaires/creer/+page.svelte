@@ -19,6 +19,15 @@
 	let selectedProgrammeIds = $state<string[]>([]);
 	let selectedModuleIds = $state<string[]>([]);
 
+	$effect(() => {
+		const f = form;
+		if (!f?.message || !('values' in f) || !f.values) return;
+		const v = f.values as { type?: string; programmeIds?: string[]; moduleIds?: string[] };
+		typeArray = v.type ? [v.type] : [];
+		selectedProgrammeIds = Array.isArray(v.programmeIds) ? [...v.programmeIds] : [];
+		selectedModuleIds = Array.isArray(v.moduleIds) ? [...v.moduleIds] : [];
+	});
+
 	function toggleProgramme(id: string) {
 		if (selectedProgrammeIds.includes(id)) {
 			selectedProgrammeIds = selectedProgrammeIds.filter((x) => x !== id);
@@ -57,22 +66,22 @@
 			<Input id="titre" name="titre" required placeholder="Nom du questionnaire" />
 		</div>
 
-		<div class="flex flex-col gap-3">
-			<Label>Type</Label>
+		<fieldset class="flex flex-col gap-3">
+			<legend class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Type</legend>
 			<CardCheckboxGroup multiple={false} bind:value={typeArray} class="grid-cols-1 sm:grid-cols-3 gap-4">
 				<CardCheckbox value="Test de niveau" title="Test de niveau" subtitle="Positionnement initial" icon={BarChart3} />
 				<CardCheckbox value="Quiz / Exercice" title="Quiz / Exercice" subtitle="Évaluation en cours" icon={ListChecks} />
 				<CardCheckbox value="Audit des besoins" title="Audit des besoins" subtitle="Analyse préalable" icon={Search} />
 			</CardCheckboxGroup>
-		</div>
+		</fieldset>
 
 		<div class="flex flex-col gap-2">
 			<Label for="urlTest">URL du test</Label>
 			<Input id="urlTest" name="urlTest" type="url" placeholder="https://forms.google.com/..." />
 		</div>
 
-		<div class="flex flex-col gap-2">
-			<Label>Programmes associés</Label>
+		<fieldset class="flex flex-col gap-2">
+			<legend class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Programmes associés</legend>
 			{#if selectedProgrammeIds.length > 0}
 				<div class="flex flex-wrap gap-2">
 					{#each selectedProgrammeIds as id}
@@ -80,8 +89,9 @@
 						{#if prog}
 							<Badge variant="secondary" class="gap-1">
 								{prog.titre}
-								<button type="button" onclick={() => toggleProgramme(id)}>
-									<X class="size-3" />
+								<button type="button" aria-label="Retirer le programme {prog.titre}" onclick={() => toggleProgramme(id)}>
+									<span class="sr-only">Retirer le programme {prog.titre}</span>
+									<X class="size-3" aria-hidden="true" />
 								</button>
 							</Badge>
 						{/if}
@@ -97,10 +107,10 @@
 					{/each}
 				</div>
 			{/if}
-		</div>
+		</fieldset>
 
-		<div class="flex flex-col gap-2">
-			<Label>Modules associés</Label>
+		<fieldset class="flex flex-col gap-2">
+			<legend class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Modules associés</legend>
 			{#if selectedModuleIds.length > 0}
 				<div class="flex flex-wrap gap-2">
 					{#each selectedModuleIds as id}
@@ -108,8 +118,9 @@
 						{#if mod}
 							<Badge variant="secondary" class="gap-1">
 								{mod.titre}
-								<button type="button" onclick={() => toggleModule(id)}>
-									<X class="size-3" />
+								<button type="button" aria-label="Retirer le module {mod.titre}" onclick={() => toggleModule(id)}>
+									<span class="sr-only">Retirer le module {mod.titre}</span>
+									<X class="size-3" aria-hidden="true" />
 								</button>
 							</Badge>
 						{/if}
@@ -125,7 +136,7 @@
 					{/each}
 				</div>
 			{/if}
-		</div>
+		</fieldset>
 
 		<div class="flex justify-end gap-3 pt-2">
 			<Button href="/bibliotheque/questionnaires" variant="outline">Annuler</Button>

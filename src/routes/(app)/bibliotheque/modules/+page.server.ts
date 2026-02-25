@@ -37,13 +37,14 @@ export const actions: Actions = {
 		if (!workspaceId) return fail(400, { message: 'Aucun espace de travail' });
 
 		const fd = await request.formData();
-		const id = fd.get('id') as string;
-		if (!id) return fail(400, { message: 'ID manquant' });
+		const idValue = fd.get('id');
+		if (typeof idValue !== 'string') return fail(400, { message: 'ID manquant' });
 
-		await db
+		const deleted = await db
 			.delete(biblioModules)
-			.where(and(eq(biblioModules.id, id), eq(biblioModules.workspaceId, workspaceId)));
-
+			.where(and(eq(biblioModules.id, idValue), eq(biblioModules.workspaceId, workspaceId)))
+			.returning({ id: biblioModules.id });
+		if (deleted.length === 0) return fail(404, { message: 'Module non trouvé' });
 		return { success: true };
 	},
 
@@ -52,16 +53,25 @@ export const actions: Actions = {
 		if (!user) return fail(401, { message: 'Non autorisé' });
 		const workspaceId = await getUserWorkspace(locals);
 		if (!workspaceId) return fail(400, { message: 'Aucun espace de travail' });
-		await ensureUserInPublicUsers(locals);
 
 		const fd = await request.formData();
-		const id = fd.get('id') as string;
-		if (!id) return fail(400, { message: 'ID manquant' });
+		const idValue = fd.get('id');
+		if (typeof idValue !== 'string') return fail(400, { message: 'ID manquant' });
 
 		const original = await db.query.biblioModules.findFirst({
-			where: and(eq(biblioModules.id, id), eq(biblioModules.workspaceId, workspaceId))
+			where: and(eq(biblioModules.id, idValue), eq(biblioModules.workspaceId, workspaceId))
 		});
 		if (!original) return fail(404, { message: 'Module non trouvé' });
+
+		try {
+			await ensureUserInPublicUsers(locals);
+		} catch (e) {
+			console.error('[bibliotheque/modules] ensureUserInPublicUsers failed:', e);
+			return fail(500, {
+				message: 'Impossible de vérifier votre accès. Réessayez ou contactez le support.',
+				error: true
+			});
+		}
 
 		await db.insert(biblioModules).values({
 			titre: `Copie de ${original.titre}`,

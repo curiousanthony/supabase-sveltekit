@@ -5,6 +5,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import Plus from '@lucide/svelte/icons/plus';
 	import MoreHorizontal from '@lucide/svelte/icons/more-horizontal';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -15,9 +16,26 @@
 	let { data }: PageProps = $props();
 	let { modules } = $derived(data);
 
+	let deleteDialogOpen = $state(false);
+	let pendingDeleteId = $state<string | null>(null);
+
+	function openDeleteDialog(id: string) {
+		pendingDeleteId = id;
+		deleteDialogOpen = true;
+	}
+
+	function confirmDelete() {
+		if (!pendingDeleteId) return;
+		const form = document.getElementById(`delete-module-${pendingDeleteId}`);
+		if (form instanceof HTMLFormElement) form.requestSubmit();
+		deleteDialogOpen = false;
+		pendingDeleteId = null;
+	}
+
 	function formatDuration(value: string | null) {
 		if (!value) return '—';
-		return `${Number(value)}h`;
+		const n = Number(value);
+		return isNaN(n) ? '—' : `${n}h`;
 	}
 </script>
 
@@ -81,7 +99,7 @@
 									<DropdownMenu.Content align="end">
 										<DropdownMenu.Item>
 											{#snippet child({ props })}
-												<a href="/bibliotheque/modules/{mod.id}" {...props}>
+												<a href="/bibliotheque/modules/{mod.id}/modifier" {...props}>
 													<Pencil class="mr-2 size-4" />
 													Modifier
 												</a>
@@ -89,30 +107,43 @@
 										</DropdownMenu.Item>
 										<form method="POST" action="?/duplicate" use:enhance>
 											<input type="hidden" name="id" value={mod.id} />
-											<DropdownMenu.Item
-												type="submit"
-												onSelect={(e) => e.preventDefault()}
-											>
-												<button type="submit" class="flex w-full items-center">
-													<Copy class="mr-2 size-4" />
-													Dupliquer
-												</button>
+											<DropdownMenu.Item>
+												{#snippet child({ props })}
+													<button type="submit" class="flex w-full items-center" {...props}>
+														<Copy class="mr-2 size-4" />
+														Dupliquer
+													</button>
+												{/snippet}
 											</DropdownMenu.Item>
 										</form>
 										<DropdownMenu.Separator />
-										<form method="POST" action="?/delete" use:enhance>
+										<form
+											id="delete-module-{mod.id}"
+											method="POST"
+											action="?/delete"
+											use:enhance={() =>
+												async ({ update }) => {
+													await update();
+													deleteDialogOpen = false;
+													pendingDeleteId = null;
+												}
+											}
+										>
 											<input type="hidden" name="id" value={mod.id} />
-											<DropdownMenu.Item
-												type="submit"
-												class="text-destructive"
-												onSelect={(e) => e.preventDefault()}
-											>
-												<button type="submit" class="flex w-full items-center">
+										</form>
+										<DropdownMenu.Item variant="destructive">
+											{#snippet child({ props })}
+												<button
+													type="button"
+													class="flex w-full items-center"
+													{...props}
+													onclick={() => openDeleteDialog(mod.id)}
+												>
 													<Trash2 class="mr-2 size-4" />
 													Supprimer
 												</button>
-											</DropdownMenu.Item>
-										</form>
+											{/snippet}
+										</DropdownMenu.Item>
 									</DropdownMenu.Content>
 								</DropdownMenu.Root>
 							</Table.Cell>
@@ -122,4 +153,24 @@
 			</Table.Root>
 		</div>
 	{/if}
+
+	<AlertDialog.Root bind:open={deleteDialogOpen}>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>Supprimer ce module ?</AlertDialog.Title>
+				<AlertDialog.Description>
+					Cette action est irréversible. Le module sera définitivement supprimé.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel>Annuler</AlertDialog.Cancel>
+				<AlertDialog.Action
+					class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+					onclick={confirmDelete}
+				>
+					Supprimer
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 </div>

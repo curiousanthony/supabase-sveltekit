@@ -18,7 +18,7 @@
 	import { commandPaletteOpen } from '$lib/stores/command-palette-store';
 	import * as Button from '$lib/components/ui/button/index.js';
 	import EyeIcon from '@tabler/icons-svelte/icons/eye';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, beforeNavigate } from '$app/navigation';
 
 	let { data, children } = $props();
 
@@ -54,6 +54,14 @@
 			open = true;
 			commandPaletteOpen.set(false);
 		}
+	});
+
+	// Reset header snippet stores at navigation start so SiteHeader never renders
+	// a closure from a destroyed component (avoids stale closures regardless of page cleanup order).
+	beforeNavigate(() => {
+		headerTitleSnippet.set(null);
+		headerActionsSnippet.set(null);
+		headerTitleText.set('');
 	});
 
 	// Create a derived variable for recent formations. This is reactive and more performant.
@@ -111,7 +119,7 @@
 		allowedNavUrls={data?.allowedNavUrls}
 	/>
 	<main class="flex h-screen w-full flex-col bg-background">
-		<SiteHeader pageName={$headerTitleText || pageTitle} {header} title={$headerTitleSnippet ?? undefined} actions={$headerActionsSnippet ?? undefined}>
+		<SiteHeader pageName={$headerTitleText ?? pageTitle} {header} title={$headerTitleSnippet ?? undefined} actions={$headerActionsSnippet ?? undefined}>
 			<!-- {#snippet actions()}
 				<p>Default Actions in (app) +layout.svelte</p>
 			{/snippet} -->

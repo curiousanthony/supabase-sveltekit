@@ -23,10 +23,17 @@
 		availableModules
 	} = $derived(data);
 
-	let typeArray = $state<(string | number)[]>(questionnaire.type ? [questionnaire.type] : []);
-	let selectedProgrammeIds = $state<string[]>(linkedProgrammeIds);
-	let selectedModuleIds = $state<string[]>(linkedModuleIds);
+	let typeArray = $state<(string | number)[]>([]);
+	let selectedProgrammeIds = $state<string[]>([]);
+	let selectedModuleIds = $state<string[]>([]);
 	let showDeleteDialog = $state(false);
+	let deleteForm: HTMLFormElement | null = null;
+
+	$effect(() => {
+		typeArray = questionnaire.type ? [questionnaire.type] : [];
+		selectedProgrammeIds = linkedProgrammeIds;
+		selectedModuleIds = linkedModuleIds;
+	});
 
 	function toggleProgramme(id: string) {
 		if (selectedProgrammeIds.includes(id)) {
@@ -94,7 +101,7 @@
 						{#if prog}
 							<Badge variant="secondary" class="gap-1">
 								{prog.titre}
-								<button type="button" onclick={() => toggleProgramme(id)}>
+								<button type="button" aria-label="Remove programme" onclick={() => toggleProgramme(id)}>
 									<X class="size-3" />
 								</button>
 							</Badge>
@@ -122,7 +129,7 @@
 						{#if mod}
 							<Badge variant="secondary" class="gap-1">
 								{mod.titre}
-								<button type="button" onclick={() => toggleModule(id)}>
+								<button type="button" aria-label="Remove module" onclick={() => toggleModule(id)}>
 									<X class="size-3" />
 								</button>
 							</Badge>
@@ -168,8 +175,12 @@
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>Annuler</AlertDialog.Cancel>
-			<form method="POST" action="?/delete" use:enhance>
-				<AlertDialog.Action type="submit" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+			<form method="POST" action="?/delete" use:enhance bind:this={deleteForm}>
+				<AlertDialog.Action
+					type="button"
+					class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+					onclick={() => deleteForm?.requestSubmit()}
+				>
 					Supprimer
 				</AlertDialog.Action>
 			</form>

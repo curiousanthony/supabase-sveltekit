@@ -103,7 +103,7 @@
 	<form method="POST" action="?/update" use:enhance class="flex flex-col gap-5">
 		<input type="hidden" name="modalite" value={modaliteArray[0] ?? ''} />
 		<input type="hidden" name="statut" value={statutArray[0] ?? 'Brouillon'} />
-		<input type="hidden" name="dureeHeures" value={dureeHeures || ''} />
+		<input type="hidden" name="dureeHeures" value={dureeHeures ?? ''} />
 		<input type="hidden" name="moduleIds" value={JSON.stringify(selectedModuleIds)} />
 		<input type="hidden" name="supportIds" value={JSON.stringify(selectedSupportIds)} />
 		<input type="hidden" name="prerequis" value={JSON.stringify(selectedPrereqs)} />
@@ -192,7 +192,7 @@
 							{#if mod.dureeHeures}
 								<span class="text-xs text-muted-foreground">{mod.dureeHeures}h</span>
 							{/if}
-							<button type="button" class="rounded p-1 text-muted-foreground hover:text-destructive" onclick={() => removeModule(mod.id)}>
+							<button type="button" class="rounded p-1 text-muted-foreground hover:text-destructive" aria-label={`Retirer le module « ${mod.titre || 'sans titre'}`} onclick={() => removeModule(mod.id)}>
 								<X class="size-3" />
 							</button>
 						</div>
@@ -230,7 +230,7 @@
 								<Link class="size-4 shrink-0 text-muted-foreground" />
 							{/if}
 							<span class="flex-1 text-sm">{s.titre}</span>
-							<button type="button" class="rounded p-1 text-muted-foreground hover:text-destructive" onclick={() => removeSupport(s.id)}>
+							<button type="button" class="rounded p-1 text-muted-foreground hover:text-destructive" aria-label={`Retirer le support « ${s.titre || 'sans titre'}`} onclick={() => removeSupport(s.id)}>
 								<X class="size-3" />
 							</button>
 						</div>

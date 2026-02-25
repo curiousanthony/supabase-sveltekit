@@ -19,6 +19,12 @@
 
 	let modaliteArray = $state<(string | number)[]>([]);
 	let dureeHeures = $state(0);
+
+	/** Single selected value for single-select; safe when bound value is array or scalar. */
+	function selectedModalite(): string {
+		const v = modaliteArray;
+		return Array.isArray(v) ? String(v[0] ?? '') : String(v ?? '');
+	}
 </script>
 
 <svelte:head>
@@ -33,8 +39,8 @@
 	{/if}
 
 	<form method="POST" use:enhance class="flex flex-col gap-5">
-		<input type="hidden" name="modaliteEvaluation" value={modaliteArray[0] ?? ''} />
-		<input type="hidden" name="dureeHeures" value={dureeHeures || ''} />
+		<input type="hidden" name="modaliteEvaluation" value={selectedModalite()} />
+		<input type="hidden" name="dureeHeures" value={dureeHeures !== 0 ? dureeHeures : ''} />
 
 		<div class="flex flex-col gap-2">
 			<Label for="titre">Titre *</Label>
@@ -72,7 +78,7 @@
 		</div>
 
 		<div class="flex flex-col gap-3">
-			<Label>Durée (heures)</Label>
+			<Label for="dureeHeures">Durée (heures)</Label>
 			<div class="flex flex-wrap items-center gap-2">
 				<div class="relative inline-flex items-center">
 					<Clock class="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />

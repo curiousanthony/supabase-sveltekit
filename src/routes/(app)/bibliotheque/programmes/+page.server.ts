@@ -56,12 +56,20 @@ export const actions: Actions = {
 		if (!workspaceId) return fail(400, { message: 'Aucun espace de travail' });
 
 		const fd = await request.formData();
-		const id = fd.get('id') as string;
-		if (!id) return fail(400, { message: 'ID manquant' });
+		const idRaw = fd.get('id');
+		if (idRaw == null || typeof idRaw !== 'string') {
+			return fail(400, { message: 'ID manquant ou invalide' });
+		}
+		const id = idRaw;
 
-		await db
-			.delete(biblioProgrammes)
-			.where(and(eq(biblioProgrammes.id, id), eq(biblioProgrammes.workspaceId, workspaceId)));
+		try {
+			await db
+				.delete(biblioProgrammes)
+				.where(and(eq(biblioProgrammes.id, id), eq(biblioProgrammes.workspaceId, workspaceId)));
+		} catch (err) {
+			console.error('Programme delete failed:', err);
+			return fail(500, { message: 'Erreur serveur' });
+		}
 
 		return { success: true };
 	},
@@ -74,46 +82,56 @@ export const actions: Actions = {
 		await ensureUserInPublicUsers(locals);
 
 		const fd = await request.formData();
-		const id = fd.get('id') as string;
-		if (!id) return fail(400, { message: 'ID manquant' });
+		const idRaw = fd.get('id');
+		if (idRaw == null || typeof idRaw !== 'string') {
+			return fail(400, { message: 'ID manquant ou invalide' });
+		}
+		const id = idRaw;
 
+		try {
 		const original = await db.query.biblioProgrammes.findFirst({
 			where: and(eq(biblioProgrammes.id, id), eq(biblioProgrammes.workspaceId, workspaceId))
 		});
 		if (!original) return fail(404, { message: 'Programme non trouvé' });
 
-		const [inserted] = await db
-			.insert(biblioProgrammes)
-			.values({
-				titre: `Copie de ${original.titre}`,
-				description: original.description,
-				modalite: original.modalite,
-				prixPublic: original.prixPublic,
-				statut: 'Brouillon',
-				prerequis: original.prerequis,
-				dureeHeures: original.dureeHeures,
-				workspaceId,
-				createdBy: user.id
-			})
-			.returning({ id: biblioProgrammes.id });
+		await db.transaction(async (tx) => {
+			const [inserted] = await tx
+				.insert(biblioProgrammes)
+				.values({
+					titre: `Copie de ${original.titre}`,
+					description: original.description,
+					modalite: original.modalite,
+					prixPublic: original.prixPublic,
+					statut: 'Brouillon',
+					prerequis: original.prerequis,
+					dureeHeures: original.dureeHeures,
+					workspaceId,
+					createdBy: user.id
+				})
+				.returning({ id: biblioProgrammes.id });
 
-		if (inserted) {
-			const modules = await db
-				.select()
-				.from(biblioProgrammeModules)
-				.where(eq(biblioProgrammeModules.programmeId, id));
+			if (inserted) {
+				const modules = await tx
+					.select()
+					.from(biblioProgrammeModules)
+					.where(eq(biblioProgrammeModules.programmeId, id));
 
-			if (modules.length > 0) {
-				await db.insert(biblioProgrammeModules).values(
-					modules.map((m) => ({
-						programmeId: inserted.id,
-						moduleId: m.moduleId,
-						orderIndex: m.orderIndex
-					}))
-				);
+				if (modules.length > 0) {
+					await tx.insert(biblioProgrammeModules).values(
+						modules.map((m) => ({
+							programmeId: inserted.id,
+							moduleId: m.moduleId,
+							orderIndex: m.orderIndex
+						}))
+					);
+				}
 			}
-		}
+		});
 
 		return { success: true };
+		} catch (err) {
+			console.error('[duplicate programme]', err);
+			return fail(500, { message: 'Erreur serveur' });
+		}
 	}
 };

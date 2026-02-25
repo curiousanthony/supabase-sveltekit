@@ -16,12 +16,37 @@
 	let { data }: PageProps = $props();
 	let { questionnaires } = $derived(data);
 
-	function getDomain(url: string | null) {
-		if (!url) return null;
+	const ALLOWED_URL_SCHEMES = ['http:', 'https:', 'mailto:'] as const;
+
+	type SafeUrl =
+		| { safe: true; href: string; display: string }
+		| { safe: false; display: string };
+
+	function parseAndValidateUrl(url: string | null): SafeUrl | null {
+		if (!url || typeof url !== 'string') return null;
+		const trimmed = url.trim();
+		if (!trimmed) return null;
 		try {
-			return new URL(url).hostname;
+			const parsed = new URL(trimmed);
+			const scheme = parsed.protocol;
+			if (!(ALLOWED_URL_SCHEMES as readonly string[]).includes(scheme)) {
+				console.warn(
+					'[questionnaires] Blocked dangerous URL scheme:',
+					scheme,
+					trimmed.slice(0, 80)
+				);
+				return {
+					safe: false,
+					display: 'unsafe: ' + (trimmed.length > 50 ? trimmed.slice(0, 50) + '…' : trimmed)
+				};
+			}
+			const display =
+				scheme === 'mailto:'
+					? (parsed.pathname || parsed.href)
+					: (parsed.hostname || parsed.href);
+			return { safe: true, href: parsed.href, display };
 		} catch {
-			return url;
+			return { safe: false, display: 'invalid URL' };
 		}
 	}
 </script>
@@ -73,15 +98,29 @@
 							</Table.Cell>
 							<Table.Cell>
 								{#if q.urlTest}
-									<a
-										href={q.urlTest}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-									>
-										{getDomain(q.urlTest)}
-										<ExternalLink class="size-3" />
-									</a>
+									{@const urlInfo = parseAndValidateUrl(q.urlTest)}
+									{#if urlInfo}
+										{#if urlInfo.safe}
+											<a
+												href={urlInfo.href}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+											>
+												{urlInfo.display}
+												<ExternalLink class="size-3" />
+											</a>
+										{:else}
+											<span
+												class="inline-flex items-center gap-1 text-sm text-muted-foreground"
+												title={urlInfo.display}
+											>
+												{urlInfo.display}
+											</span>
+										{/if}
+									{:else}
+										<span class="text-muted-foreground">—</span>
+									{/if}
 								{:else}
 									<span class="text-muted-foreground">—</span>
 								{/if}
@@ -92,6 +131,7 @@
 										{#snippet child({ props })}
 											<Button variant="ghost" size="icon" class="size-8" {...props}>
 												<MoreHorizontal class="size-4" />
+												<span class="sr-only">Actions pour {q.titre}</span>
 											</Button>
 										{/snippet}
 									</DropdownMenu.Trigger>
@@ -105,39 +145,63 @@
 											{/snippet}
 										</DropdownMenu.Item>
 										{#if q.urlTest}
-											<DropdownMenu.Item>
-												{#snippet child({ props })}
-													<a href={q.urlTest} target="_blank" rel="noopener noreferrer" {...props}>
-														<ExternalLink class="mr-2 size-4" />
-														Ouvrir le lien
-													</a>
-												{/snippet}
-											</DropdownMenu.Item>
+											{@const urlInfo = parseAndValidateUrl(q.urlTest)}
+											{#if urlInfo?.safe}
+												<DropdownMenu.Item>
+													{#snippet child({ props })}
+														<a
+															href={urlInfo.href}
+															target="_blank"
+															rel="noopener noreferrer"
+															{...props}
+														>
+															<ExternalLink class="mr-2 size-4" />
+															Ouvrir le lien
+														</a>
+													{/snippet}
+												</DropdownMenu.Item>
+											{:else if urlInfo}
+												<DropdownMenu.Item disabled>
+													<ExternalLink class="mr-2 size-4" />
+													Ouvrir le lien
+													<span class="ml-1 text-muted-foreground">(non sécurisé)</span>
+												</DropdownMenu.Item>
+											{/if}
 										{/if}
 										<form method="POST" action="?/duplicate" use:enhance>
 											<input type="hidden" name="id" value={q.id} />
-											<DropdownMenu.Item
-												type="submit"
-												onSelect={(e) => e.preventDefault()}
-											>
-												<button type="submit" class="flex w-full items-center">
-													<Copy class="mr-2 size-4" />
-													Dupliquer
-												</button>
+											<DropdownMenu.Item>
+												{#snippet child({ props })}
+													<button type="submit" class="flex w-full items-center" {...props}>
+														<Copy class="mr-2 size-4" />
+														Dupliquer
+													</button>
+												{/snippet}
 											</DropdownMenu.Item>
 										</form>
 										<DropdownMenu.Separator />
-										<form method="POST" action="?/delete" use:enhance>
+										<form
+											method="POST"
+											action="?/delete"
+											use:enhance
+											onsubmit={(e) => {
+												const form = e.currentTarget as HTMLFormElement;
+												if (form.dataset.confirmed !== '1') {
+													e.preventDefault();
+													if (!confirm('Supprimer ce questionnaire ? Cette action est irréversible.')) return;
+													form.dataset.confirmed = '1';
+													form.requestSubmit();
+												}
+											}}
+										>
 											<input type="hidden" name="id" value={q.id} />
-											<DropdownMenu.Item
-												type="submit"
-												class="text-destructive"
-												onSelect={(e) => e.preventDefault()}
-											>
-												<button type="submit" class="flex w-full items-center">
-													<Trash2 class="mr-2 size-4" />
-													Supprimer
-												</button>
+											<DropdownMenu.Item class="text-destructive">
+												{#snippet child({ props })}
+													<button type="submit" class="flex w-full items-center" {...props}>
+														<Trash2 class="mr-2 size-4" />
+														Supprimer
+													</button>
+												{/snippet}
 											</DropdownMenu.Item>
 										</form>
 									</DropdownMenu.Content>

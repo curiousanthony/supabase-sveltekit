@@ -5,6 +5,17 @@ CREATE TYPE "public"."modalite_evaluation" AS ENUM('QCM', 'QCU', 'Pratique', 'Pr
 CREATE TYPE "public"."statut_programme" AS ENUM('Brouillon', 'En cours', 'Publié', 'Archivé');
 CREATE TYPE "public"."type_questionnaire" AS ENUM('Test de niveau', 'Quiz / Exercice', 'Audit des besoins');
 
+-- Reusable trigger function: set NEW.updated_at = now() on UPDATE
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$;
+
 -- biblio_modules
 CREATE TABLE IF NOT EXISTS "public"."biblio_modules" (
     "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -26,7 +37,8 @@ ALTER TABLE "public"."biblio_modules"
 
 ALTER TABLE "public"."biblio_modules"
     ADD CONSTRAINT "biblio_modules_created_by_fkey"
-        FOREIGN KEY ("created_by") REFERENCES "public"."users"("id");
+        FOREIGN KEY ("created_by") REFERENCES "public"."users"("id")
+        ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- biblio_programmes
 CREATE TABLE IF NOT EXISTS "public"."biblio_programmes" (
@@ -51,7 +63,8 @@ ALTER TABLE "public"."biblio_programmes"
 
 ALTER TABLE "public"."biblio_programmes"
     ADD CONSTRAINT "biblio_programmes_created_by_fkey"
-        FOREIGN KEY ("created_by") REFERENCES "public"."users"("id");
+        FOREIGN KEY ("created_by") REFERENCES "public"."users"("id")
+        ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- biblio_programme_modules (junction)
 CREATE TABLE IF NOT EXISTS "public"."biblio_programme_modules" (
@@ -94,7 +107,8 @@ ALTER TABLE "public"."biblio_questionnaires"
 
 ALTER TABLE "public"."biblio_questionnaires"
     ADD CONSTRAINT "biblio_questionnaires_created_by_fkey"
-        FOREIGN KEY ("created_by") REFERENCES "public"."users"("id");
+        FOREIGN KEY ("created_by") REFERENCES "public"."users"("id")
+        ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- biblio_programme_questionnaires (junction)
 CREATE TABLE IF NOT EXISTS "public"."biblio_programme_questionnaires" (
@@ -145,7 +159,7 @@ CREATE TABLE IF NOT EXISTS "public"."biblio_supports" (
     "url" text,
     "file_path" text,
     "file_name" text,
-    "file_size" integer,
+    "file_size" bigint,
     "mime_type" text,
     "workspace_id" uuid NOT NULL,
     "created_by" uuid NOT NULL,
@@ -160,7 +174,8 @@ ALTER TABLE "public"."biblio_supports"
 
 ALTER TABLE "public"."biblio_supports"
     ADD CONSTRAINT "biblio_supports_created_by_fkey"
-        FOREIGN KEY ("created_by") REFERENCES "public"."users"("id");
+        FOREIGN KEY ("created_by") REFERENCES "public"."users"("id")
+        ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- biblio_programme_supports (junction)
 CREATE TABLE IF NOT EXISTS "public"."biblio_programme_supports" (
@@ -203,6 +218,23 @@ ALTER TABLE "public"."biblio_module_supports"
 ALTER TABLE "public"."biblio_module_supports"
     ADD CONSTRAINT "biblio_module_supports_unique"
         UNIQUE("module_id", "support_id");
+
+-- BEFORE UPDATE triggers so updated_at is refreshed on row modifications
+CREATE TRIGGER trg_set_updated_at
+  BEFORE UPDATE ON public.biblio_modules
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_set_updated_at
+  BEFORE UPDATE ON public.biblio_programmes
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_set_updated_at
+  BEFORE UPDATE ON public.biblio_questionnaires
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_set_updated_at
+  BEFORE UPDATE ON public.biblio_supports
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- Enable RLS on all new tables
 ALTER TABLE "public"."biblio_modules" ENABLE ROW LEVEL SECURITY;

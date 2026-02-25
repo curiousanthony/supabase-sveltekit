@@ -29,10 +29,13 @@ export const actions: Actions = {
 		const raw = {
 			titre: (fd.get('titre') as string)?.trim() ?? '',
 			contenu: (fd.get('contenu') as string)?.trim() || undefined,
-			objectifsPedagogiques:
-				(fd.get('objectifsPedagogiques') as string)?.trim() || undefined,
-			modaliteEvaluation: (fd.get('modaliteEvaluation') as string) || undefined,
-			dureeHeures: fd.get('dureeHeures') ? Number(fd.get('dureeHeures')) : undefined
+			objectifsPedagogiques: (fd.get('objectifsPedagogiques') as string)?.trim() || undefined,
+			modaliteEvaluation: (fd.get('modaliteEvaluation') as string)?.trim() || undefined,
+			dureeHeures: fd.get('dureeHeures')
+				? isNaN(Number(fd.get('dureeHeures')))
+					? undefined
+					: Number(fd.get('dureeHeures'))
+				: undefined
 		};
 
 		const parsed = moduleSchema.safeParse(raw);
@@ -43,19 +46,39 @@ export const actions: Actions = {
 			});
 		}
 
-		const [inserted] = await db
-			.insert(biblioModules)
-			.values({
-				titre: parsed.data.titre,
-				contenu: parsed.data.contenu ?? null,
-				objectifsPedagogiques: parsed.data.objectifsPedagogiques ?? null,
-				modaliteEvaluation: parsed.data.modaliteEvaluation ?? null,
-				dureeHeures: parsed.data.dureeHeures?.toString() ?? null,
+		let inserted: { id: string } | undefined;
+		try {
+			[inserted] = await db
+				.insert(biblioModules)
+				.values({
+					titre: parsed.data.titre,
+					contenu: parsed.data.contenu ?? null,
+					objectifsPedagogiques: parsed.data.objectifsPedagogiques ?? null,
+					modaliteEvaluation: parsed.data.modaliteEvaluation ?? null,
+					dureeHeures: parsed.data.dureeHeures?.toString() ?? null,
+					workspaceId,
+					createdBy: user.id
+				})
+				.returning({ id: biblioModules.id });
+		} catch (err) {
+			console.error('[modules/creer] insert failed', {
 				workspaceId,
-				createdBy: user.id
-			})
-			.returning({ id: biblioModules.id });
+				userId: user.id,
+				values: parsed.data,
+				error: err
+			});
+			return fail(500, {
+				message: 'La création du module a échoué. Veuillez réessayer.',
+				values: raw
+			});
+		}
 
+		if (!inserted) {
+			return fail(500, {
+				message: 'La création du module a échoué. Veuillez réessayer.',
+				values: raw
+			});
+		}
 		throw redirect(303, `/bibliotheque/modules/${inserted.id}`);
 	}
 };

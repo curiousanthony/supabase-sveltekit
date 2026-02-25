@@ -14,7 +14,7 @@
 	let showDeleteDialog = $state(false);
 
 	function formatSize(bytes: number | null) {
-		if (!bytes) return '—';
+		if (bytes === null || bytes === undefined) return '—';
 		if (bytes < 1024) return `${bytes} o`;
 		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
 		return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
@@ -27,12 +27,12 @@
 
 <div class="mx-auto flex w-full max-w-2xl flex-col gap-6">
 	{#if form?.success}
-		<div class="rounded-md border border-green-500/50 bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
+		<div role="alert" aria-live="polite" class="rounded-md border border-green-500/50 bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
 			Support mis à jour avec succès.
 		</div>
 	{/if}
 	{#if form?.message}
-		<div class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+		<div role="alert" aria-live="assertive" class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
 			{form.message}
 		</div>
 	{/if}
@@ -89,10 +89,21 @@
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>Annuler</AlertDialog.Cancel>
-			<form method="POST" action="?/delete" use:enhance>
-				<AlertDialog.Action type="submit" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+			<form
+				method="POST"
+				action="?/delete"
+				use:enhance={() => {
+					return async ({ result, update }) => {
+						await update();
+						if (result.type === 'success' || result.type === 'redirect') {
+							showDeleteDialog = false;
+						}
+					};
+				}}
+			>
+				<Button type="submit" variant="destructive" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
 					Supprimer
-				</AlertDialog.Action>
+				</Button>
 			</form>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
