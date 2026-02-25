@@ -50,13 +50,21 @@ supabase db push
 
 ### Applying migrations locally
 
-If you have **new migration files** (e.g. after `db:generate` or after pulling a branch with new migrations), run:
+If you have **new migration files** (e.g. after `db:generate` or after pulling a branch with new migrations), you can either:
 
-```bash
-supabase db reset
-```
+- **Apply only pending migrations (keeps existing data):**
+  ```bash
+  supabase migration up
+  ```
+  or `bun run db:up`. Use this when you want to keep your local test data.
 
-This applies all migrations in `supabase/migrations/` to your local database so the app runs correctly. Your local DB already matches after step 1 (Edit Database) in the workflow above; use `supabase db reset` when you've added or pulled migration files from elsewhere.
+- **Reset and apply all migrations from scratch (wipes all data):**
+  ```bash
+  supabase db reset
+  ```
+  Use this for a clean state or when you need seed data from `supabase/seed.sql`.
+
+Your local DB already matches after step 1 (Edit Database) in the workflow above; use one of the commands above when you've added or pulled migration files from elsewhere.
 
 ### Local development: `DATABASE_URL`
 
@@ -68,6 +76,10 @@ postgresql://postgres:postgres@127.0.0.1:54322/supabase
 
 Set this in `.env` or `.env.local` (and ensure the file is in `.gitignore`).
 
+### Sessions (seances): timezone
+
+Session start/end are stored as **`timestamptz`** (`start_at`, `end_at`) in **UTC**. Use the app timezone only for display and user input. Legacy data migrated from `date` + `start_time`/`end_time` was interpreted as UTC when backfilling.
+
 ### 🚫 Do NOT use `db:push` or `db:migrate`
 
 We have disabled `bun run db:push` and `bun run db:migrate`.
@@ -76,6 +88,9 @@ We have disabled `bun run db:push` and `bun run db:migrate`.
 - **Always** use the workflow above to ensure Drizzle and Supabase stay in sync.
 
 ### Troubleshooting
+
+**CRM page (/contacts) not loading in production**  
+If the page shows an error or fails to load in production but works locally, the remote database is likely missing the CRM migrations. Follow the steps in the [Remote database (production)](#remote-database-production) section to link your project and push all pending migrations.
 
 If you encounter **"relation already exists"** errors during `supabase db push`:
 

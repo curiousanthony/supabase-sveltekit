@@ -7,6 +7,7 @@ export * from './enums';
 export * from './workspaces';
 export * from './users';
 export * from './thematiques';
+export * from './industries';
 export * from './clients';
 export * from './contacts';
 export * from './companies';

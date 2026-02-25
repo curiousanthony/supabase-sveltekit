@@ -1,181 +1,153 @@
 <script lang="ts">
-	import Badge from '$lib/components/ui/badge/badge.svelte';
-	import Button from '$lib/components/ui/button/button.svelte';
-	import * as Card from '$lib/components/ui/card';
-	import * as Tooltip from '$lib/components/ui/tooltip';
-	import {
-		IconChalkboardTeacher,
-		IconSearch,
-		IconStarFilled,
-		IconUserSearch,
-		IconUserShare
-	} from '@tabler/icons-svelte';
 	import type { PageProps } from './$types';
-	import StarRating from '$lib/components/custom/starRating.svelte';
+	import * as Table from '$lib/components/ui/table';
+	import * as Button from '$lib/components/ui/button';
 	import * as Empty from '$lib/components/ui/empty/index.js';
-	import FolderCodeIcon from '@tabler/icons-svelte/icons/folder-code';
-	import { page } from '$app/state';
+	import Badge from '$lib/components/ui/badge/badge.svelte';
+	import StarRating from '$lib/components/custom/starRating.svelte';
+	import { goto } from '$app/navigation';
+	import { IconChalkboardTeacher, IconUserShare, IconUserSearch } from '@tabler/icons-svelte';
 
 	let { data }: PageProps = $props();
 	let { formateurs } = $derived(data);
-
-	// console.log('depuis formateurs/+page.svelte → formateurs: ', formateurs);
 </script>
 
-<!-- <p>Page name: {data.pageName}</p> -->
-
-<h1 class="text-2xl font-bold">Mes formateurs</h1>
-
-<!-- {#if data.formateurs}
-	{#each data.formateurs as formateur}
-		<p>{formateur.description}</p>
-	{/each}
-{/if} -->
-
-<!-- --- Formateurs Cards Grid --- -->
-{#if formateurs && formateurs.length > 0}
-	<!-- {#if false} -->
-	<div class="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-		<!-- CTA formateurs card -->
-		<!-- <Card.Root class="my-auto h-full w-full max-w-sm items-center gap-1 overflow-hidden">
-			<Card.Header>
-				<Card.Title>Inviter un formateur</Card.Title>
-				<Card.Description>Rechercher un formateur.</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<div class="flex items-center justify-center">
-					<Button href="/contacts/formateurs/inviter">Inviter un formateur</Button>
-				</div>
-			</Card.Content>
-		</Card.Root> -->
-
-		<Empty.Root>
-			<Empty.Header>
-				<Empty.Media variant="icon">
-					<IconChalkboardTeacher />
-					<!-- <FolderCodeIcon /> -->
-				</Empty.Media>
-				<Empty.Title>Tu n'as pas encore ajouté de formateurs.</Empty.Title>
-				<!-- <Empty.Description>No data found</Empty.Description> -->
-			</Empty.Header>
-			<Empty.Content>
-				<Button href="/contacts/formateurs/inviter" class="w-full">
-					<IconUserShare />
-					Inviter un formateur</Button
-				>
-				<Button href="/contacts/formateurs/rechercher" class="w-full">
-					<!-- <IconSearch /> -->
-					<IconUserSearch />
-					Trouver un formateur
-				</Button>
-			</Empty.Content>
-		</Empty.Root>
-
-		{#each formateurs as formateur}
-			<!-- Card container -->
-			<Card.Root class="h-full w-full max-w-sm gap-1 overflow-hidden pt-0">
-				<!-- <img
-					src="https://placehold.co/400x200"
-					class="mb-3"
-					alt={`Photo du formateur ${formateur.user?.firstName} ${formateur.user?.lastName}`}
-				/> -->
-				<div class="mb-4 overflow-hidden">
-					<img
-						src={formateur.user?.avatarUrl ??
-							'https://api.dicebear.com/9.x/avataaars/svg?seed=Nolan&backgroundColor=ffd5dc&accessories[]&accessoriesProbability=0&clothing=blazerAndShirt,blazerAndSweater,collarAndSweater,graphicShirt,overall,shirtCrewNeck,shirtScoopNeck,shirtVNeck,hoodie&clothingGraphic[]&eyebrows=default,defaultNatural,flatNatural,raisedExcited,raisedExcitedNatural&eyes=default&hairColor=2c1b18,4a312c,724133,b58143,d6b370&mouth=default,smile&skinColor=ae5d29,d08b5b,edb98a,fd9841,ffdbb4,614335&top=bigHair,bob,curly,curvy,dreads,dreads01,dreads02,frida,frizzle,fro,froBand,longButNotTooLong,miaWallace,shaggy,shaggyMullet,shavedSides,shortCurly,shortFlat,shortRound,shortWaved,sides,straight01,straight02,straightAndStrand,bun'}
-						class=" object-cover object-center"
-						alt={`Photo du formateur ${formateur.user?.firstName} ${formateur.user?.lastName}`}
-					/>
-				</div>
-				<Card.Header class="mb-1">
-					<Card.Title>{formateur.user?.firstName ?? ''} {formateur.user?.lastName ?? ''}</Card.Title
-					>
-					<!-- Top right availability badge -->
-					<Card.Action>
-						<Tooltip.Provider>
-							<Tooltip.Root>
-								<Tooltip.Trigger>
-									<Badge variant="outline">
-										{#if formateur.disponible7J}
-											<span>Disponible</span>
-
-											<span class="relative flex size-2">
-												<span
-													class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"
-												></span>
-												<span class="relative inline-flex size-2 rounded-full bg-green-500"></span>
-											</span>
-										{:else}
-											<span>Indisponible</span>
-
-											<span class="relative flex size-2">
-												<span
-													class="absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75"
-												></span>
-												<span class="relative inline-flex size-2 rounded-full bg-gray-500"></span>
-											</span>
-										{/if}
-									</Badge>
-								</Tooltip.Trigger>
-								<Tooltip.Content>
-									{#if formateur.disponible7J}
-										<p>
-											{formateur.user?.firstName ?? 'Ce formateur'} a confirmé être disponible ces 7
-											derniers jours.
-										</p>
-									{:else}
-										<p>
-											{formateur.user?.firstName ?? 'Ce formateur'} n'a pas confirmé être disponible
-											ces 7 derniers jours.
-										</p>
-									{/if}
-								</Tooltip.Content>
-							</Tooltip.Root>
-						</Tooltip.Provider>
-					</Card.Action>
-
-					<!-- Formateur Rating section within header -->
-					<!-- <div class="flex items-center gap-1">
-						<IconStarFilled size={16} class="text-yellow-500" />
-						<span class="text-[.95em]">{formateur.rating}</span>
-					</div> -->
-					<StarRating ratingValue={Number(formateur.rating)} size={16} />
-				</Card.Header>
-				<Card.Content class="flex grow flex-col justify-between gap-4">
-					<Card.Description>{formateur.description}</Card.Description>
-
-					<!-- Thématiques badges -->
-					<div class="flex items-center gap-2">
-						{#each formateur.formateursThematiques as formateurThematique}
-							<Badge variant="secondary">{formateurThematique.thematique.name}</Badge>
-						{/each}
-					</div>
-				</Card.Content>
-				<Card.Footer class="mt-3">
-					<Button class="w-full" href="/contacts/formateurs/{formateur.id}"
-						>Consulter le profil</Button
-					>
-				</Card.Footer>
-			</Card.Root>
-		{/each}
-	</div>
-{:else}
-	<!-- <p>Aucun formateur dans la base. Trouve ton premier formateur !</p> -->
+{#if !formateurs || formateurs.length === 0}
 	<Empty.Root>
 		<Empty.Header>
 			<Empty.Media variant="icon">
-				<FolderCodeIcon />
+				<IconChalkboardTeacher />
 			</Empty.Media>
-			<Empty.Title>Tu n'as pas encore ajouté de formateurs.</Empty.Title>
-			<!-- <Empty.Description>No data found</Empty.Description> -->
+			<Empty.Title>Aucun formateur ajouté</Empty.Title>
 		</Empty.Header>
 		<Empty.Content>
-			<Button href="/contacts/formateurs/inviter">Inviter un formateur</Button>
-			<Button href="/contacts/formateurs/rechercher">Trouver un formateur</Button>
+			<Button.Root href="/contacts/formateurs/inviter">
+				<IconUserShare class="size-4" />
+				Inviter un formateur
+			</Button.Root>
+			<Button.Root href="/contacts/formateurs/rechercher" variant="outline">
+				<IconUserSearch class="size-4" />
+				Trouver un formateur
+			</Button.Root>
 		</Empty.Content>
 	</Empty.Root>
-{/if}
+{:else}
+	<!-- Desktop table -->
+	<div class="hidden md:block overflow-auto rounded-xl border bg-card">
+		<Table.Root>
+			<Table.Header>
+				<Table.Row class="hover:bg-transparent border-b">
+					<Table.Head class="w-[220px]">Formateur</Table.Head>
+					<Table.Head class="w-[120px]">Disponibilité</Table.Head>
+					<Table.Head class="w-[140px]">Note</Table.Head>
+					<Table.Head>Thématiques</Table.Head>
+					<Table.Head class="w-[120px] text-right">Profil</Table.Head>
+				</Table.Row>
+			</Table.Header>
+			<Table.Body>
+				{#each formateurs as formateur (formateur.id)}
+					{@const name = [formateur.user?.firstName, formateur.user?.lastName].filter(Boolean).join(' ') || '—'}
+					<Table.Row
+						class="cursor-pointer hover:bg-muted/40 transition-colors"
+						tabindex={0}
+						role="row"
+						onclick={() => goto(`/contacts/formateurs/${formateur.id}`)}
+						onkeydown={(e: KeyboardEvent) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								goto(`/contacts/formateurs/${formateur.id}`);
+							}
+						}}
+					>
+						<Table.Cell>
+							<a
+								href="/contacts/formateurs/{formateur.id}"
+								class="font-medium text-sm hover:underline focus:outline-none focus:underline"
+								onclick={(e: MouseEvent) => e.stopPropagation()}
+							>
+								{name}
+							</a>
+						</Table.Cell>
+						<Table.Cell>
+							{#if formateur.disponible7J}
+								<Badge variant="outline" class="text-xs gap-1.5">
+									<span class="relative flex size-1.5">
+										<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+										<span class="relative inline-flex size-1.5 rounded-full bg-green-500"></span>
+									</span>
+									Disponible
+								</Badge>
+							{:else}
+								<Badge variant="outline" class="text-xs text-muted-foreground gap-1.5">
+									<span class="relative inline-flex size-1.5 rounded-full bg-muted-foreground/50"></span>
+									Indisponible
+								</Badge>
+							{/if}
+						</Table.Cell>
+						<Table.Cell>
+							<StarRating ratingValue={Number(formateur.rating)} size={14} />
+						</Table.Cell>
+						<Table.Cell>
+							<div class="flex flex-wrap gap-1">
+								{#each formateur.formateursThematiques as ft}
+									<Badge variant="secondary" class="text-xs">{ft.thematique.name}</Badge>
+								{/each}
+								{#if formateur.formateursThematiques.length === 0}
+									<span class="text-muted-foreground text-sm">—</span>
+								{/if}
+							</div>
+						</Table.Cell>
+						<Table.Cell class="text-right">
+							<Button.Root
+								href="/contacts/formateurs/{formateur.id}"
+								variant="ghost"
+								size="sm"
+								class="text-xs"
+								onclick={(e: MouseEvent) => e.stopPropagation()}
+							>
+								Voir le profil
+							</Button.Root>
+						</Table.Cell>
+					</Table.Row>
+				{/each}
+			</Table.Body>
+		</Table.Root>
+	</div>
 
-<!-- <pre>
-    {JSON.stringify(formateurs, null, 2)}
-</pre> -->
+	<!-- Mobile card list -->
+	<div class="flex flex-col gap-2 md:hidden">
+		{#each formateurs as formateur (formateur.id)}
+			{@const name = [formateur.user?.firstName, formateur.user?.lastName].filter(Boolean).join(' ') || '—'}
+			<button
+				type="button"
+				class="flex items-start gap-3 rounded-xl border bg-card p-4 text-left hover:bg-muted/40 transition-colors w-full"
+				onclick={() => goto(`/contacts/formateurs/${formateur.id}`)}
+			>
+				<div class="min-w-0 flex-1">
+					<div class="flex items-center justify-between gap-2 mb-1">
+						<span class="font-medium text-sm truncate">{name}</span>
+						{#if formateur.disponible7J}
+							<span class="flex items-center gap-1 text-xs text-green-600 shrink-0">
+								<span class="relative inline-flex size-1.5 rounded-full bg-green-500"></span>
+								Disponible
+							</span>
+						{:else}
+							<span class="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+								<span class="relative inline-flex size-1.5 rounded-full bg-muted-foreground/50"></span>
+								Indisponible
+							</span>
+						{/if}
+					</div>
+					<StarRating ratingValue={Number(formateur.rating)} size={12} />
+					{#if formateur.formateursThematiques.length > 0}
+						<div class="mt-2 flex flex-wrap gap-1">
+							{#each formateur.formateursThematiques as ft}
+								<Badge variant="secondary" class="text-xs">{ft.thematique.name}</Badge>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</button>
+		{/each}
+	</div>
+{/if}

@@ -11,7 +11,7 @@ export const formateurs = pgTable(
 		tauxHoraireMin: numeric('taux_horaire_min'),
 		tauxHoraireMax: numeric('taux_horaire_max'),
 		description: text(),
-		departements: text(),
+		departement: text('departement'),
 		ville: text(),
 		rating: numeric(),
 		disponible7J: boolean('disponible_7j'),

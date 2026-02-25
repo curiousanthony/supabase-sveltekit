@@ -1,9 +1,10 @@
 import { redirect, error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/db';
-import { workspaceInvites, workspacesUsers, users } from '$lib/db/schema';
+import { workspaceInvites, workspacesUsers } from '$lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { setActiveWorkspace } from '$lib/server/workspace';
+import { hashInviteToken } from '$lib/server/invite-token';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { session, user } = await locals.safeGetSession();
@@ -18,9 +19,9 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		throw error(400, 'Token invalide');
 	}
 
-	// Find invite by token
+	const digest = hashInviteToken(token);
 	const invite = await db.query.workspaceInvites.findFirst({
-		where: eq(workspaceInvites.token, token),
+		where: eq(workspaceInvites.tokenDigest, digest),
 		columns: {
 			id: true,
 			workspaceId: true,

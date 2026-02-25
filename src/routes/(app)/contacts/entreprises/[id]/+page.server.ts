@@ -1,0 +1,258 @@
+import { db } from '$lib/db';
+
+function normalizeUrl(url: string): string {
+	if (!url) return url;
+	return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+import { companies, contactCompanies, contacts, deals, industries } from '$lib/db/schema';
+import { getUserWorkspace } from '$lib/auth';
+import { eq, and, inArray, desc, asc } from 'drizzle-orm';
+import { error, fail, redirect } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
+import {
+	legalStatusOptions,
+	companySizeOptions
+} from '$lib/crm/company-form-options';
+
+const ALLOWED_FIELDS = [
+	'name',
+	'siret',
+	'legalStatus',
+	'industryId',
+	'companySize',
+	'websiteUrl',
+	'address',
+	'city',
+	'region',
+	'internalNotes'
+] as const;
+
+type AllowedField = (typeof ALLOWED_FIELDS)[number];
+
+export const load = (async ({ params, locals }) => {
+	const workspaceId = await getUserWorkspace(locals);
+	if (!workspaceId) throw error(404, 'Espace non trouvé');
+
+	const companyResult = await db.query.companies.findFirst({
+		where: and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)),
+		with: { industry: { columns: { id: true, name: true } } }
+	});
+
+	if (!companyResult) throw error(404, 'Entreprise non trouvée');
+	const company = companyResult;
+
+	const industriesList = await db
+		.select({ id: industries.id, name: industries.name })
+		.from(industries)
+		.orderBy(asc(industries.displayOrder), asc(industries.name));
+
+	const links = await db
+		.select({ contactId: contactCompanies.contactId })
+		.from(contactCompanies)
+		.where(eq(contactCompanies.companyId, company.id));
+	const contactIds = links.map((l) => l.contactId);
+	const linkedContacts =
+		contactIds.length > 0
+			? await db
+					.select({
+						id: contacts.id,
+						firstName: contacts.firstName,
+						lastName: contacts.lastName,
+						email: contacts.email,
+						phone: contacts.phone,
+						poste: contacts.poste
+					})
+					.from(contacts)
+					.where(and(eq(contacts.workspaceId, workspaceId), inArray(contacts.id, contactIds)))
+			: [];
+
+	const linkedDeals = await db
+		.select({
+			id: deals.id,
+			name: deals.name,
+			stage: deals.stage,
+			value: deals.value,
+			dealAmount: deals.dealAmount,
+			updatedAt: deals.updatedAt
+		})
+		.from(deals)
+		.where(and(eq(deals.companyId, company.id), eq(deals.workspaceId, workspaceId)));
+
+	// All workspace contacts for the link combobox — capped to avoid unbounded scans
+	const allContacts = await db
+		.select({
+			id: contacts.id,
+			firstName: contacts.firstName,
+			lastName: contacts.lastName,
+			email: contacts.email
+		})
+		.from(contacts)
+		.where(eq(contacts.workspaceId, workspaceId))
+		.orderBy(desc(contacts.updatedAt))
+		.limit(200);
+
+	return {
+		company,
+		industries: industriesList,
+		linkedContacts,
+		linkedDeals,
+		allContacts,
+		header: {
+			pageName: company.name,
+			backButton: true,
+			backButtonLabel: 'Entreprises',
+			backButtonHref: '/contacts/entreprises',
+			actions: []
+		}
+	};
+}) satisfies PageServerLoad;
+
+export const actions: Actions = {
+	deleteCompany: async ({ params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) throw error(403, 'Espace non trouvé');
+		const [company] = await db
+			.select({ id: companies.id })
+			.from(companies)
+			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
+			.limit(1);
+		if (!company) throw error(404, 'Entreprise non trouvée');
+		await db.delete(companies).where(eq(companies.id, company.id));
+		throw redirect(303, '/contacts/entreprises');
+	},
+
+	updateField: async ({ params, request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const fd = await request.formData();
+		const field = (fd.get('field') as string | null)?.trim();
+		const value = (fd.get('value') as string)?.trim() ?? '';
+
+		if (typeof field !== 'string' || !(ALLOWED_FIELDS as readonly string[]).includes(field)) {
+			return fail(400, { message: 'Champ invalide' });
+		}
+		const safeField = field as AllowedField;
+
+		// Validate enum values
+		if (safeField === 'legalStatus' && value && !legalStatusOptions.includes(value as (typeof legalStatusOptions)[number])) {
+			return fail(400, { message: 'Statut juridique invalide' });
+		}
+		if (safeField === 'industryId' && value) {
+			const validIds = new Set(
+				(await db.select({ id: industries.id }).from(industries)).map((r) => r.id)
+			);
+			if (!validIds.has(value)) return fail(400, { message: 'Industrie invalide' });
+		}
+		if (safeField === 'companySize' && value && !companySizeOptions.includes(value as (typeof companySizeOptions)[number])) {
+			return fail(400, { message: 'Taille invalide' });
+		}
+		// SIRET: exactly 14 digits
+		if (safeField === 'siret' && value && !/^\d{14}$/.test(value)) {
+			return fail(400, { message: 'Le SIRET doit contenir exactement 14 chiffres' });
+		}
+		if (safeField === 'name' && !value) {
+			return fail(400, { message: 'Le nom est requis' });
+		}
+
+		const saveValue =
+			safeField === 'websiteUrl' && value
+				? normalizeUrl(value)
+				: safeField === 'industryId'
+					? (value || null)
+					: (value || null);
+
+		const updated = await db
+			.update(companies)
+			.set({ [safeField]: saveValue, updatedAt: new Date().toISOString() })
+			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
+			.returning({ id: companies.id });
+
+		if (updated.length === 0) return fail(404, { message: 'Entreprise non trouvée' });
+
+		return { success: true };
+	},
+
+	updateCityRegion: async ({ params, request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const fd = await request.formData();
+		const city = (fd.get('city') as string)?.trim() ?? '';
+		const region = (fd.get('region') as string)?.trim() ?? '';
+
+		const [updated] = await db
+			.update(companies)
+			.set({
+				city: city || null,
+				region: region || null,
+				updatedAt: new Date().toISOString()
+			})
+			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
+			.returning({ id: companies.id });
+
+		if (!updated) return fail(404, { message: 'Entreprise non trouvée' });
+
+		return { success: true };
+	},
+
+	linkContact: async ({ params, request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const fd = await request.formData();
+		const contactId = (fd.get('contactId') as string)?.trim();
+		if (!contactId) return fail(400, { message: 'Contact manquant' });
+
+		// Verify company belongs to same workspace
+		const [company] = await db
+			.select({ id: companies.id })
+			.from(companies)
+			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
+			.limit(1);
+		if (!company) return fail(404, { message: 'Société non trouvée' });
+
+		// Verify contact belongs to same workspace
+		const [contact] = await db
+			.select({ id: contacts.id })
+			.from(contacts)
+			.where(and(eq(contacts.id, contactId), eq(contacts.workspaceId, workspaceId)))
+			.limit(1);
+		if (!contact) return fail(404, { message: 'Contact non trouvé' });
+
+		await db
+			.insert(contactCompanies)
+			.values({ contactId, companyId: company.id })
+			.onConflictDoNothing();
+
+		return { success: true };
+	},
+
+	unlinkContact: async ({ params, request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const fd = await request.formData();
+		const contactId = (fd.get('contactId') as string)?.trim();
+		if (!contactId) return fail(400, { message: 'Contact manquant' });
+
+		const [company] = await db
+			.select({ id: companies.id })
+			.from(companies)
+			.where(and(eq(companies.id, params.id), eq(companies.workspaceId, workspaceId)))
+			.limit(1);
+		if (!company) return fail(403, { message: 'Non autorisé' });
+
+		await db
+			.delete(contactCompanies)
+			.where(
+				and(
+					eq(contactCompanies.contactId, contactId),
+					eq(contactCompanies.companyId, company.id)
+				)
+			);
+
+		return { success: true };
+	}
+};
