@@ -48,7 +48,7 @@
 			{#if title}
 				{@render title()}
 			{:else}
-				<h1 class="text-base font-medium">{pageName}</h1>
+				<h1 class="text-base font-medium">{header?.pageName ?? pageName ?? 'Page'}</h1>
 			{/if}
 			{#if header?.idInWorkspace != null}
 				<span class="text-muted-foreground text-sm font-mono">#{header.idInWorkspace}</span>
@@ -79,15 +79,13 @@
 		<!-- <div class="flex items-center space-x-4">
 			{@render $slots.actions()}
 		</div> -->
-	{#if actionsSnippetProp}
-		<div class="ml-auto flex items-center gap-2">
+	<div class="ml-auto flex items-center gap-2">
+		{#if actionsSnippetProp}
 			{@render actionsSnippetProp()}
-		</div>
-	{:else if header?.actions?.length}
-		<div class="ml-auto flex items-center gap-2">
+		{:else if header?.actions?.length}
 			{@render actions()}
-		</div>
-	{/if}
+		{/if}
+	</div>
 	</div>
 </header>
 

@@ -26,15 +26,16 @@
 	// 	sitemap.find((item) => item.url === page.url.pathname)?.title || 'Default Page name'
 	// );
 
-	// The page title is now derived ONLY from the data prop,
-	// forcing every page's load function to provide a title.
+	// Page title: prefer page load result (+page.server.ts), then layout load (+layout.server.ts), so +page.server.ts wins.
 	const pageTitle = $derived(
-		page.data?.header?.pageName ?? page.data?.pageName ?? 'Titre de page manquant'
+		page.data?.header?.pageName ??
+			page.data?.pageName ??
+			data?.header?.pageName ??
+			'Titre de page manquant'
 	);
 
-	// Test for headerActions based on page.data
-	// const headeractions = $derived(page.data?.headerActions ?? null);
-	const header = $derived(page.data?.header ?? null);
+	// Header (pageName + actions): same order; layout data ensures we always have a value when layout runs.
+	const header = $derived(page.data?.header ?? data?.header ?? null);
 	const formations = $derived(page.data?.formations ?? []);
 
 	const RECENT_FORMATIONS_COUNT = 3;
