@@ -38,12 +38,16 @@ export const actions: Actions = {
 		if (!workspaceId) return fail(400, { message: 'Aucun espace de travail' });
 
 		const fd = await request.formData();
+		const dureeHeuresRaw = (fd.get('dureeHeures') as string)?.trim() ?? '';
 		const raw = {
 			titre: (fd.get('titre') as string)?.trim() ?? '',
 			contenu: (fd.get('contenu') as string)?.trim() || undefined,
 			objectifsPedagogiques: (fd.get('objectifsPedagogiques') as string)?.trim() || undefined,
-			modaliteEvaluation: (fd.get('modaliteEvaluation') as string) || undefined,
-			modaliteEvaluation: (fd.get('modaliteEvaluation') as string)?.trim() || undefined
+			modaliteEvaluation: (fd.get('modaliteEvaluation') as string)?.trim() || undefined,
+			dureeHeures:
+				dureeHeuresRaw !== '' && !Number.isNaN(Number(dureeHeuresRaw))
+					? Number(dureeHeuresRaw)
+					: undefined
 		};
 
 		const parsed = moduleSchema.safeParse(raw);
