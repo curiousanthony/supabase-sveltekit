@@ -1,6 +1,13 @@
 import { db } from '$lib/db';
 import type { PageServerLoad } from './$types';
 
+const header = {
+    actions: [
+        { type: 'button', icon: 'plus', text: 'Inviter un formateur', href: '/contacts/formateurs/ajouter', variant: 'default' as const },
+        { type: 'button', icon: 'search', text: 'Trouver un formateur', href: '/contacts/formateurs/rechercher', variant: 'default' as const }
+    ]
+};
+
 export const load = (async () => {
     try {
         const formateurs = await db.query.formateurs.findMany({
@@ -16,34 +23,13 @@ export const load = (async () => {
                     }}
                 
             }
-        })
-
-        // console.log("from formateurs/+page.server.ts → formateurs:\n", formateurs);
-
-        const header = {
-            actions: [
-                {
-                    type: 'button',
-                    icon: "plus",
-                    text: 'Inviter un formateur',
-                    href: '/contacts/formateurs/ajouter',
-                    // className: 'bg-primary text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground',
-                    variant: 'default',
-                },
-                {
-                    type: 'button',
-                    icon: "search",
-                    text: 'Trouver un formateur',
-                    href: '/contacts/formateurs/rechercher',
-                    // className: 'bg-primary text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground',
-                    variant: 'default',
-                }
-            ]
-        }
-
-        return { formateurs, pageName: "Formateurs", header };
-    } catch (error) {
-        console.error("Error in contacts/formateurs/+page.server.ts → load:\n", error);
-        throw error;
+        });
+        return { formateurs, pageName: 'Formateurs', header };
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const stack = err instanceof Error ? err.stack : '';
+        const cause = err instanceof Error && err.cause ? String(err.cause) : '';
+        console.error('[formateurs load]', msg, stack || '', cause || '');
+        return { formateurs: [], pageName: 'Formateurs', header };
     }
 }) satisfies PageServerLoad;
