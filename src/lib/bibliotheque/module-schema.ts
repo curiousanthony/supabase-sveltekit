@@ -10,12 +10,10 @@ export const moduleSchema = z.object({
 	dureeHeures: z.union([
 		z.undefined(),
 		z.null(),
-		z.coerce
-			.number()
-			.refine((v) => !Number.isNaN(v), {
-				message: 'La durée doit être un nombre valide'
-			})
-			.positive('La durée doit être positive')
+		z.coerce.number().refine(
+			(v) => !Number.isNaN(v) && v > 0,
+			{ message: 'La durée doit être un nombre positif' }
+		)
 	])
 });
 
