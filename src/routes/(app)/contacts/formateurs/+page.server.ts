@@ -1,6 +1,7 @@
 import { db } from '$lib/db';
 import { formateurs, users } from '$lib/db/schema';
 import { getUserWorkspace } from '$lib/auth';
+import { eq } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -20,18 +21,21 @@ function safePayload() {
 	return { formateurs: [], pageName: 'Formateurs' as const, header, openNewModal: false };
 }
 
-export const load = (async ({ url }) => {
+export const load = (async ({ url, locals }) => {
 	const openNewModal = url.searchParams.has('new');
+	const workspaceId = await getUserWorkspace(locals);
+	if (!workspaceId) return { ...safePayload(), openNewModal };
 	try {
-		let formateurs: Awaited<ReturnType<typeof runFullQuery>>;
+		let formateursList: Awaited<ReturnType<typeof runFullQuery>>;
 		try {
-			formateurs = await runFullQuery();
+			formateursList = await runFullQuery(workspaceId);
 		} catch {
 			try {
 				const minimal = await db.query.formateurs.findMany({
+					where: eq(formateurs.workspaceId, workspaceId),
 					with: { user: { columns: { firstName: true, lastName: true } } }
 				});
-				formateurs = minimal.map((f) => ({
+				formateursList = minimal.map((f) => ({
 					...f,
 					formateursThematiques: [] as { thematique: { name: string } }[]
 				})) as Awaited<ReturnType<typeof runFullQuery>>;
@@ -39,7 +43,7 @@ export const load = (async ({ url }) => {
 				return { ...safePayload(), openNewModal };
 			}
 		}
-		return { formateurs, pageName: 'Formateurs', header, openNewModal };
+		return { formateurs: formateursList, pageName: 'Formateurs', header, openNewModal };
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		console.error('[formateurs load]', msg);
@@ -47,8 +51,9 @@ export const load = (async ({ url }) => {
 	}
 }) satisfies PageServerLoad;
 
-async function runFullQuery() {
+async function runFullQuery(workspaceId: string) {
 	return db.query.formateurs.findMany({
+		where: eq(formateurs.workspaceId, workspaceId),
 		with: {
 			user: { columns: { firstName: true, lastName: true } },
 			formateursThematiques: {
@@ -94,7 +99,7 @@ export const actions: Actions = {
 
 		const [newFormateur] = await db
 			.insert(formateurs)
-			.values({ userId: newUserId, ville, departement })
+			.values({ userId: newUserId, workspaceId, ville, departement })
 			.returning({ id: formateurs.id });
 
 		throw redirect(303, `/contacts/formateurs/${newFormateur.id}`);

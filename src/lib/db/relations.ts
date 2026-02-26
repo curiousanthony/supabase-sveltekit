@@ -136,6 +136,7 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
 	contacts: many(contacts),
 	companies: many(companies),
 	deals: many(deals),
+	formateurs: many(formateurs),
 	invites: many(workspaceInvites)
 }));
 
@@ -241,6 +242,10 @@ export const formateursRelations = relations(formateurs, ({ one, many }) => ({
 	user: one(users, {
 		fields: [formateurs.userId],
 		references: [users.id]
+	}),
+	workspace: one(workspaces, {
+		fields: [formateurs.workspaceId],
+		references: [workspaces.id]
 	}),
 	formateursThematiques: many(formateursThematiques)
 }));

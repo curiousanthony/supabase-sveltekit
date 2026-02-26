@@ -1,6 +1,7 @@
 import { pgTable, foreignKey, timestamp, uuid, text, numeric, boolean, unique } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { thematiques } from './thematiques';
+import { workspaces } from './workspaces';
 
 export const formateurs = pgTable(
 	'formateurs',
@@ -16,6 +17,7 @@ export const formateurs = pgTable(
 		rating: numeric(),
 		disponible7J: boolean('disponible_7j'),
 		userId: uuid('user_id').notNull(),
+		workspaceId: uuid('workspace_id').notNull(),
 		id: uuid().defaultRandom().primaryKey().notNull()
 	},
 	(table) => [
@@ -23,6 +25,13 @@ export const formateurs = pgTable(
 			columns: [table.userId],
 			foreignColumns: [users.id],
 			name: 'formateurs_user_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.workspaceId],
+			foreignColumns: [workspaces.id],
+			name: 'formateurs_workspace_id_fkey'
 		})
 			.onUpdate('cascade')
 			.onDelete('cascade')
