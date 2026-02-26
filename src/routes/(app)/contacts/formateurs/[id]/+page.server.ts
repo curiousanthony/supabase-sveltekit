@@ -1,6 +1,7 @@
 import { db } from '$lib/db';
 import { formateurs, users } from '$lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { getUserWorkspace } from '$lib/auth';
+import { and, eq } from 'drizzle-orm';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -16,9 +17,12 @@ const FORMATEUR_FIELDS = [
 
 const USER_FIELDS = ['firstName', 'lastName', 'email'] as const;
 
-export const load = (async ({ params }) => {
+export const load = (async ({ params, locals }) => {
+	const workspaceId = await getUserWorkspace(locals);
+	if (!workspaceId) throw error(404, 'Formateur non trouvé');
+
 	const formateur = await db.query.formateurs.findFirst({
-		where: eq(formateurs.id, params.id),
+		where: and(eq(formateurs.id, params.id), eq(formateurs.workspaceId, workspaceId)),
 		with: {
 			user: true,
 			formateursThematiques: {
@@ -49,14 +53,20 @@ export const actions: Actions = {
 	deleteFormateur: async ({ params, locals }) => {
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Espace de travail non trouvé' });
 
-		await db.delete(formateurs).where(eq(formateurs.id, params.id));
+		await db
+			.delete(formateurs)
+			.where(and(eq(formateurs.id, params.id), eq(formateurs.workspaceId, workspaceId)));
 		throw redirect(303, '/contacts/formateurs');
 	},
 
 	updateFormateurField: async ({ params, request, locals }) => {
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Espace de travail non trouvé' });
 
 		const fd = await request.formData();
 		const field = (fd.get('field') as string)?.trim();
@@ -87,7 +97,7 @@ export const actions: Actions = {
 		await db
 			.update(formateurs)
 			.set({ [field]: dbValue })
-			.where(eq(formateurs.id, params.id));
+			.where(and(eq(formateurs.id, params.id), eq(formateurs.workspaceId, workspaceId)));
 
 		return { success: true };
 	},
@@ -95,6 +105,8 @@ export const actions: Actions = {
 	updateCityDepartement: async ({ params, request, locals }) => {
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Espace de travail non trouvé' });
 
 		const fd = await request.formData();
 		const ville = (fd.get('ville') as string)?.trim() || null;
@@ -103,7 +115,7 @@ export const actions: Actions = {
 		await db
 			.update(formateurs)
 			.set({ ville, departement })
-			.where(eq(formateurs.id, params.id));
+			.where(and(eq(formateurs.id, params.id), eq(formateurs.workspaceId, workspaceId)));
 
 		return { success: true };
 	},
@@ -111,6 +123,8 @@ export const actions: Actions = {
 	updateUserField: async ({ params, request, locals }) => {
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Espace de travail non trouvé' });
 
 		const fd = await request.formData();
 		const field = (fd.get('field') as string)?.trim();
@@ -121,7 +135,7 @@ export const actions: Actions = {
 		}
 
 		const formateur = await db.query.formateurs.findFirst({
-			where: eq(formateurs.id, params.id),
+			where: and(eq(formateurs.id, params.id), eq(formateurs.workspaceId, workspaceId)),
 			columns: { userId: true }
 		});
 		if (!formateur) return fail(404, { message: 'Formateur non trouvé' });
