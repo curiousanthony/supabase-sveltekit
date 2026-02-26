@@ -56,5 +56,7 @@
 			</div>
 		</nav>
 	{/if}
-	{@render children()}
+	{#key pathname}
+		{@render children()}
+	{/key}
 </div>
