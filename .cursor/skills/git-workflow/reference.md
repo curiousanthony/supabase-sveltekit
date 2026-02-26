@@ -23,3 +23,9 @@ Concise reference for branch naming, commit types, and workflow details. See [do
 ## Agent safety
 
 Never run `git push` or `git merge` unless the user has explicitly said "Integrate", "Merge to develop", "Release", or "Ship to prod".
+
+## Production & Vercel
+
+- **Production URL**: `https://supabase-sveltekit-seven.vercel.app`
+- **Vercel**: Push to `develop` → Preview (~2 min) then Production (~2 min). Push to `main` → Production (~2 min). Use Vercel MCP `list_deployments` to wait for Production READY.
+- **Testing**: After deploy, test on Production URL in browser (cursor-ide-browser or fetch); prefer doing this yourself rather than asking the user.

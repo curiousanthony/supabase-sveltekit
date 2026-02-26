@@ -131,7 +131,7 @@ If the user says "Work on #42" (or similar):
 
 Use this workflow when a bug is discovered in production (`main`) that needs
 to be fixed urgently, without waiting for the normal develop → main cycle.
-**When**: User says "hotfix", "bug in prod", "fix production issue", "urgent fix", or any variation indicating production is broken and needs an immediate patch. For **`/hotfix`**: Use the workflow in `.agent/workflows/hotfix.md`.
+**When**: User says "hotfix", "bug in prod", "fix production issue", "urgent fix", or any variation indicating production is broken and needs an immediate patch. For **`/hotfix`**: Follow [.cursor/commands/hotfix.md](../../commands/hotfix.md), which includes Vercel wait and production testing.
 
 ### Steps:
 
@@ -142,7 +142,8 @@ to be fixed urgently, without waiting for the normal develop → main cycle.
 5. Merge into `main`: `git checkout main && git merge hotfix/<short-description> && git push origin main`
 6. Merge into `develop` to keep branches in sync: `git checkout develop && git merge hotfix/<short-description> && git push origin develop`
 7. Delete the hotfix branch: `git branch -d hotfix/<short-description>`
-8. Return to the previous feature branch and restore stashed work
+8. Wait for Vercel Production deploy (see **Deployment (Vercel)** below), then test on Production URL (browser MCP or fetch). Prefer testing autonomously.
+9. Return to the previous feature branch and restore stashed work
 
 ### Rules:
 
@@ -150,6 +151,14 @@ to be fixed urgently, without waiting for the normal develop → main cycle.
 - Hotfix branches MUST be merged into BOTH `main` and `develop` before deletion
 - Never leave `main` and `develop` out of sync after a hotfix
 - Keep hotfix scope minimal — only fix what is broken, nothing else
+
+---
+
+## Deployment (Vercel) and production testing
+
+- **Production URL**: `https://supabase-sveltekit-seven.vercel.app`
+- **Vercel behavior**: When `develop` is pushed, Vercel first deploys a **Preview** deployment (~2 min), then deploys **Production** (~2 min). When only `main` is pushed, Production deploys (~2 min). Poll deployments via Vercel MCP (`list_deployments` with projectId and teamId) until the deployment with `target: "production"` has `state: "READY"`.
+- **Test autonomously**: After Production is READY, open the Production URL in the browser (e.g. cursor-ide-browser MCP or `mcp_web_fetch`), navigate to the affected route, and verify the fix. Do not ask the user to confirm unless the check requires auth and you cannot sign in.
 
 ---
 
