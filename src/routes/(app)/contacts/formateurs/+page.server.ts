@@ -82,20 +82,26 @@ export const actions: Actions = {
 		// Use a generated placeholder email if none provided so users.email NOT NULL is satisfied
 		const email = emailRaw || `formateur.${Date.now()}@noreply.internal`;
 
+		// Insert user, or reuse existing if email is already taken
 		let newUserId: string;
-		try {
-			const [newUser] = await db
-				.insert(users)
-				.values({ firstName, lastName, email })
-				.returning({ id: users.id });
-			newUserId = newUser.id;
-		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e);
-			if (msg.includes('unique') || msg.includes('duplicate')) {
-				return fail(409, { message: 'Cet email est déjà associé à un profil existant' });
+		const [insertedUser] = await db
+			.insert(users)
+			.values({ firstName, lastName, email })
+			.onConflictDoNothing()
+			.returning({ id: users.id });
+
+		if (insertedUser) {
+			newUserId = insertedUser.id;
+		} else {
+			// Email already exists — look up the existing user
+			const existing = await db.query.users.findFirst({
+				where: eq(users.email, email),
+				columns: { id: true }
+			});
+			if (!existing) {
+				return fail(500, { message: 'Impossible de créer le formateur. Veuillez réessayer.' });
 			}
-			console.error('[createFormateur] user insert error:', msg);
-			return fail(500, { message: 'Impossible de créer le formateur. Veuillez réessayer.' });
+			newUserId = existing.id;
 		}
 
 		let newFormateur: { id: string };
