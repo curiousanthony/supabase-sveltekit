@@ -32,19 +32,27 @@
 	let {
 		city = '',
 		region = '',
+		departement = '',
 		selectedCityCode = '',
+		/** 'region' (default) shows a Région select as the secondary column.
+		 *  'departement' shows a Département text field instead. */
+		secondaryField = 'region' as 'region' | 'departement',
 		onSelect
 	}: {
 		city?: string;
 		region?: string;
-		/** When provided, the checkmark uses code comparison to avoid duplicate city names. */
+		departement?: string;
 		selectedCityCode?: string;
-		onSelect: (city: string, region: string, cityCode?: string) => void;
+		secondaryField?: 'region' | 'departement';
+		/** 4th param `departement` is only populated when secondaryField='departement'. */
+		onSelect: (city: string, region: string, cityCode?: string, departement?: string) => void;
 	} = $props();
 
 	let open = $state(false);
 	let search = $state('');
-	let suggestions = $state<{ code: string; nom: string; region: { nom: string } }[]>([]);
+	let suggestions = $state<
+		{ code: string; nom: string; region: { nom: string }; departement?: { code: string; nom: string } }[]
+	>([]);
 	let loading = $state(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -67,10 +75,10 @@
 		const controller = currentController;
 		loading = true;
 		try {
-			const res = await fetch(
-				`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&fields=code,nom,region&boost=population&limit=10`,
-				{ signal: controller.signal }
-			);
+		const res = await fetch(
+			`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(q)}&fields=code,nom,region,departement&boost=population&limit=10`,
+			{ signal: controller.signal }
+		);
 			if (res.ok) {
 				suggestions = await res.json();
 			} else {
@@ -93,8 +101,13 @@
 		currentController = null;
 	});
 
-	function handleSelect(cityName: string, regionName: string, cityCode?: string) {
-		onSelect(cityName, regionName, cityCode);
+	function handleSelect(
+		cityName: string,
+		regionName: string,
+		cityCode?: string,
+		deptName?: string
+	) {
+		onSelect(cityName, regionName, cityCode, deptName);
 		search = '';
 		suggestions = [];
 		open = false;
@@ -102,6 +115,24 @@
 
 	function handleRegionSelect(regionName: string) {
 		onSelect(city, regionName);
+	}
+
+	let deptInputValue = $state(departement);
+	$effect(() => {
+		deptInputValue = departement;
+	});
+
+	function handleDepartementBlur() {
+		const trimmed = deptInputValue.trim();
+		if (trimmed !== departement) {
+			onSelect(city, region, selectedCityCode || undefined, trimmed);
+		}
+	}
+
+	function handleDepartementKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			(e.currentTarget as HTMLInputElement).blur();
+		}
 	}
 </script>
 
@@ -143,47 +174,80 @@
 								<span class="text-muted-foreground">Effacer la ville</span>
 							</Command.Item>
 						{/if}
-						{#each suggestions as suggestion (suggestion.code)}
-							<Command.Item
-								value={suggestion.code}
-								onSelect={() => handleSelect(suggestion.nom, suggestion.region?.nom ?? '', suggestion.code)}
-							>
-								<Check class={`mr-2 size-4 ${(selectedCityCode ? selectedCityCode === suggestion.code : city === suggestion.nom) ? 'opacity-100' : 'opacity-0'}`} />
-								<span>{suggestion.nom}</span>
-								{#if suggestion.region?.nom}
-									<span class="ml-auto text-xs text-muted-foreground">{suggestion.region.nom}</span>
-								{/if}
-							</Command.Item>
-						{/each}
+			{#each suggestions as suggestion (suggestion.code)}
+						<Command.Item
+							value={suggestion.code}
+							onSelect={() =>
+								handleSelect(
+									suggestion.nom,
+									suggestion.region?.nom ?? '',
+									suggestion.code,
+									suggestion.departement?.nom ?? suggestion.departement?.code ?? ''
+								)}
+						>
+							<Check
+								class={`mr-2 size-4 ${(selectedCityCode ? selectedCityCode === suggestion.code : city === suggestion.nom) ? 'opacity-100' : 'opacity-0'}`}
+							/>
+							<span>{suggestion.nom}</span>
+							{#if secondaryField === 'departement' && (suggestion.departement?.nom || suggestion.departement?.code)}
+								<span class="ml-auto text-xs text-muted-foreground">
+									{suggestion.departement?.nom ?? suggestion.departement?.code}
+								</span>
+							{:else if suggestion.region?.nom}
+								<span class="ml-auto text-xs text-muted-foreground">{suggestion.region.nom}</span>
+							{/if}
+						</Command.Item>
+					{/each}
 					</Command.List>
 				</Command.Root>
 			</Popover.Content>
 		</Popover.Root>
 	</div>
 
-	<!-- Region field: auto-filled when city is set, otherwise a select -->
-	<div class="flex flex-col gap-0.5">
-		<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Région</span>
-		{#if city && region}
-			<div class="flex h-8 items-center gap-1.5 px-2 text-sm text-muted-foreground">
-				<span class="truncate">{region}</span>
-			</div>
-		{:else}
-			<Select.Root
-				type="single"
-				value={region}
-				onValueChange={(v) => handleRegionSelect(v)}
+	{#if secondaryField === 'departement'}
+		<!-- Département field: auto-filled from city selection, otherwise editable text -->
+		<div class="flex flex-col gap-0.5">
+			<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+				>Département</span
 			>
-				<Select.Trigger class="h-8 border-transparent bg-transparent px-2 text-sm shadow-none hover:border-input hover:bg-muted/50 focus:border-input data-[state=open]:border-input data-[state=open]:bg-muted/50 transition-colors">
-					{#if region}{region}{:else}<span class="text-muted-foreground">Région...</span>{/if}
-				</Select.Trigger>
-				<Select.Content>
-					<Select.Item value="">—</Select.Item>
-					{#each FRENCH_REGIONS as r (r)}
-						<Select.Item value={r}>{r}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
-		{/if}
-	</div>
+			{#if city && departement}
+				<div class="flex h-8 items-center gap-1.5 px-2 text-sm text-muted-foreground">
+					<span class="truncate">{departement}</span>
+				</div>
+			{:else}
+				<input
+					type="text"
+					bind:value={deptInputValue}
+					placeholder="ex: Paris"
+					onblur={handleDepartementBlur}
+					onkeydown={handleDepartementKeydown}
+					class="flex h-8 w-full items-center rounded-md border-transparent bg-transparent px-2 text-sm shadow-none outline-none hover:border-input hover:bg-muted/50 focus:border-input focus:bg-muted/50 transition-colors placeholder:text-muted-foreground"
+				/>
+			{/if}
+		</div>
+	{:else}
+		<!-- Region field: auto-filled when city is set, otherwise a select -->
+		<div class="flex flex-col gap-0.5">
+			<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Région</span>
+			{#if city && region}
+				<div class="flex h-8 items-center gap-1.5 px-2 text-sm text-muted-foreground">
+					<span class="truncate">{region}</span>
+				</div>
+			{:else}
+				<Select.Root type="single" value={region} onValueChange={(v) => handleRegionSelect(v)}>
+					<Select.Trigger
+						class="h-8 border-transparent bg-transparent px-2 text-sm shadow-none hover:border-input hover:bg-muted/50 focus:border-input data-[state=open]:border-input data-[state=open]:bg-muted/50 transition-colors"
+					>
+						{#if region}{region}{:else}<span class="text-muted-foreground">Région...</span>{/if}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="">—</Select.Item>
+						{#each FRENCH_REGIONS as r (r)}
+							<Select.Item value={r}>{r}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			{/if}
+		</div>
+	{/if}
 </div>

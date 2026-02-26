@@ -92,6 +92,22 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
+	updateCityDepartement: async ({ params, request, locals }) => {
+		const { user } = await locals.safeGetSession();
+		if (!user) return fail(401, { message: 'Non autorisé' });
+
+		const fd = await request.formData();
+		const ville = (fd.get('ville') as string)?.trim() || null;
+		const departement = (fd.get('departement') as string)?.trim() || null;
+
+		await db
+			.update(formateurs)
+			.set({ ville, departement })
+			.where(eq(formateurs.id, params.id));
+
+		return { success: true };
+	},
+
 	updateUserField: async ({ params, request, locals }) => {
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
