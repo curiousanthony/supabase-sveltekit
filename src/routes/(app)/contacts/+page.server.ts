@@ -244,7 +244,8 @@ export const actions: Actions = {
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : '';
-			console.error('[CRM createContact]', message, cause || '');
+			const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+			console.error('[CRM createContact]', message, cause || '', code ? `(code: ${code})` : '');
 			return fail(500, { message: 'Impossible de créer le contact.' });
 		}
 	},
