@@ -94,7 +94,10 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 			throw e;
 		}
 		console.error('[Layout] Workspace load failed:', e);
-		throw e;
+		throw redirect(
+			303,
+			'/auth/login?redirectTo=' + encodeURIComponent(url.pathname) + '&error=session'
+		);
 	}
 
 	const seeAs = effectiveContext?.seeAs

@@ -15,6 +15,10 @@ export interface RequireWorkspaceLocals {
 	cookies?: { get: (name: string) => { value: string | null } };
 }
 
+function isRedirect(e: unknown): e is { status: number } {
+	return e != null && typeof e === 'object' && 'status' in e && (e as { status: number }).status === 303;
+}
+
 export async function requireWorkspace(locals: RequireWorkspaceLocals): Promise<{
 	userId: string;
 	workspaceId: string;
@@ -28,21 +32,40 @@ export async function requireWorkspace(locals: RequireWorkspaceLocals): Promise<
 		);
 	}
 
-	let workspaceId = await getActiveWorkspace(user.id);
-	if (!workspaceId) {
-		workspaceId = await getUserWorkspace(locals as App.Locals);
-		if (workspaceId) await setActiveWorkspace(user.id, workspaceId);
+	try {
+		let workspaceId = await getActiveWorkspace(user.id);
+		if (!workspaceId) {
+			workspaceId = await getUserWorkspace(locals as App.Locals);
+			if (workspaceId) {
+				try {
+					await setActiveWorkspace(user.id, workspaceId);
+				} catch {
+					// User no longer in workspace, continue without setting last active
+				}
+			}
+		}
+		if (!workspaceId) throw redirect(303, '/onboarding');
+
+		const seeAsCookie = locals.cookies?.get('see_as')?.value ?? null;
+		const effectiveContext = await getEffectiveContext(user.id, workspaceId, seeAsCookie);
+
+		return {
+			userId: effectiveContext.effectiveUserId,
+			workspaceId,
+			effectiveContext
+		};
+	} catch (e) {
+		if (isRedirect(e)) throw e;
+		const msg = e instanceof Error ? e.message : String(e);
+		if (msg.includes('not a member') || msg.includes('does not belong')) {
+			throw redirect(303, '/onboarding');
+		}
+		console.error('[requireWorkspace]', e);
+		throw redirect(
+			303,
+			'/auth/login?redirectTo=' + encodeURIComponent(locals.url?.pathname ?? '/') + '&error=session'
+		);
 	}
-	if (!workspaceId) throw redirect(303, '/onboarding');
-
-	const seeAsCookie = locals.cookies?.get('see_as')?.value ?? null;
-	const effectiveContext = await getEffectiveContext(user.id, workspaceId, seeAsCookie);
-
-	return {
-		userId: effectiveContext.effectiveUserId,
-		workspaceId,
-		effectiveContext
-	};
 }
 
 export async function requireRole(
