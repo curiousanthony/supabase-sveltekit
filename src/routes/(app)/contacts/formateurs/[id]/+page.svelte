@@ -1,12 +1,14 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
 	import InlineField from '$lib/components/crm/InlineField.svelte';
+	import CityCombobox from '$lib/components/crm/CityCombobox.svelte';
 	import StarRating from '$lib/components/custom/starRating.svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import * as Button from '$lib/components/ui/button';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { enhance, applyAction } from '$app/forms';
+	import { enhance, applyAction, deserialize } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { headerTitleText } from '$lib/stores/header-store';
 	import { toast } from 'svelte-sonner';
 	import DotsVertical from '@tabler/icons-svelte/icons/dots-vertical';
@@ -24,6 +26,7 @@
 	let localEmail = $state('');
 	let localVille = $state('');
 	let localDepartement = $state('');
+	let localCityCode = $state('');
 	let localDescription = $state('');
 	let localTauxMin = $state('');
 	let localTauxMax = $state('');
@@ -36,12 +39,38 @@
 		localEmail = formateur?.user?.email ?? '';
 		localVille = formateur?.ville ?? '';
 		localDepartement = formateur?.departement ?? '';
+		localCityCode = '';
 		localDescription = formateur?.description ?? '';
 		localTauxMin = formateur?.tauxHoraireMin ?? '';
 		localTauxMax = formateur?.tauxHoraireMax ?? '';
 		localRating = formateur?.rating ?? '';
 		localDisponible = formateur?.disponible7J != null ? String(formateur.disponible7J) : '';
 	});
+
+	async function saveCityDepartement(
+		cityValue: string,
+		_region: string,
+		cityCode?: string,
+		deptValue?: string
+	) {
+		try {
+			const fd = new FormData();
+			fd.append('ville', cityValue);
+			fd.append('departement', deptValue ?? '');
+			const res = await fetch('?/updateCityDepartement', { method: 'POST', body: fd });
+			const result = deserialize(await res.text());
+			if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+				return;
+			}
+			localVille = cityValue;
+			localDepartement = deptValue ?? '';
+			localCityCode = cityValue ? (cityCode ?? '') : '';
+			await invalidateAll();
+		} catch {
+			toast.error('Erreur réseau. Veuillez réessayer.');
+		}
+	}
 
 	const displayName = $derived(
 		[localFirstName, localLastName].filter(Boolean).join(' ') || 'Formateur'
@@ -243,23 +272,12 @@
 					Profil formateur
 				</h2>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<InlineField
-						label="Ville"
-						value={localVille}
-						field="ville"
-						action="?/updateFormateurField"
-						onSaved={(v: string) => {
-							localVille = v;
-						}}
-					/>
-					<InlineField
-						label="Département"
-						value={localDepartement}
-						field="departement"
-						action="?/updateFormateurField"
-						onSaved={(v: string) => {
-							localDepartement = v;
-						}}
+					<CityCombobox
+						city={localVille}
+						departement={localDepartement}
+						selectedCityCode={localCityCode}
+						secondaryField="departement"
+						onSelect={saveCityDepartement}
 					/>
 					<InlineField
 						label="Taux horaire min (€/h)"
