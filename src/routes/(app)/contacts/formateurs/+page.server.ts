@@ -94,7 +94,8 @@ export const actions: Actions = {
 			if (msg.includes('unique') || msg.includes('duplicate')) {
 				return fail(409, { message: 'Cet email est déjà associé à un profil existant' });
 			}
-			throw e;
+			console.error('[createFormateur] user insert error:', msg);
+			return fail(500, { message: 'Impossible de créer le formateur. Veuillez réessayer.' });
 		}
 
 		let newFormateur: { id: string };
@@ -106,20 +107,8 @@ export const actions: Actions = {
 			if (!row) throw new Error('Insert returned no row');
 			newFormateur = row;
 		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e);
-			if (
-				msg.includes('workspace_id') ||
-				(msg.includes('column') && msg.includes('does not exist')) ||
-				msg.includes('42703')
-			) {
-				return fail(503, {
-					message:
-						'La base de données doit être mise à jour (migration formateurs). Contactez l’administrateur.'
-				});
-			}
-			return fail(500, {
-				message: 'Impossible de créer le formateur. Veuillez réessayer ou contacter l’administrateur.'
-			});
+			console.error('[createFormateur] formateur insert error:', e instanceof Error ? e.message : String(e));
+			return fail(500, { message: 'Impossible de créer le formateur. Veuillez réessayer.' });
 		}
 
 		throw redirect(303, `/contacts/formateurs/${newFormateur.id}`);
