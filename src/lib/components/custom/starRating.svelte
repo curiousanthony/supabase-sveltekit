@@ -3,8 +3,8 @@
 
 	let { ratingValue, size }: { ratingValue: number; size: number } = $props();
 
-	// Ensure the value is clamped between 0 and 5
-	const validatedRating = $derived(Math.min(5, Math.max(0, ratingValue)));
+	// Clamp to [0, 5] and round to an integer so Array(n) never throws RangeError
+	const validatedRating = $derived(Math.round(Math.min(5, Math.max(0, ratingValue || 0))));
 
 	// 2. Derived Arrays: Calculated using $derived()
 	// Array for filled stars: length is equal to 'validatedRating'
