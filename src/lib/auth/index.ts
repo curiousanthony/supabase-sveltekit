@@ -1,6 +1,22 @@
 import { db } from '$lib/db';
-import { workspacesUsers, workspaces, users, clients, deals } from '$lib/db/schema';
+import {
+	workspacesUsers,
+	workspaces,
+	users,
+	clients,
+	deals,
+	contacts,
+	companies,
+	workspaceInvites,
+	formationWorkflowSteps,
+	formateurs,
+	modules,
+	seances
+} from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
+
+/** Postgres unique violation error code */
+const PG_UNIQUE_VIOLATION = '23505';
 
 export const getOrCreateUserProfile = async (locals: App.Locals) => {
 	const { user } = await locals.safeGetSession();
@@ -74,36 +90,77 @@ export const getUserWorkspace = async (locals: App.Locals) => {
 /**
  * Ensures the current session user has a row in public.users (same id as auth.users).
  * Use before any insert that references users.id (e.g. contacts.created_by) so FK constraints pass.
+ * If the same email already exists with a different id (e.g. seed or another provider), merges
+ * that row to the auth id so contact creation and other FKs succeed.
  */
 export const ensureUserInPublicUsers = async (locals: App.Locals): Promise<boolean> => {
 	const { user } = await locals.safeGetSession();
 	if (!user) return false;
 
-	await db
-		.insert(users)
-		.values({
-			id: user.id,
-			email: user.email ?? '',
-			firstName:
-				user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
-			lastName:
-				(user.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
-					user.user_metadata?.family_name) ??
-				null,
-			avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
-		})
-		.onConflictDoUpdate({
-			target: users.id,
-			set: {
-				email: user.email ?? '',
-				firstName:
-					user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
-				lastName:
-					(user.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
-						user.user_metadata?.family_name) ??
-					null,
-				avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
-			}
-		});
-	return true;
+	const userPayload = {
+		id: user.id,
+		email: user.email ?? '',
+		firstName:
+			user.user_metadata?.full_name?.split(' ')[0] ?? user.user_metadata?.name ?? null,
+		lastName:
+			(user.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
+				user.user_metadata?.family_name) ??
+			null,
+		avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
+	};
+
+	try {
+		await db
+			.insert(users)
+			.values(userPayload)
+			.onConflictDoUpdate({
+				target: users.id,
+				set: {
+					email: userPayload.email,
+					firstName: userPayload.firstName,
+					lastName: userPayload.lastName,
+					avatarUrl: userPayload.avatarUrl
+				}
+			});
+		return true;
+	} catch (err: unknown) {
+		const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+		const constraint =
+			err && typeof err === 'object' && 'constraint' in err
+				? (err as { constraint: string }).constraint
+				: '';
+		// Same email already in public.users with a different id (e.g. seed or invite)
+		if (code === PG_UNIQUE_VIOLATION && (constraint === 'email_idx' || constraint === 'users_email_key')) {
+			const [existing] = await db
+				.select({ id: users.id })
+				.from(users)
+				.where(eq(users.email, user.email ?? ''))
+				.limit(1);
+			if (!existing || existing.id === user.id) return true;
+
+			const oldId = existing.id;
+			await db.transaction(async (tx) => {
+				await tx.update(workspacesUsers).set({ userId: user.id }).where(eq(workspacesUsers.userId, oldId));
+				await tx.update(contacts).set({ createdBy: user.id }).where(eq(contacts.createdBy, oldId));
+				await tx.update(contacts).set({ ownerId: user.id }).where(eq(contacts.ownerId, oldId));
+				await tx.update(companies).set({ ownerId: user.id }).where(eq(companies.ownerId, oldId));
+				await tx.update(deals).set({ ownerId: user.id }).where(eq(deals.ownerId, oldId));
+				await tx.update(deals).set({ createdBy: user.id }).where(eq(deals.createdBy, oldId));
+				await tx.update(deals).set({ commercialId: user.id }).where(eq(deals.commercialId, oldId));
+				await tx.update(workspaceInvites).set({ invitedBy: user.id }).where(eq(workspaceInvites.invitedBy, oldId));
+				await tx
+					.update(formationWorkflowSteps)
+					.set({ completedBy: user.id })
+					.where(eq(formationWorkflowSteps.completedBy, oldId));
+				await tx.update(seances).set({ createdBy: user.id }).where(eq(seances.createdBy, oldId));
+				await tx.update(seances).set({ instructor: user.id }).where(eq(seances.instructor, oldId));
+				await tx.update(formateurs).set({ userId: user.id }).where(eq(formateurs.userId, oldId));
+				await tx.update(modules).set({ createdBy: user.id }).where(eq(modules.createdBy, oldId));
+				await tx.update(clients).set({ createdBy: user.id }).where(eq(clients.createdBy, oldId));
+				await tx.update(users).set({ id: user.id }).where(eq(users.id, oldId));
+			});
+			return true;
+		}
+		throw err;
+	}
 };
