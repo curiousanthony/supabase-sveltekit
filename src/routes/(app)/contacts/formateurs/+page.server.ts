@@ -97,10 +97,30 @@ export const actions: Actions = {
 			throw e;
 		}
 
-		const [newFormateur] = await db
-			.insert(formateurs)
-			.values({ userId: newUserId, workspaceId, ville, departement })
-			.returning({ id: formateurs.id });
+		let newFormateur: { id: string };
+		try {
+			const [row] = await db
+				.insert(formateurs)
+				.values({ userId: newUserId, workspaceId, ville, departement })
+				.returning({ id: formateurs.id });
+			if (!row) throw new Error('Insert returned no row');
+			newFormateur = row;
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e);
+			if (
+				msg.includes('workspace_id') ||
+				(msg.includes('column') && msg.includes('does not exist')) ||
+				msg.includes('42703')
+			) {
+				return fail(503, {
+					message:
+						'La base de données doit être mise à jour (migration formateurs). Contactez l’administrateur.'
+				});
+			}
+			return fail(500, {
+				message: 'Impossible de créer le formateur. Veuillez réessayer ou contacter l’administrateur.'
+			});
+		}
 
 		throw redirect(303, `/contacts/formateurs/${newFormateur.id}`);
 	}
