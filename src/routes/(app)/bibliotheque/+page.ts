@@ -1,7 +1,6 @@
+import { redirect } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 
-export const load = (async () => {
-    return {
-        pageName: "Bibliothèque",
-    };
-}) satisfies PageLoad;
+export const load: PageLoad = () => {
+	throw redirect(303, '/bibliotheque/programmes');
+};

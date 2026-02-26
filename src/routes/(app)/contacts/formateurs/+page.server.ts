@@ -6,6 +6,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
 const header = {
+	pageName: 'Formateurs',
 	actions: [
 		{
 			type: 'button',
@@ -113,7 +114,10 @@ export const actions: Actions = {
 			if (!row) throw new Error('Insert returned no row');
 			newFormateur = row;
 		} catch (e) {
-			console.error('[createFormateur] formateur insert error:', e instanceof Error ? e.message : String(e));
+			console.error(
+				'[createFormateur] formateur insert error:',
+				e instanceof Error ? e.message : String(e)
+			);
 			return fail(500, { message: 'Impossible de créer le formateur. Veuillez réessayer.' });
 		}
 

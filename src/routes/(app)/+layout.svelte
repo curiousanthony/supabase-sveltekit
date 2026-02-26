@@ -14,11 +14,11 @@
 	import { Kbd } from '$lib/components/ui/kbd/index.js';
 	import { IconArrowBack, IconSettings } from '@tabler/icons-svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
-	import { headerTitleSnippet, headerTitleText } from '$lib/stores/header-store';
+	import { headerTitleSnippet, headerTitleText, headerActionsSnippet } from '$lib/stores/header-store';
 	import { commandPaletteOpen } from '$lib/stores/command-palette-store';
 	import * as Button from '$lib/components/ui/button/index.js';
 	import EyeIcon from '@tabler/icons-svelte/icons/eye';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, beforeNavigate } from '$app/navigation';
 
 	let { data, children } = $props();
 
@@ -26,15 +26,16 @@
 	// 	sitemap.find((item) => item.url === page.url.pathname)?.title || 'Default Page name'
 	// );
 
-	// The page title is now derived ONLY from the data prop,
-	// forcing every page's load function to provide a title.
+	// Page title: prefer page load result (+page.server.ts), then layout load (+layout.server.ts), so +page.server.ts wins.
 	const pageTitle = $derived(
-		page.data?.header?.pageName ?? page.data?.pageName ?? 'Titre de page manquant'
+		page.data?.header?.pageName ??
+			page.data?.pageName ??
+			data?.header?.pageName ??
+			'Titre de page manquant'
 	);
 
-	// Test for headerActions based on page.data
-	// const headeractions = $derived(page.data?.headerActions ?? null);
-	const header = $derived(page.data?.header ?? null);
+	// Header (pageName + actions): same order; layout data ensures we always have a value when layout runs.
+	const header = $derived(page.data?.header ?? data?.header ?? null);
 	const formations = $derived(page.data?.formations ?? []);
 
 	const RECENT_FORMATIONS_COUNT = 3;
@@ -54,6 +55,14 @@
 			open = true;
 			commandPaletteOpen.set(false);
 		}
+	});
+
+	// Reset header snippet stores at navigation start so SiteHeader never renders
+	// a closure from a destroyed component (avoids stale closures regardless of page cleanup order).
+	beforeNavigate(() => {
+		headerTitleSnippet.set(null);
+		headerActionsSnippet.set(null);
+		headerTitleText.set('');
 	});
 
 	// Create a derived variable for recent formations. This is reactive and more performant.
@@ -111,7 +120,7 @@
 		allowedNavUrls={data?.allowedNavUrls}
 	/>
 	<main class="flex h-screen w-full flex-col bg-background">
-		<SiteHeader pageName={$headerTitleText || pageTitle} {header} title={$headerTitleSnippet}>
+		<SiteHeader pageName={$headerTitleText ?? pageTitle} {header} title={$headerTitleSnippet ?? undefined} actions={$headerActionsSnippet ?? undefined}>
 			<!-- {#snippet actions()}
 				<p>Default Actions in (app) +layout.svelte</p>
 			{/snippet} -->
