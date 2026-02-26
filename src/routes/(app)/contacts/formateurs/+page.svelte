@@ -16,13 +16,64 @@
 	let { data }: PageProps = $props();
 	let { formateurs } = $derived(data);
 
+	// ── Sort state (3-state: asc → desc → unsorted) ──────────────────────────
+	type SortKey = 'firstName' | 'lastName' | 'disponible' | 'rating';
+	let sortKey = $state<SortKey | null>(null);
+	let sortDir = $state<'asc' | 'desc'>('asc');
+
+	function toggleSort(key: SortKey) {
+		if (sortKey === key) {
+			if (sortDir === 'asc') {
+				sortDir = 'desc';
+			} else {
+				// third click → unsorted
+				sortKey = null;
+				sortDir = 'asc';
+			}
+		} else {
+			sortKey = key;
+			sortDir = 'asc';
+		}
+	}
+
+	const sortedFormateurs = $derived.by(() => {
+		if (!sortKey) return formateurs ?? [];
+		const list = [...(formateurs ?? [])];
+		const mult = sortDir === 'asc' ? 1 : -1;
+		list.sort((a, b) => {
+			if (sortKey === 'firstName') {
+				const va = (a.user?.firstName ?? '').toLowerCase();
+				const vb = (b.user?.firstName ?? '').toLowerCase();
+				return mult * va.localeCompare(vb, 'fr', { sensitivity: 'base' });
+			}
+			if (sortKey === 'lastName') {
+				const va = (a.user?.lastName ?? '').toLowerCase();
+				const vb = (b.user?.lastName ?? '').toLowerCase();
+				return mult * va.localeCompare(vb, 'fr', { sensitivity: 'base' });
+			}
+			if (sortKey === 'disponible') {
+				// true (available) first on asc
+				const va = a.disponible7J ? 1 : 0;
+				const vb = b.disponible7J ? 1 : 0;
+				return mult * (va - vb);
+			}
+			if (sortKey === 'rating') {
+				const va = Number(a.rating ?? 0);
+				const vb = Number(b.rating ?? 0);
+				return mult * (va - vb);
+			}
+			return 0;
+		});
+		return list;
+	});
+
+	// ── Creation dialog ───────────────────────────────────────────────────────
 	let createDialogOpen = $state(false);
 	let creating = $state(false);
 
 	$effect(() => {
 		if (data.openNewModal) {
 			createDialogOpen = true;
-			// Clean ?new from URL without navigating
 			const url = new URL(window.location.href);
 			url.searchParams.delete('new');
 			goto(url.pathname + (url.search ? url.search : ''), { replaceState: true, noScroll: true });
@@ -123,17 +174,72 @@
 		<Table.Root>
 			<Table.Header>
 				<Table.Row class="hover:bg-transparent border-b">
-					<Table.Head class="w-[220px]">Formateur</Table.Head>
-					<Table.Head class="w-[120px]">Disponibilité</Table.Head>
-					<Table.Head class="w-[140px]">Note</Table.Head>
+					<Table.Head
+						class="w-[160px]"
+						aria-sort={sortKey === 'firstName'
+							? sortDir === 'asc'
+								? 'ascending'
+								: 'descending'
+							: 'none'}
+					>
+						<Table.SortableTableHead
+							label="Prénom"
+							active={sortKey === 'firstName'}
+							direction={sortKey === 'firstName' ? sortDir : null}
+							onclick={() => toggleSort('firstName')}
+						/>
+					</Table.Head>
+					<Table.Head
+						class="w-[160px]"
+						aria-sort={sortKey === 'lastName'
+							? sortDir === 'asc'
+								? 'ascending'
+								: 'descending'
+							: 'none'}
+					>
+						<Table.SortableTableHead
+							label="Nom"
+							active={sortKey === 'lastName'}
+							direction={sortKey === 'lastName' ? sortDir : null}
+							onclick={() => toggleSort('lastName')}
+						/>
+					</Table.Head>
+					<Table.Head
+						class="w-[130px]"
+						aria-sort={sortKey === 'disponible'
+							? sortDir === 'asc'
+								? 'ascending'
+								: 'descending'
+							: 'none'}
+					>
+						<Table.SortableTableHead
+							label="Disponibilité"
+							active={sortKey === 'disponible'}
+							direction={sortKey === 'disponible' ? sortDir : null}
+							onclick={() => toggleSort('disponible')}
+						/>
+					</Table.Head>
+					<Table.Head
+						class="w-[150px]"
+						aria-sort={sortKey === 'rating'
+							? sortDir === 'asc'
+								? 'ascending'
+								: 'descending'
+							: 'none'}
+					>
+						<Table.SortableTableHead
+							label="Note"
+							active={sortKey === 'rating'}
+							direction={sortKey === 'rating' ? sortDir : null}
+							onclick={() => toggleSort('rating')}
+						/>
+					</Table.Head>
 					<Table.Head>Thématiques</Table.Head>
 					<Table.Head class="w-[120px] text-right">Profil</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each formateurs as formateur (formateur.id)}
-					{@const name =
-						[formateur.user?.firstName, formateur.user?.lastName].filter(Boolean).join(' ') || '—'}
+				{#each sortedFormateurs as formateur (formateur.id)}
 					<Table.Row
 						class="cursor-pointer hover:bg-muted/40 transition-colors"
 						tabindex={0}
@@ -152,7 +258,16 @@
 								class="font-medium text-sm hover:underline focus:outline-none focus:underline"
 								onclick={(e: MouseEvent) => e.stopPropagation()}
 							>
-								{name}
+								{formateur.user?.firstName || '—'}
+							</a>
+						</Table.Cell>
+						<Table.Cell>
+							<a
+								href="/contacts/formateurs/{formateur.id}"
+								class="font-medium text-sm hover:underline focus:outline-none focus:underline"
+								onclick={(e: MouseEvent) => e.stopPropagation()}
+							>
+								{formateur.user?.lastName || '—'}
 							</a>
 						</Table.Cell>
 						<Table.Cell>
@@ -207,7 +322,7 @@
 
 	<!-- Mobile card list -->
 	<div class="flex flex-col gap-2 md:hidden">
-		{#each formateurs as formateur (formateur.id)}
+		{#each sortedFormateurs as formateur (formateur.id)}
 			{@const name =
 				[formateur.user?.firstName, formateur.user?.lastName].filter(Boolean).join(' ') || '—'}
 			<button
