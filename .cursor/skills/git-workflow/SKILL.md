@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Executes Git workflows for main/develop/feature branching. Use when the user says "start feature", "commit", "push", "integrate", "merge", "release", "ship to prod", "/push-to-prod", or when the agent is about to run any git commands.
+description: description: Executes Git workflows for main/develop/feature branching. Use when the user says "start feature", "commit", "push", "integrate", "merge", "release", "ship to prod", "/push-to-prod", "/hotfix", "hotfix", "bug in prod", "fix production", "work on issue", "work on [...]", "stash", "rollback", or when the agent is about to run any git commands.
 ---
 
 # Git Workflow
@@ -126,6 +126,30 @@ If the user says "Work on #42" (or similar):
 1. Fetch the issue title/description.
 2. Create a branch from `develop` with a name derived from the issue (e.g. `feat/42-issue-slug`).
 3. Implement; link the branch to the issue in commit messages if desired (e.g. "fix: resolve login redirect (fixes #42)").
+
+## Hotfix Workflow (Production Bugs)
+
+Use this workflow when a bug is discovered in production (`main`) that needs
+to be fixed urgently, without waiting for the normal develop → main cycle.
+**When**: User says "hotfix", "bug in prod", "fix production issue", "urgent fix", or any variation indicating production is broken and needs an immediate patch. For **`/hotfix`**: Use the workflow in `.agent/workflows/hotfix.md`.
+
+### Steps:
+
+1. Stash or commit any WIP on the current feature branch before switching
+2. Checkout `main` and pull latest: `git checkout main && git pull origin main`
+3. Create a hotfix branch off `main`: `git checkout -b hotfix/<short-description>`
+4. Apply the fix, commit with a clear message: `fix: <what was broken and why>`
+5. Merge into `main`: `git checkout main && git merge hotfix/<short-description> && git push origin main`
+6. Merge into `develop` to keep branches in sync: `git checkout develop && git merge hotfix/<short-description> && git push origin develop`
+7. Delete the hotfix branch: `git branch -d hotfix/<short-description>`
+8. Return to the previous feature branch and restore stashed work
+
+### Rules:
+
+- Hotfix branches are ALWAYS cut from `main`, never from `develop`
+- Hotfix branches MUST be merged into BOTH `main` and `develop` before deletion
+- Never leave `main` and `develop` out of sync after a hotfix
+- Keep hotfix scope minimal — only fix what is broken, nothing else
 
 ---
 
