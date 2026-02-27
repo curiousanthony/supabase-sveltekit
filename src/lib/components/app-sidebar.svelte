@@ -232,9 +232,9 @@
 									>
 										<Bell class="size-[1.1em] shrink-0 text-sidebar-foreground/80" />
 										<span class="text-[1.1em] text-sidebar-foreground/80">Notifications</span>
-										{#if inboxWip}
+										{#if inboxWip && sidebar.state !== 'collapsed'}
 											<span
-												class="ms-auto shrink-0 rounded-md bg-gray-200 px-1.5 py-0.5 text-xs font-medium text-foreground"
+												class="ms-auto shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground"
 											>
 												{inboxNavItem?.wipBadge ?? 'Bêta'}
 											</span>
@@ -244,9 +244,9 @@
 									<a href="/inbox" {...props}>
 										<Bell class="size-[1.1em] {currentPath === '/inbox' ? 'text-primary' : ''}" />
 										<span class="text-[1.1em] {currentPath === '/inbox' ? 'text-primary' : ''}">Notifications</span>
-										{#if inboxWip}
+										{#if inboxWip && sidebar.state !== 'collapsed'}
 											<span
-												class="ms-auto shrink-0 rounded-md bg-gray-200 px-1.5 py-0.5 text-xs font-medium text-foreground"
+												class="ms-auto shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground"
 											>
 												{inboxNavItem?.wipBadge ?? 'Bêta'}
 											</span>

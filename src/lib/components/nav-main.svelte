@@ -89,9 +89,9 @@
 									>
 										<item.icon class="size-[1.1em] shrink-0 text-sidebar-foreground/80" />
 										<span class="text-[1.1em] text-sidebar-foreground/80">{item.title}</span>
-										{#if isWip}
+										{#if isWip && sidebar.state !== 'collapsed'}
 											<span
-												class="ms-auto shrink-0 rounded-md bg-gray-200 px-1.5 py-0.5 text-xs font-medium text-foreground"
+												class="ms-auto shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground"
 											>
 												{item.wipBadge ?? 'Bêta'}
 											</span>
@@ -107,7 +107,7 @@
 										>
 											{item.title}
 										</span>
-										{#if isWip}
+										{#if isWip && sidebar.state !== 'collapsed'}
 											<span
 												class="ms-auto shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground"
 											>
