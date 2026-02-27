@@ -8,7 +8,7 @@
 	import { page } from '$app/state';
 
 	const currentPath = $derived(page?.url?.pathname ?? '');
-	import { sitemap, sidebarHidden } from '$lib/settings/config';
+	import { defaultWipTooltip, sitemap, sidebarHidden } from '$lib/settings/config';
 	import VersionSwitcher from './workspace-switcher.svelte';
 	import { openCommandPalette } from '$lib/stores/command-palette-store';
 	import Search from '@lucide/svelte/icons/search';
@@ -62,7 +62,16 @@
 	const mainNav = $derived(
 		navItems.map((item) => {
 			if (item.url === '/contacts') {
-				return { type: 'link' as const, title: 'CRM', url: '/contacts', icon: item.icon };
+				return {
+					type: 'link' as const,
+					title: 'CRM',
+					url: '/contacts',
+					icon: item.icon,
+					wip: item.wip,
+					disabled: item.disabled,
+					wipBadge: item.wipBadge,
+					wipTooltip: item.wipTooltip
+				};
 			}
 			if (item.url === '/outils') {
 				return {
@@ -78,9 +87,23 @@
 					hidden: true
 				};
 			}
-			return { type: 'link' as const, title: item.title, url: item.url, icon: item.icon };
+			return {
+				type: 'link' as const,
+				title: item.title,
+				url: item.url,
+				icon: item.icon,
+				wip: item.wip,
+				disabled: item.disabled,
+				wipBadge: item.wipBadge,
+				wipTooltip: item.wipTooltip
+			};
 		})
 	);
+
+	/** Inbox/Notifications shortcut item from sitemap (for WIP tooltip + disabled state in top bar). */
+	const inboxNavItem = $derived(fullNavItems.find((i) => i.url === '/inbox'));
+	const inboxWip = $derived(inboxNavItem?.wip ?? false);
+	const inboxDisabled = $derived(inboxNavItem?.disabled ?? inboxWip);
 
 	const quickCreateActions = $derived(
 		[
@@ -195,12 +218,41 @@
 						</Sidebar.MenuButton>
 					</Sidebar.MenuItem>
 					<Sidebar.MenuItem>
-						<Sidebar.MenuButton tooltipContent="Notifications" isActive={currentPath === '/inbox'}>
+						<Sidebar.MenuButton
+							tooltipContent={inboxWip && inboxDisabled ? (inboxNavItem?.wipTooltip ?? defaultWipTooltip) : 'Notifications'}
+							tooltipContentProps={inboxWip && inboxDisabled ? { hidden: false, class: 'max-w-xs' } : undefined}
+							isActive={!inboxDisabled && currentPath === '/inbox'}
+						>
 							{#snippet child({ props })}
-								<a href="/inbox" {...props}>
-									<Bell class="size-[1.1em] {currentPath === '/inbox' ? 'text-primary' : ''}" />
-									<span class="text-[1.1em] {currentPath === '/inbox' ? 'text-primary' : ''}">Notifications</span>
-								</a>
+								{#if inboxDisabled}
+									<span
+										{...props}
+										aria-disabled="true"
+										class="{props.class ?? ''} pointer-events-auto! cursor-not-allowed! text-sidebar-foreground/80"
+									>
+										<Bell class="size-[1.1em] shrink-0 text-sidebar-foreground/80" />
+										<span class="text-[1.1em] text-sidebar-foreground/80">Notifications</span>
+										{#if inboxWip}
+											<span
+												class="ms-auto shrink-0 rounded-md bg-gray-200 px-1.5 py-0.5 text-xs font-medium text-foreground"
+											>
+												{inboxNavItem?.wipBadge ?? 'Bêta'}
+											</span>
+										{/if}
+									</span>
+								{:else}
+									<a href="/inbox" {...props}>
+										<Bell class="size-[1.1em] {currentPath === '/inbox' ? 'text-primary' : ''}" />
+										<span class="text-[1.1em] {currentPath === '/inbox' ? 'text-primary' : ''}">Notifications</span>
+										{#if inboxWip}
+											<span
+												class="ms-auto shrink-0 rounded-md bg-gray-200 px-1.5 py-0.5 text-xs font-medium text-foreground"
+											>
+												{inboxNavItem?.wipBadge ?? 'Bêta'}
+											</span>
+										{/if}
+									</a>
+								{/if}
 							{/snippet}
 						</Sidebar.MenuButton>
 					</Sidebar.MenuItem>

@@ -1,3 +1,4 @@
+import type { Component } from 'svelte';
 import logoPath from '$lib/assets/logo.svg';
 import favicon from '$lib/assets/favicon.png';
 import Search from '@lucide/svelte/icons/search';
@@ -14,13 +15,22 @@ import Wrench from '@lucide/svelte/icons/wrench';
 import Users from '@lucide/svelte/icons/users';
 import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 
+/** Default tooltip for WIP nav items when no custom wipTooltip is set. */
+export const defaultWipTooltip =
+	'Cette fonctionnalité est en cours de développement et sera disponible dans une prochaine mise à jour.';
+
 /**
  * Nav items hidden from the sidebar (e.g. for MVP when features are not ready).
  * - Use URL path to hide a sitemap/shortcut item (e.g. '/messagerie', '/qualiopi').
  * - Use 'credits' to hide the credits balance in the secondary nav.
  * Toggle via the Cursor command "Sidebar: hide/unhide nav items".
  */
-export const sidebarHidden: (string | 'credits')[] = ['/messagerie', '/qualiopi', '/outils', 'credits'];
+export const sidebarHidden: (string | 'credits')[] = [
+	'/messagerie',
+	'/qualiopi',
+	'/outils',
+	'credits'
+];
 
 /** Permission required per nav URL. Undefined = visible to all. */
 export const sitemapPermissions: Record<
@@ -50,11 +60,26 @@ export const appInfo = {
 	favicon: favicon
 };
 
-export const sitemap = [
+export type SitemapItem = {
+	title: string;
+	url: string;
+	icon: Component;
+	wip?: boolean;
+	disabled?: boolean;
+	wipBadge?: string;
+	wipTooltip?: string;
+};
+
+export const sitemap: SitemapItem[] = [
 	{
 		title: 'Notifications',
 		url: '/inbox',
-		icon: Bell
+		icon: Bell,
+		wip: true,
+		disabled: true,
+		wipTooltip:
+			'Les notifications sont en cours de développement et seront disponibles dans une prochaine mise à jour.',
+		wipBadge: 'Prochainement'
 	},
 	{
 		title: 'Tableau de bord',
@@ -69,17 +94,30 @@ export const sitemap = [
 	{
 		title: 'Deals',
 		url: '/deals',
-		icon: Handshake
+		icon: Handshake,
+		wip: true,
+		disabled: false,
+		wipTooltip: 'Les deals sont en cours de développement et sont partiellement disponibles.',
+		wipBadge: 'Bêta'
 	},
 	{
 		title: 'Formations',
 		url: '/formations',
-		icon: GraduationCap
+		icon: GraduationCap,
+		wip: true,
+		disabled: false,
+		wipTooltip: 'Les formations sont en cours de développement et sont partiellement disponibles.',
+		wipBadge: 'Bêta'
 	},
 	{
 		title: 'Calendrier',
 		url: '/calendrier',
-		icon: Calendar
+		icon: Calendar,
+		wip: true,
+		disabled: true,
+		wipTooltip:
+			'Le calendrier est en cours de développement et sera disponible dans une prochaine mise à jour.',
+		wipBadge: 'Prochainement'
 	},
 	{
 		title: 'CRM',

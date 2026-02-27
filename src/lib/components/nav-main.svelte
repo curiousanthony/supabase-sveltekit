@@ -6,10 +6,24 @@
 	import { goto } from '$app/navigation';
 	import type { Component } from 'svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import { defaultWipTooltip } from '$lib/settings/config.js';
 
 	const sidebar = Sidebar.useSidebar();
 
-	type NavLink = { type: 'link'; title: string; url: string; icon: Component };
+	type NavLink = {
+		type: 'link';
+		title: string;
+		url: string;
+		icon: Component;
+		/** When true, shows a WIP badge. If `disabled` is not set, WIP items are disabled by default. */
+		wip?: boolean;
+		/** When true, link is not clickable and shown muted. Defaults to true when `wip` is true. */
+		disabled?: boolean;
+		/** Badge text when wip is true. Defaults to "Bêta". */
+		wipBadge?: string;
+		/** Tooltip when hovering a WIP item. Defaults to a message that the feature is coming in a future update. */
+		wipTooltip?: string;
+	};
 	type NavCollapsible = {
 		type: 'collapsible';
 		title: string;
@@ -57,22 +71,51 @@
 		<Sidebar.Menu>
 			{#each items as item (item.type === 'link' ? item.url : item.title)}
 				{#if item.type === 'link'}
+					{@const isDisabled = item.disabled ?? (item.wip ?? false)}
+					{@const isWip = item.wip ?? false}
+					{@const tooltipText = isDisabled && isWip ? (item.wipTooltip ?? defaultWipTooltip) : item.title}
 					<Sidebar.MenuItem>
 						<Sidebar.MenuButton
-							tooltipContent={item.title}
-							isActive={calculateIsActive(item.url, currentPath)}
+							tooltipContent={tooltipText}
+							tooltipContentProps={isDisabled && isWip ? { hidden: false, class: 'max-w-xs' } : undefined}
+							isActive={!isDisabled && calculateIsActive(item.url, currentPath)}
 						>
 							{#snippet child({ props })}
-								<a href={item.url} {...props}>
-									<item.icon
-										class="size-[1.1em] shrink-0 {calculateIsActive(item.url, currentPath) ? 'text-primary' : ''}"
-									/>
+								{#if isDisabled}
 									<span
-										class="text-[1.1em] {calculateIsActive(item.url, currentPath) ? 'text-primary' : ''}"
+										{...props}
+										aria-disabled="true"
+										class="{props.class ?? ''} pointer-events-auto! cursor-not-allowed! text-sidebar-foreground/80"
 									>
-										{item.title}
+										<item.icon class="size-[1.1em] shrink-0 text-sidebar-foreground/80" />
+										<span class="text-[1.1em] text-sidebar-foreground/80">{item.title}</span>
+										{#if isWip}
+											<span
+												class="ms-auto shrink-0 rounded-md bg-gray-200 px-1.5 py-0.5 text-xs font-medium text-foreground"
+											>
+												{item.wipBadge ?? 'Bêta'}
+											</span>
+										{/if}
 									</span>
-								</a>
+								{:else}
+									<a href={item.url} {...props}>
+										<item.icon
+											class="size-[1.1em] shrink-0 {calculateIsActive(item.url, currentPath) ? 'text-primary' : ''}"
+										/>
+										<span
+											class="text-[1.1em] {calculateIsActive(item.url, currentPath) ? 'text-primary' : ''}"
+										>
+											{item.title}
+										</span>
+										{#if isWip}
+											<span
+												class="ms-auto shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground"
+											>
+												{item.wipBadge ?? 'Bêta'}
+											</span>
+										{/if}
+									</a>
+								{/if}
 							{/snippet}
 						</Sidebar.MenuButton>
 					</Sidebar.MenuItem>
