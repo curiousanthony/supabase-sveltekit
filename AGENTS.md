@@ -14,6 +14,13 @@ Mentore Manager is a monolithic SvelteKit 5 app backed by Supabase (Postgres, Au
 
 The `.env` file is created from `.env.dev.example`. The only keys that must be filled are `PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (from `supabase status`), and `INVITE_TOKEN_SECRET` (any random hex string, e.g. `openssl rand -hex 32`). OAuth keys (`GITHUB_*`, `GOOGLE_*`) are optional for local dev.
 
+### Authentication
+
+Only **Google OAuth** is implemented for login. The email/password form on `/auth/login` is a placeholder (no server action); it will be replaced with Magic Link sign-in in the future. To test the authenticated app without a real Google account, create a user via the Supabase Admin API and sign in programmatically:
+
+1. Create a confirmed test user via the Supabase Admin API (`POST $API_URL/auth/v1/admin/users` with `Authorization: Bearer <SERVICE_ROLE_KEY>`, body `{"email":"test@mentore.dev","password":"Test1234!","email_confirm":true}`). Get `API_URL`, `SERVICE_ROLE_KEY`, and `ANON_KEY` from `supabase status`.
+2. In the browser console on `/auth/login`, import `@supabase/supabase-js`, create a client with `API_URL` and `ANON_KEY`, call `signInWithPassword()`, then `window.location.href = '/'`.
+
 ### Known issues
 
 - **Duplicate migration**: `supabase/migrations/20260226110000_bibliotheque_tables.sql` overlaps with `20260225190000_bibliotheque_tables.sql`. This migration has been made idempotent (using `DO $$ ... EXCEPTION WHEN duplicate_object ...$$` blocks and `IF NOT EXISTS`) to avoid `supabase start` / `supabase db reset` failures.
