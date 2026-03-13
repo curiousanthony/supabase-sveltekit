@@ -1,0 +1,40 @@
+---
+description: Never claim changes work without running migrations, terminal commands, and testing the user flow (browser or E2E). Be fully autonomous.
+alwaysApply: true
+---
+
+# Verify Before Claim
+
+When you implement or fix something, **do not say it works until you have verified it yourself**.
+
+## Required verification
+
+1. **Terminal**
+   - Run relevant commands (build, check, lint, tests).
+   - Fix any new errors; do not leave broken builds or failing tests.
+
+2. **Migrations**
+   - If you add or change Supabase (or other) migrations, **run them yourself** (e.g. `supabase db reset`, `supabase migration up`, or applying the migration SQL directly when reset is not possible).
+   - Confirm they apply without errors before telling the user to run anything.
+
+3. **User flow**
+   - Test the actual flow as a user would: open the app in the browser, perform the action (e.g. submit a form, click the 3-dot menu, upload a file).
+   - If the environment blocks full E2E (e.g. no auth, no file upload in automation), at least run migrations and build/check, and state what you could not test.
+
+4. **After `supabase db reset`**
+   - A reset leaves no workspaces associated to users; the browser will show the login form because no user is logged in.
+   - App features can only be tested in the browser when a user is logged in and belongs to a workspace. To get there, the agent may either:
+     - **Option A:** Create a fake user and workspace (e.g. via seed or SQL), then log in as that user in the browser and continue testing.
+     - **Option B:** Ask the human to log in with their Google account, wait 30 seconds after asking, then continue testing once the agent sees that the human has logged in. Success is confirmed when the agent lands on the app in a user's workspace or on the onboarding route (where the user gives a name to their new workspace and clicks create).
+
+## Do not
+
+- Say "you need to run the migration" without having run it yourself first when possible.
+- Claim a fix works without running the app or the affected code path.
+- Rely on the user to run commands to validate your changes.
+
+## Do
+
+- Run migrations locally (or equivalent) and confirm success.
+- Use the browser (e.g. MCP or Playwright) to test UI flows when the app is running.
+- Report what you verified and what you could not (e.g. "Upload works after applying the migration; 3-dot menu opens on Programmes. I could not test file upload in the browser due to automation limits.").

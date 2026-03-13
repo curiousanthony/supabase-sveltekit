@@ -1,19 +1,33 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
-	import { enhance } from '$app/forms';
-	import { Button } from '$lib/components/ui/button';
+	import { resolve } from '$app/paths';
+	import { Button, buttonVariants } from '$lib/components/ui/button';
+	import { cn } from '$lib/utils.js';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import ProgrammeRowActions from './programme-row-actions.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
-	import MoreHorizontal from '@lucide/svelte/icons/more-horizontal';
-	import Pencil from '@lucide/svelte/icons/pencil';
-	import Copy from '@lucide/svelte/icons/copy';
-	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import PackageOpen from '@lucide/svelte/icons/package-open';
 
 	let { data }: PageProps = $props();
 	let { programmes } = $derived(data);
+
+	let deleteDialogOpen = $state(false);
+	let pendingDeleteId = $state<string | null>(null);
+
+	function openDeleteDialog(id: string) {
+		pendingDeleteId = id;
+		deleteDialogOpen = true;
+	}
+
+	function confirmDeleteProgramme() {
+		if (!pendingDeleteId) return;
+		const form = document.getElementById(`delete-programme-${pendingDeleteId}`);
+		if (form instanceof HTMLFormElement) form.requestSubmit();
+		deleteDialogOpen = false;
+		pendingDeleteId = null;
+	}
 
 	const statutColors: Record<string, string> = {
 		Brouillon: 'bg-muted text-muted-foreground',
@@ -72,7 +86,7 @@
 						<Table.Row>
 							<Table.Cell>
 								<a
-									href="/bibliotheque/programmes/{prog.id}"
+									href={resolve(`/bibliotheque/programmes/${prog.id}`)}
 									class="font-medium hover:underline"
 								>
 									{prog.titre}
@@ -96,60 +110,14 @@
 								{prog.moduleCount}
 							</Table.Cell>
 							<Table.Cell>
-								<DropdownMenu.Root>
-									<DropdownMenu.Trigger>
-										{#snippet child({ props })}
-											<Button variant="ghost" size="icon" class="size-8" {...props}>
-												<MoreHorizontal class="size-4" />
-											</Button>
-										{/snippet}
-									</DropdownMenu.Trigger>
-									<DropdownMenu.Content align="end">
-										<DropdownMenu.Item>
-											{#snippet child({ props })}
-												<a href="/bibliotheque/programmes/{prog.id}/modifier" {...props}>
-													<Pencil class="mr-2 size-4" />
-													Modifier
-												</a>
-											{/snippet}
-										</DropdownMenu.Item>
-										<form method="POST" action="?/duplicate" use:enhance>
-											<input type="hidden" name="id" value={prog.id} />
-											<DropdownMenu.Item onSelect={(e) => e.preventDefault()}>
-												<button type="submit" class="flex w-full items-center">
-													<Copy class="mr-2 size-4" />
-													Dupliquer
-												</button>
-											</DropdownMenu.Item>
-										</form>
-										<DropdownMenu.Separator />
-										<form
-											method="POST"
-											action="?/delete"
-											use:enhance
-											onsubmit={(e) => {
-												const form = e.currentTarget as HTMLFormElement;
-												if (form.dataset.confirmed !== '1') {
-													e.preventDefault();
-													if (!confirm('Supprimer ce programme ? Cette action est irréversible.')) return;
-													form.dataset.confirmed = '1';
-													form.requestSubmit();
-												}
-											}}
-										>
-											<input type="hidden" name="id" value={prog.id} />
-											<DropdownMenu.Item
-												class="text-destructive"
-												onSelect={(e) => e.preventDefault()}
-											>
-												<button type="submit" class="flex w-full items-center">
-													<Trash2 class="mr-2 size-4" />
-													Supprimer
-												</button>
-											</DropdownMenu.Item>
-										</form>
-									</DropdownMenu.Content>
-								</DropdownMenu.Root>
+								<ProgrammeRowActions
+									id={prog.id}
+									onDeleteClick={openDeleteDialog}
+									onDeleteComplete={() => {
+										deleteDialogOpen = false;
+										pendingDeleteId = null;
+									}}
+								/>
 							</Table.Cell>
 						</Table.Row>
 					{/each}
@@ -157,4 +125,26 @@
 			</Table.Root>
 		</div>
 	{/if}
+
+	<AlertDialog.Root bind:open={deleteDialogOpen}>
+		<AlertDialog.Content interactOutsideBehavior="close">
+			<AlertDialog.Header>
+				<AlertDialog.Title>Supprimer ce programme ?</AlertDialog.Title>
+				<AlertDialog.Description>
+					Cette action est irréversible. Le programme sera définitivement supprimé.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel class={cn(buttonVariants({ variant: 'outline' }))}>
+					Annuler
+				</AlertDialog.Cancel>
+				<AlertDialog.Action
+					class={cn(buttonVariants({ variant: 'destructive' }))}
+					onclick={confirmDeleteProgramme}
+				>
+					Supprimer
+				</AlertDialog.Action>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 </div>

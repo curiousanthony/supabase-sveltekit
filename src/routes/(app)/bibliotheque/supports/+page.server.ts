@@ -2,7 +2,7 @@ import { db } from '$lib/db';
 import { biblioSupports } from '$lib/db/schema';
 import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
 import { eq, desc, and } from 'drizzle-orm';
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load = (async ({ locals }) => {
@@ -129,7 +129,7 @@ export const actions: Actions = {
 			return fail(500, { message: "Erreur lors de l'insert" });
 		}
 
-		return { success: true };
+		throw redirect(303, '/bibliotheque/supports');
 	},
 
 	delete: async ({ request, locals }) => {

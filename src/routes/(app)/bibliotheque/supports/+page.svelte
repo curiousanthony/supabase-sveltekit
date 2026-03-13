@@ -1,19 +1,18 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
+	import { resolve } from '$app/paths';
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Table from '$lib/components/ui/table';
 	import * as Dialog from '$lib/components/ui/dialog';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import SupportRowActions from './support-row-actions.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Upload from '@lucide/svelte/icons/upload';
 	import Link from '@lucide/svelte/icons/link';
 	import FileText from '@lucide/svelte/icons/file-text';
-	import MoreHorizontal from '@lucide/svelte/icons/more-horizontal';
-	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import FileIcon from '@lucide/svelte/icons/file';
 	import { headerActionsSnippet } from '$lib/stores/header-store';
@@ -92,7 +91,7 @@
 						<Table.Row>
 							<Table.Cell>
 								<a
-									href="/bibliotheque/supports/{s.id}"
+									href={resolve(`/bibliotheque/supports/${s.id}`)}
 									class="font-medium hover:underline"
 								>
 									{s.titre}
@@ -121,45 +120,24 @@
 										{s.fileName} ({formatSize(s.fileSize)})
 									</span>
 								{:else if s.url}
+									<!-- eslint-disable svelte/no-navigation-without-resolve -- external URL -->
 									<a
 										href={s.url}
 										target="_blank"
 										rel="noopener noreferrer"
 										class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+										aria-label="Ouvrir le lien (nouvelle fenêtre)"
 									>
 										{s.url}
 										<ExternalLink class="size-3" />
 									</a>
+									<!-- eslint-enable svelte/no-navigation-without-resolve -->
 								{:else}
 									<span class="text-muted-foreground">—</span>
 								{/if}
 							</Table.Cell>
 							<Table.Cell>
-								<DropdownMenu.Root>
-									<DropdownMenu.Trigger>
-										{#snippet child({ props })}
-										<Button variant="ghost" size="icon" class="size-8" aria-label="Actions du support" {...props}>
-											<MoreHorizontal class="size-4" />
-										</Button>
-										{/snippet}
-									</DropdownMenu.Trigger>
-									<DropdownMenu.Content align="end">
-										<DropdownMenu.Separator />
-										<form method="POST" action="?/delete" use:enhance>
-											<input type="hidden" name="id" value={s.id} />
-											<DropdownMenu.Item
-												type="submit"
-												class="text-destructive"
-												onSelect={(e) => e.preventDefault()}
-											>
-												<button type="submit" class="flex w-full items-center">
-													<Trash2 class="mr-2 size-4" />
-													Supprimer
-												</button>
-											</DropdownMenu.Item>
-										</form>
-									</DropdownMenu.Content>
-								</DropdownMenu.Root>
+								<SupportRowActions id={s.id} />
 							</Table.Cell>
 						</Table.Row>
 					{/each}
@@ -181,14 +159,6 @@
 			method="POST"
 			action="?/upload"
 			enctype="multipart/form-data"
-			use:enhance={() => {
-				return async ({ result, update }) => {
-					await update();
-					if (result.type === 'success') {
-						showUploadDialog = false;
-					}
-				};
-			}}
 		>
 			<div class="flex flex-col gap-4 py-4">
 				<div class="flex flex-col gap-2">
