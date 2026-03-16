@@ -19,7 +19,6 @@
 	import Euro from '@lucide/svelte/icons/euro';
 	import User2 from '@lucide/svelte/icons/user-round';
 	import Building2 from '@lucide/svelte/icons/building-2';
-	import GripVertical from '@lucide/svelte/icons/grip-vertical';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -186,19 +185,14 @@
 										>
 											<Card.Root
 												class={cn(
-													'cursor-grab border transition-all hover:shadow-sm active:cursor-grabbing',
+													'cursor-pointer border transition-all hover:shadow-sm hover:ring-2 hover:ring-primary/20 active:cursor-grabbing',
 													sortable.isDragging.current && 'opacity-50 shadow-lg ring-2 ring-primary/20',
 													stage === 'Gagné' && 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30',
 													stage === 'Perdu' && 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30'
 												)}
 											>
 												<div class="p-3 space-y-2">
-													<div class="flex items-start justify-between gap-2">
-														<p class="text-sm font-medium leading-tight line-clamp-2">{deal.name}</p>
-														<div class="shrink-0 pt-0.5 text-muted-foreground/40" {@attach sortable.handleRef}>
-															<GripVertical class="size-4" />
-														</div>
-													</div>
+													<p class="text-sm font-medium leading-tight line-clamp-2">{deal.name}</p>
 
 													{#if contactLabel(deal) || companyFromDeal(deal)}
 														<div class="flex flex-col gap-0.5">

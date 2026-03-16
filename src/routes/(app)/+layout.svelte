@@ -119,7 +119,7 @@
 		roleLabel={data?.roleLabel}
 		allowedNavUrls={data?.allowedNavUrls}
 	/>
-	<main class="flex h-screen w-full flex-col bg-background">
+	<main class="flex h-screen w-full flex-col overflow-hidden bg-background">
 		<SiteHeader pageName={$headerTitleText ?? pageTitle} {header} title={$headerTitleSnippet ?? undefined} actions={$headerActionsSnippet ?? undefined}>
 			<!-- {#snippet actions()}
 				<p>Default Actions in (app) +layout.svelte</p>
@@ -149,7 +149,7 @@
 				</div>
 			</div>
 		{/if}
-		<div class="flex min-w-0 flex-1 flex-col gap-4 p-4">
+		<div class="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
 			{@render children()}
 		</div>
 	</main>

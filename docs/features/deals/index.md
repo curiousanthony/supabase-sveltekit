@@ -21,12 +21,29 @@ Vous perdez des opportunités commerciales parce que vous oubliez de relancer ? 
 
 Les Deals, ce sont vos opportunités commerciales. Chaque prospect intéressé devient un Deal. Vous le faites avancer dans votre pipeline (Lead → Qualification → Proposition → Négociation → Gagné). Deal gagné ? 1 clic, la formation est créée avec toutes les informations. Zéro ressaisie, zéro erreur.
 
+Les Deals s'appuient sur le [CRM](../crm/index.md) pour les contacts et les entreprises : chaque Deal est lié à un contact et/ou une entreprise de votre CRM.
+
 **Bénéfices clés :**
 - ✅ **Pipeline visuel** : Kanban comme Trello, glissez-déposez vos Deals
 - ✅ **Zéro perte** : Tous vos prospects sont suivis, aucun oubli de relance
 - ✅ **Transformation magique** : Deal gagné → Formation créée automatiquement
 - ✅ **Analyse des besoins** : Notes sur les besoins = conformité Qualiopi Indicateur 3
 - ✅ **Prévisions** : Voyez votre chiffre d'affaires potentiel en temps réel
+
+---
+
+## 📋 Vue d'ensemble
+
+Un Deal contient 3 volets, accessibles via les onglets de la fiche Deal :
+
+### Aperçu
+Informations générales du Deal : nom, montant, source, probabilité, description, commercial responsable, et lien vers la formation créée.
+
+### Financement
+Gestion du financement : montant financé, type de financement (OPCO, CPF…), statut, référence dossier, et indicateur de reste à charge.
+
+### Logistique
+Détails opérationnels : format (présentiel, distanciel…), intra/inter, durée, nombre d'apprenants, dates souhaitées, modalités.
 
 ---
 
@@ -41,7 +58,7 @@ C'est enregistrer une opportunité commerciale (un prospect intéressé par une 
 Pour ne jamais perdre un prospect et suivre toutes vos opportunités au même endroit.
 
 **Comment l'utiliser ?**
-1. Ouvrez CRM → Deals
+1. Ouvrez Deals dans le menu latéral
 2. Cliquez sur "Nouveau Deal"
 3. Remplissez les informations :
    - **Nom du Deal** : "Formation Excel TechCorp" (descriptif clair)
@@ -74,21 +91,23 @@ Pour voir où en est chaque opportunité et savoir quoi faire ensuite.
 
 **Comment l'utiliser ?**
 Méthode 1 - Vue Kanban (glisser-déposer) :
-1. Ouvrez CRM → Deals
-2. Vous voyez 5 colonnes (les 5 étapes)
-3. Glissez le Deal d'une colonne à l'autre
+1. Ouvrez Deals
+2. Vous voyez les colonnes correspondant aux étapes
+3. Glissez le Deal d'une colonne à l'autre (cliquez n'importe où sur la carte et déplacez-la)
 4. Le Deal change d'étape automatiquement
 
 Méthode 2 - Depuis la fiche Deal :
 1. Ouvrez le Deal
-2. Changez l'étape dans le menu déroulant
-3. Enregistrez
+2. Cliquez sur l'étape souhaitée dans la barre d'étapes en haut de page
+3. Le changement est enregistré automatiquement
 
-**Les 5 étapes :**
-- **Lead** : Premier contact, prospect intéressé
-- **Qualification** : Vous qualifiez le besoin, le budget, la décision
-- **Proposition** : Vous envoyez un devis ou une proposition
-- **Négociation** : Discussions sur le prix, les dates, les modalités
+**Les étapes :**
+- **Suspect** : Opportunité identifiée, à contacter
+- **Prospect** : Premier contact établi
+- **Négociation** : Discussions en cours sur les modalités
+- **Admin** : Formalités administratives (devis, convention)
+- **Signature** : En attente de signature
+- **Financement** : En attente de validation du financement
 - **Gagné** : Deal signé, transformez en Formation !
 - **Perdu** : Prospect pas intéressé ou perdu face à la concurrence
 
@@ -140,13 +159,11 @@ Pour garder votre pipeline propre et analyser vos pertes.
 
 **Comment l'utiliser ?**
 1. Ouvrez le Deal
-2. Changez l'étape en "Perdu"
-3. Ajoutez une note : Pourquoi avez-vous perdu ?
-   - "Prix trop élevé"
-   - "Concurrent moins cher"
-   - "Client a reporté"
-   - "Pas de budget"
-4. Enregistrez
+2. Cliquez sur l'étape "Perdu" dans la barre d'étapes
+3. Une fenêtre apparaît pour indiquer la raison :
+   - Sélectionnez la raison (prix, concurrent, timing…)
+   - Ajoutez des détails si nécessaire
+4. Confirmez
 
 **Astuces :**
 - 💡 **Analysez vos pertes** : Si vous perdez souvent sur le prix, revoyez vos tarifs ou votre argumentaire
@@ -166,8 +183,8 @@ Le prospect change d'avis, le budget augmente, la date est décalée...
 **Comment l'utiliser ?**
 1. Ouvrez le Deal
 2. Cliquez sur le champ à modifier (édition inline)
-3. Modifiez
-4. Enregistrez
+3. Modifiez la valeur
+4. Appuyez sur Entrée ou cliquez ailleurs pour enregistrer
 
 **Astuces :**
 - 💡 **Notes chronologiques** : Ajoutez la date dans les notes : "15/02 : relancé par téléphone"
@@ -208,15 +225,15 @@ Pour piloter votre activité commerciale : "Combien de Deals en Négociation ? Q
 Sophie reçoit un email de Marc Dupont (TechCorp) qui cherche une formation Excel pour 10 personnes.
 
 **Étapes :**
-1. Sophie crée le contact Marc Dupont (si pas déjà fait)
-2. Sophie crée l'entreprise TechCorp (si pas déjà fait)
+1. Sophie crée le contact Marc Dupont dans le [CRM](../crm/contacts.md) (si pas déjà fait)
+2. Sophie crée l'entreprise TechCorp dans le [CRM](../crm/entreprises.md) (si pas déjà fait)
 3. Sophie ouvre Deals → Nouveau Deal
 4. Elle remplit :
    - Nom : "Formation Excel TechCorp"
    - Entreprise : TechCorp
    - Contact : Marc Dupont
    - Montant : 3000€ (300€/personne × 10)
-   - Étape : Lead
+   - Étape : Suspect
    - Date souhaitée : Mars 2026
    - Type : Intra-entreprise
    - Financement : OPCO
@@ -235,12 +252,12 @@ En 3 minutes, Sophie a créé le Deal et peut suivre cette opportunité. Rien ne
 Marc de TechCorp a répondu positivement. Sophie fait avancer le Deal.
 
 **Étapes :**
-1. **Jour 1** : Sophie glisse le Deal de "Lead" à "Qualification"
+1. **Jour 1** : Sophie glisse le Deal de "Suspect" à "Prospect"
    - Elle appelle Marc pour qualifier : budget OK, 10 personnes confirmées, décision sous 2 semaines
-2. **Jour 3** : Sophie glisse le Deal en "Proposition"
+2. **Jour 3** : Sophie glisse le Deal en "Négociation"
    - Elle envoie un devis détaillé avec le programme Excel Niveau 1
 3. **Jour 8** : Marc répond, il négocie le prix
-   - Sophie glisse le Deal en "Négociation"
+   - Sophie passe le Deal en "Admin"
    - Elle propose -10% si signature sous 5 jours
    - Elle met à jour le montant : 2700€
 4. **Jour 10** : Marc signe !
@@ -249,7 +266,7 @@ Marc de TechCorp a répondu positivement. Sophie fait avancer le Deal.
    - La formation est créée automatiquement
 
 **Résultat :**
-En 10 jours, le Deal est passé de Lead à Gagné. Sophie a suivi chaque étape, et la transformation en Formation a pris 2 clics.
+En 10 jours, le Deal est passé de Suspect à Gagné. Sophie a suivi chaque étape, et la transformation en Formation a pris 2 clics.
 
 ---
 
@@ -261,10 +278,10 @@ Thomas, directeur, veut savoir où en est son activité commerciale ce mois-ci.
 **Étapes :**
 1. Thomas ouvre Deals → Vue Kanban
 2. Il voit :
-   - Lead : 5 Deals (15 000€ potentiel)
-   - Qualification : 3 Deals (9 000€)
-   - Proposition : 4 Deals (18 000€)
-   - Négociation : 2 Deals (12 000€)
+   - Suspect : 5 Deals (15 000€ potentiel)
+   - Prospect : 3 Deals (9 000€)
+   - Négociation : 4 Deals (18 000€)
+   - Signature : 2 Deals (12 000€)
    - Gagné : 8 Deals (24 000€ signés ce mois)
 3. Il identifie un problème : un Deal en Négociation depuis 3 semaines sans mouvement
 4. Il ouvre le Deal, voit que Sophie n'a pas relancé
@@ -310,7 +327,7 @@ Les notes dans les Deals prouvent que vous avez analysé les besoins. Exemple de
 **Pourquoi Mentore Manager est différent :**
 - ⚡ **Plus rapide** : Deal gagné → Formation = 2 clics vs 15 minutes de ressaisie
 - 😊 **Plus fun** : Kanban comme Trello, glissez vos cartes, c'est visuel et motivant
-- 🎯 **Plus simple** : Lead → Gagné en 5 étapes claires, pas de pipeline à 15 étapes incompréhensibles
+- 🎯 **Plus simple** : Pipeline clair en 8 étapes, pas de tableau de bord à 15 niveaux incompréhensibles
 
 ---
 
@@ -326,13 +343,13 @@ R: Non, vous pouvez créer une Formation directement. Les Deals sont pour la ges
 R: Illimité ! Créez autant de Deals que vous avez de prospects.
 
 **Q: Est-ce que je peux revenir en arrière dans le pipeline ?**  
-R: Oui ! Si un Deal en Négociation revient à Qualification (client change d'avis), glissez-le en arrière.
+R: Oui ! Si un Deal en Négociation revient à Prospect (client change d'avis), cliquez sur l'étape correspondante.
 
 **Q: Que se passe-t-il si je supprime un Deal converti en Formation ?**  
 R: Le Deal et la Formation sont liés mais indépendants. Si vous supprimez le Deal, la Formation reste.
 
 **Q: Puis-je assigner un Deal à un commercial ?**  
-R: Fonctionnalité à venir. Pour l'instant, utilisez les notes : "Assigné à Sophie".
+R: Oui ! Dans la fiche Deal, onglet Aperçu, sélectionnez le commercial responsable.
 
 **Q: Comment voir tous mes Deals gagnés ce mois ?**  
 R: Filtrez par étape "Gagné" + date de modification ce mois.
@@ -344,9 +361,9 @@ R: Fonctionnalité à venir. Vous pourrez exporter pour analyse ou reporting.
 
 ## 🎓 Pour aller plus loin
 
-- [Retour à la vue d'ensemble du CRM](./index.md)
-- [Lier des Contacts à vos Deals](./contacts.md)
-- [Lier des Entreprises à vos Deals](./entreprises.md)
+- [Gérer vos Contacts (CRM)](../crm/contacts.md)
+- [Gérer vos Entreprises (CRM)](../crm/entreprises.md)
+- [Vue d'ensemble du CRM](../crm/index.md)
 - [Créer une Formation depuis un Deal gagné](#)
 - [Tutoriel : Optimiser votre pipeline de vente](#)
 

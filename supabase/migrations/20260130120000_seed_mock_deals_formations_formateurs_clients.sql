@@ -56,28 +56,4 @@ CROSS JOIN (VALUES
 ) AS n(name, duree, modalite, statut, id_in_workspace)
 WHERE EXISTS (SELECT 1 FROM one);
 
--- 5) Deals (3 rows), linked to first workspace, user, and the 3 clients
-WITH one AS (
-  SELECT w.id AS workspace_id, wu.user_id
-  FROM workspaces w
-  JOIN workspaces_users wu ON wu.workspace_id = w.id
-  LIMIT 1
-),
-clients_ordered AS (
-  SELECT id, row_number() OVER (ORDER BY legal_name) AS rn
-  FROM clients
-  WHERE workspace_id = (SELECT workspace_id FROM one LIMIT 1)
-  LIMIT 3
-),
-deal_rows AS (
-  SELECT * FROM (VALUES
-    (1, 'Deal Acme', 'Formation leadership', 'Lead', 5000),
-    (2, 'Deal Globex', 'Accompagnement stratégie', 'Qualification', 12000),
-    (3, 'Deal Soylent', 'Formation produit', 'Proposition', 8000)
-  ) AS t(rn, name, description, stage, value)
-)
-INSERT INTO deals (workspace_id, client_id, name, description, stage, value, currency, owner_id, created_by)
-SELECT one.workspace_id, co.id, dr.name, dr.description, dr.stage::deal_stage, dr.value, 'EUR', one.user_id, one.user_id
-FROM one
-JOIN clients_ordered co ON true
-JOIN deal_rows dr ON dr.rn = co.rn;
+-- 5) Deals seed removed (no sample deals for real workspaces)

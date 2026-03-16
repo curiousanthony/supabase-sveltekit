@@ -44,7 +44,7 @@
 			<!-- <Separator orientation="vertical" class="mx-2 data-[orientation=vertical]:h-4" /> -->
 		{/if}
 		<!-- Title, Formation ID (#n), then status badge (order per design) -->
-		<div class="flex items-center gap-2">
+		<div class="flex min-w-0 items-center gap-2">
 			{#if title}
 				{@render title()}
 			{:else}

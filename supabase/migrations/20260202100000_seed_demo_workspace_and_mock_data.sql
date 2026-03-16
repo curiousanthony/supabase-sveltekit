@@ -76,35 +76,4 @@ WHERE NOT EXISTS (
   LIMIT 1
 );
 
--- Deals (3 rows) linked to demo workspace and the 3 clients we just created/verified
-WITH demo_clients AS (
-  SELECT id, row_number() OVER (ORDER BY legal_name) AS rn
-  FROM clients
-  WHERE workspace_id = 'b0000001-0000-4000-8000-000000000001'::uuid
-  LIMIT 3
-),
-deal_rows AS (
-  SELECT * FROM (VALUES
-    (1, 'Deal Acme – Leadership', 'Formation leadership équipe management', 'Qualification', 8500),
-    (2, 'Deal Globex – Excel', 'Formation Excel avancé 10 personnes', 'Proposition', 12000),
-    (3, 'Deal Dupont – Anglais', 'Anglais business CPF', 'Lead', 3200)
-  ) AS t(rn, name, description, stage, value)
-)
-INSERT INTO deals (workspace_id, client_id, name, description, stage, value, currency, owner_id, created_by)
-SELECT
-  'b0000001-0000-4000-8000-000000000001'::uuid,
-  dc.id,
-  dr.name,
-  dr.description,
-  dr.stage::deal_stage,
-  dr.value,
-  'EUR',
-  'b0000002-0000-4000-8000-000000000002'::uuid,
-  'b0000002-0000-4000-8000-000000000002'::uuid
-FROM demo_clients dc
-JOIN deal_rows dr ON dr.rn = dc.rn
-WHERE NOT EXISTS (
-  SELECT 1 FROM deals d
-  WHERE d.workspace_id = 'b0000001-0000-4000-8000-000000000001'::uuid
-  LIMIT 1
-);
+-- Deals seed removed (no sample deals for demo workspace)

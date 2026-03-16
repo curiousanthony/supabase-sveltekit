@@ -3,7 +3,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import * as Tabs from '$lib/components/ui/tabs';
+	import NavTabs from '$lib/components/nav-tabs.svelte';
 	import * as Select from '$lib/components/ui/select';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Popover from '$lib/components/ui/popover';
@@ -13,6 +13,7 @@
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { cn } from '$lib/utils';
 	import {
@@ -30,26 +31,23 @@
 		userDisplayName,
 		type DealStage
 	} from '$lib/crm/deal-schema';
-	import User2 from '@lucide/svelte/icons/user-round';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import BookOpen from '@lucide/svelte/icons/book-open';
-	import Euro from '@lucide/svelte/icons/euro';
-	import CalendarDays from '@lucide/svelte/icons/calendar-days';
-	import Clock from '@lucide/svelte/icons/clock';
-	import Users from '@lucide/svelte/icons/users';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Phone from '@lucide/svelte/icons/phone';
 	import Briefcase from '@lucide/svelte/icons/briefcase';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Pencil from '@lucide/svelte/icons/pencil';
-	import Check from '@lucide/svelte/icons/check';
-	import X from '@lucide/svelte/icons/x';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
+	import LayoutGrid from '@lucide/svelte/icons/layout-grid';
+	import Banknote from '@lucide/svelte/icons/banknote';
+	import Truck from '@lucide/svelte/icons/truck';
 	import ContactModal from '$lib/components/crm/ContactModal.svelte';
 
 	let { data }: PageProps = $props();
 	let { deal, contacts, companies, programmes, members, header } = $derived(data);
 
+	let activeTab = $state('apercu');
 	let openCloseDialog = $state(false);
 	let openLossDialog = $state(false);
 	let lossReason = $state<string>('');
@@ -69,10 +67,14 @@
 	// Inline edit state
 	let editingField = $state<string | null>(null);
 	let editValue = $state('');
+	let editInputEl = $state<HTMLInputElement | null>(null);
 
-	function startEdit(field: string, currentValue: string | number | null | undefined) {
+	async function startEdit(field: string, currentValue: string | number | null | undefined) {
 		editingField = field;
 		editValue = currentValue?.toString() ?? '';
+		await tick();
+		editInputEl?.focus();
+		editInputEl?.select();
 	}
 
 	function cancelEdit() {
@@ -475,22 +477,15 @@
 					<div class="flex items-start justify-between gap-4">
 						<div class="min-w-0 flex-1">
 							<p class="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-							{#if editingField === field}
-								<div class="flex items-center gap-2">
-									<Input
-										type={type}
-										bind:value={editValue}
-										onkeydown={(e) => handleFieldKeydown(e, field)}
-										autofocus
-										class="h-8 text-sm"
-									/>
-									<button type="button" onclick={() => submitFieldUpdate(field, editValue)} class="text-primary hover:text-primary/80">
-										<Check class="size-4" />
-									</button>
-									<button type="button" onclick={cancelEdit} class="text-muted-foreground hover:text-foreground">
-										<X class="size-4" />
-									</button>
-								</div>
+						{#if editingField === field}
+							<Input
+								bind:ref={editInputEl}
+								type={type}
+								bind:value={editValue}
+								onkeydown={(e) => handleFieldKeydown(e, field)}
+								onblur={() => submitFieldUpdate(field, editValue)}
+								class="h-8 text-sm"
+							/>
 							{:else}
 								<!-- svelte-ignore a11y_click_events_have_key_events -->
 								<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -531,15 +526,20 @@
 					</div>
 				{/snippet}
 
-				<Tabs.Root value="apercu" class="w-full">
-					<Tabs.List class="mb-4">
-						<Tabs.Trigger value="apercu">Aperçu</Tabs.Trigger>
-						<Tabs.Trigger value="financement">Financement</Tabs.Trigger>
-						<Tabs.Trigger value="logistique">Logistique</Tabs.Trigger>
-					</Tabs.List>
+			<div class="w-full">
+				<NavTabs
+					tabs={[
+						{ value: 'apercu', label: 'Aperçu', icon: LayoutGrid },
+						{ value: 'financement', label: 'Financement', icon: Banknote },
+						{ value: 'logistique', label: 'Logistique', icon: Truck }
+					]}
+					activeValue={activeTab}
+					onTabChange={(v) => (activeTab = v)}
+					ariaLabel="Sections du deal"
+				/>
 
-					<!-- Aperçu Tab -->
-					<Tabs.Content value="apercu" class="space-y-4">
+				{#if activeTab === 'apercu'}
+				<div class="space-y-4 mt-4">
 						<Card.Root>
 							<Card.Content class="pt-6 space-y-5">
 								{@render editableRow('Nom du deal', 'name', deal.name)}
@@ -634,10 +634,11 @@
 								</Card.Content>
 							</Card.Root>
 						{/if}
-					</Tabs.Content>
+				</div>
+				{/if}
 
-					<!-- Financement Tab -->
-					<Tabs.Content value="financement" class="space-y-4">
+				{#if activeTab === 'financement'}
+				<div class="space-y-4 mt-4">
 						<Card.Root>
 							<Card.Content class="pt-6 space-y-5">
 								<div class="grid grid-cols-2 gap-x-6 gap-y-5">
@@ -681,10 +682,11 @@
 								{@render editableRow('Réf. dossier OPCO', 'fundingReference', deal.fundingReference)}
 							</Card.Content>
 						</Card.Root>
-					</Tabs.Content>
+				</div>
+				{/if}
 
-					<!-- Logistique Tab -->
-					<Tabs.Content value="logistique" class="space-y-4">
+				{#if activeTab === 'logistique'}
+				<div class="space-y-4 mt-4">
 						<Card.Root>
 							<Card.Content class="pt-6 space-y-5">
 								<div class="grid grid-cols-2 gap-x-6 gap-y-5">
@@ -723,8 +725,9 @@
 								</div>
 							</Card.Content>
 						</Card.Root>
-					</Tabs.Content>
-				</Tabs.Root>
+				</div>
+				{/if}
+			</div>
 			</div>
 		</div>
 	</div>
