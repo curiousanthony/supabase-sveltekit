@@ -31,12 +31,38 @@ export const statutsFormation = pgEnum('statuts_formation', ['En attente', 'En c
 export const typeClient = pgEnum('type_client', ['Entreprise', 'Particulier']);
 export const typesFinancement = pgEnum('types_financement', ['CPF', 'OPCO', 'Inter', 'Intra']);
 export const dealStage = pgEnum('deal_stage', [
-	'Lead',
-	'Qualification',
-	'Proposition',
+	'Suspect',
+	'Prospect',
 	'Négociation',
+	'Admin',
+	'Signature',
+	'Financement',
 	'Gagné',
 	'Perdu'
+]);
+export const dealSource = pgEnum('deal_source', [
+	'Site web',
+	'Bouche-à-oreille',
+	'Salon / Événement',
+	'Ancien client',
+	'Appel entrant',
+	'LinkedIn',
+	'Partenaire',
+	'Autre'
+]);
+export const dealLossReason = pgEnum('deal_loss_reason', [
+	'Prix trop élevé',
+	'Concurrent choisi',
+	'Report / Pas le bon moment',
+	'Budget annulé',
+	'Sans réponse',
+	'Autre'
+]);
+export const dealFundingStatus = pgEnum('deal_funding_status', [
+	'En attente',
+	'Demande envoyée',
+	'Accord reçu',
+	'Refusé'
 ]);
 export const dealFundingType = pgEnum('deal_funding_type', [
 	'Financement fonds propres (Client)',

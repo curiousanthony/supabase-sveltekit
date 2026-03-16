@@ -1,105 +1,279 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
+	import { DragDropProvider } from '@dnd-kit-svelte/svelte';
+	import { useSortable, isSortable } from '@dnd-kit-svelte/svelte/sortable';
+	import { move } from '@dnd-kit/helpers';
+	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import * as Card from '$lib/components/ui/card';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { cn } from '$lib/utils';
-	import CurrencyEuro from '@tabler/icons-svelte/icons/currency-euro';
-	import User from '@tabler/icons-svelte/icons/user';
-	import Building from '@tabler/icons-svelte/icons/building';
+	import {
+		DEAL_STAGES,
+		STAGE_COLORS,
+		STAGE_PROBABILITIES,
+		formatCurrency,
+		userDisplayName,
+		type DealStage
+	} from '$lib/crm/deal-schema';
+	import Euro from '@lucide/svelte/icons/euro';
+	import User2 from '@lucide/svelte/icons/user-round';
+	import Building2 from '@lucide/svelte/icons/building-2';
+	import GripVertical from '@lucide/svelte/icons/grip-vertical';
+	import BookOpen from '@lucide/svelte/icons/book-open';
+	import CalendarDays from '@lucide/svelte/icons/calendar-days';
+	import Plus from '@lucide/svelte/icons/plus';
 
 	let { data }: PageProps = $props();
-	let { deals, stages, workspaceId } = $derived(data);
+	let { deals: rawDeals, stages, workspaceId } = $derived(data);
 
-	function getDealsByStage(stage: string) {
-		return (deals ?? []).filter((d) => d.stage === stage);
+	type Deal = (typeof rawDeals)[number];
+
+	let dealsByStage = $state<Record<string, { id: string }[]>>({});
+
+	$effect(() => {
+		const grouped: Record<string, { id: string }[]> = {};
+		for (const stage of DEAL_STAGES) {
+			grouped[stage] = (rawDeals ?? [])
+				.filter((d) => d.stage === stage)
+				.map((d) => ({ id: d.id }));
+		}
+		dealsByStage = grouped;
+	});
+
+	const dealsMap = $derived(
+		new Map((rawDeals ?? []).map((d) => [d.id, d]))
+	);
+
+	function getDeal(id: string): Deal | undefined {
+		return dealsMap.get(id);
 	}
 
-	function formatValue(value: string | null, currency: string) {
-		if (value == null) return '—';
-		const n = Number(value);
-		if (Number.isNaN(n)) return '—';
-		return new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(n);
+	function stageTotal(stage: string): number {
+		const items = dealsByStage[stage] ?? [];
+		return items.reduce((sum, item) => {
+			const deal = getDeal(item.id);
+			const amt = Number(deal?.dealAmount ?? deal?.value ?? 0);
+			return sum + (Number.isNaN(amt) ? 0 : amt);
+		}, 0);
 	}
 
-	function ownerLabel(
-		owner: { firstName?: string | null; lastName?: string | null; email?: string | null } | null
-	) {
-		if (!owner) return '—';
-		const name = [owner.firstName, owner.lastName].filter(Boolean).join(' ');
-		return name || owner.email || '—';
+	function stageWeightedTotal(stage: string): number {
+		const prob = STAGE_PROBABILITIES[stage as DealStage] ?? 0;
+		return (stageTotal(stage) * prob) / 100;
 	}
+
+	function contactLabel(deal: Deal): string {
+		const c = deal.contact;
+		if (!c) return '';
+		return [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email || '';
+	}
+
+	function companyFromDeal(deal: Deal): string {
+		if (deal.company?.name) return deal.company.name;
+		const cc = deal.contact?.contactCompanies;
+		if (cc && cc.length > 0 && cc[0].company) return cc[0].company.name;
+		return '';
+	}
+
+	let pendingStageUpdate: { dealId: string; stage: string } | null = $state(null);
+
+	async function handleDragEnd(event: any) {
+		if (event.canceled) return;
+		const { source } = event.operation;
+		if (!isSortable(source)) return;
+
+		const newGroup = (source as any).group as string;
+		const dealId = source.id as string;
+		const deal = getDeal(dealId);
+
+		if (deal && deal.stage !== newGroup) {
+			dealsByStage = move(dealsByStage, event);
+			pendingStageUpdate = { dealId, stage: newGroup };
+		} else {
+			dealsByStage = move(dealsByStage, event);
+		}
+	}
+
+	$effect(() => {
+		if (pendingStageUpdate) {
+			const form = document.getElementById('stage-update-form') as HTMLFormElement;
+			if (form) form.requestSubmit();
+		}
+	});
 </script>
 
 <svelte:head>
 	<title>Deals</title>
 </svelte:head>
 
+{#if pendingStageUpdate}
+	<form
+		id="stage-update-form"
+		method="POST"
+		action="?/updateStage"
+		class="hidden"
+		use:enhance={() => {
+			return async ({ update }) => {
+				pendingStageUpdate = null;
+				await update();
+				await invalidateAll();
+			};
+		}}
+	>
+		<input type="hidden" name="dealId" value={pendingStageUpdate.dealId} />
+		<input type="hidden" name="stage" value={pendingStageUpdate.stage} />
+	</form>
+{/if}
+
 {#if !workspaceId}
 	<div class="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
 		<p class="text-sm">Aucun espace de travail assigné.</p>
-		<p class="mt-1 text-xs">Contactez votre administrateur pour être rattaché à un espace.</p>
 	</div>
 {:else}
 	<div class="flex min-h-0 flex-1 flex-col gap-4">
-		<h1 class="shrink-0 text-2xl font-bold">Pipeline Deals</h1>
-
-		{#if (deals ?? []).length === 0}
-			<div class="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-				<p class="text-sm">Aucun deal pour le moment.</p>
-				<a href="/deals/creer" class="mt-2 inline-block text-sm font-medium text-primary hover:underline">
-					Créer un deal
-				</a>
+		{#if (rawDeals ?? []).length === 0}
+			<div class="flex flex-1 items-center justify-center">
+				<div class="rounded-lg border border-dashed p-12 text-center">
+					<p class="text-lg font-medium text-muted-foreground">Aucun deal pour le moment</p>
+					<p class="mt-1 text-sm text-muted-foreground">Créez votre premier deal pour démarrer votre pipeline commercial.</p>
+					<a
+						href="/deals/creer"
+						class="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+					>
+						<Plus class="size-4" />
+						Nouveau deal
+					</a>
+				</div>
 			</div>
 		{:else}
-			<div class="flex min-h-0 flex-1 gap-4 overflow-x-auto pb-4">
-				{#each stages as stage}
-					<div class="flex h-full min-w-[280px] flex-col gap-2 rounded-lg bg-muted/40 p-4">
-						<div
-							class={cn(
-								'flex shrink-0 items-center justify-between',
-								stage === 'Gagné' && 'border-b-2 border-green-500/30',
-								stage === 'Perdu' && 'border-b-2 border-red-500/30'
-							)}
-						>
-							<h2 class="font-semibold">{stage}</h2>
-							<Badge variant="secondary" class="text-xs">
-								{getDealsByStage(stage).length}
-							</Badge>
+			<DragDropProvider onDragEnd={handleDragEnd}>
+				<div class="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
+					{#each DEAL_STAGES as stage}
+						{@const colors = STAGE_COLORS[stage]}
+						{@const items = dealsByStage[stage] ?? []}
+						{@const total = stageTotal(stage)}
+						{@const weighted = stageWeightedTotal(stage)}
+						<div class="flex h-full min-w-[290px] max-w-[320px] flex-1 flex-col rounded-lg border bg-muted/30">
+							<div class={cn('flex shrink-0 flex-col gap-1 border-b px-3 py-2.5', colors.border)}>
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-2">
+										<span class={cn('inline-block size-2 rounded-full', colors.bg, colors.border, 'border')}></span>
+										<h2 class="text-sm font-semibold">{stage}</h2>
+									</div>
+									<Badge variant="secondary" class="text-xs tabular-nums">
+										{items.length}
+									</Badge>
+								</div>
+								{#if total > 0}
+									<div class="flex items-center gap-2 text-xs text-muted-foreground">
+										<span>{formatCurrency(total)}</span>
+										<span class="opacity-50">·</span>
+										<span title="Montant pondéré ({STAGE_PROBABILITIES[stage]}%)">{formatCurrency(weighted)} pondéré</span>
+									</div>
+								{/if}
+							</div>
+
+							<div class="flex min-h-[60px] flex-1 flex-col gap-1.5 overflow-y-auto p-2">
+								{#each items as item, index (item.id)}
+									{@const deal = getDeal(item.id)}
+									{@const sortable = useSortable({ id: item.id, index: () => index, group: stage })}
+									{#if deal}
+										<a
+											href="/deals/{deal.id}"
+											class="block"
+											{@attach sortable.ref}
+										>
+											<Card.Root
+												class={cn(
+													'cursor-grab border transition-all hover:shadow-sm active:cursor-grabbing',
+													sortable.isDragging.current && 'opacity-50 shadow-lg ring-2 ring-primary/20',
+													stage === 'Gagné' && 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30',
+													stage === 'Perdu' && 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30'
+												)}
+											>
+												<div class="p-3 space-y-2">
+													<div class="flex items-start justify-between gap-2">
+														<p class="text-sm font-medium leading-tight line-clamp-2">{deal.name}</p>
+														<div class="shrink-0 pt-0.5 text-muted-foreground/40" {@attach sortable.handleRef}>
+															<GripVertical class="size-4" />
+														</div>
+													</div>
+
+													{#if contactLabel(deal) || companyFromDeal(deal)}
+														<div class="flex flex-col gap-0.5">
+															{#if contactLabel(deal)}
+																<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+																	<User2 class="size-3 shrink-0" />
+																	<span class="truncate">{contactLabel(deal)}</span>
+																</div>
+															{/if}
+															{#if companyFromDeal(deal)}
+																<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+																	<Building2 class="size-3 shrink-0" />
+																	<span class="truncate">{companyFromDeal(deal)}</span>
+																</div>
+															{/if}
+														</div>
+													{/if}
+
+													{#if deal.programme}
+														<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+															<BookOpen class="size-3 shrink-0" />
+															<span class="truncate">{deal.programme.titre}</span>
+														</div>
+													{/if}
+
+													<div class="flex items-center justify-between pt-1">
+														<div class="flex items-center gap-1 text-sm font-medium tabular-nums">
+															<Euro class="size-3.5" />
+															{formatCurrency(deal.dealAmount ?? deal.value)}
+														</div>
+														{#if deal.desiredStartDate}
+															<div class="flex items-center gap-1 text-xs text-muted-foreground">
+																<CalendarDays class="size-3" />
+																{new Date(deal.desiredStartDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+															</div>
+														{/if}
+													</div>
+
+													<div class="flex items-center justify-between pt-0.5">
+														{#if deal.intraInter || deal.modalities?.length}
+															<div class="flex flex-wrap gap-1">
+																{#if deal.intraInter}
+																	<Badge variant="outline" class="text-[10px] px-1.5 py-0">
+																		{deal.intraInter}
+																	</Badge>
+																{/if}
+																{#each (deal.modalities ?? []).slice(0, 2) as mod}
+																	<Badge variant="outline" class="text-[10px] px-1.5 py-0">
+																		{mod}
+																	</Badge>
+																{/each}
+															</div>
+														{:else}
+															<div></div>
+														{/if}
+														{#if deal.commercial || deal.owner}
+															{@const person = deal.commercial ?? deal.owner}
+															<span
+																class="inline-flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium"
+																title={userDisplayName(person)}
+															>
+																{(person?.firstName?.[0] ?? '').toUpperCase()}{(person?.lastName?.[0] ?? '').toUpperCase()}
+															</span>
+														{/if}
+													</div>
+												</div>
+											</Card.Root>
+										</a>
+									{/if}
+								{/each}
+							</div>
 						</div>
-						<div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
-						{#each getDealsByStage(stage) as deal (deal.id)}
-							<a href="/deals/{deal.id}" class="block">
-								<Card.Root
-									class={cn(
-										'hover:border-primary w-full transition-colors',
-										deal.stage === 'Gagné' && 'border-green-500/30 bg-green-500/5',
-										deal.stage === 'Perdu' && 'border-red-500/30 bg-red-500/5'
-									)}
-								>
-									<Card.Header class="pb-2">
-										<Card.Title class="text-base">{deal.name}</Card.Title>
-										<Card.Description class="flex items-center gap-1 text-xs">
-											<Building size={12} />
-											{deal.client?.legalName ?? '—'}
-										</Card.Description>
-									</Card.Header>
-									<Card.Content class="space-y-1 pb-2 pt-0 text-sm">
-										<div class="flex items-center gap-1">
-											<CurrencyEuro size={14} />
-											<span>{formatValue(deal.value, deal.currency)}</span>
-										</div>
-										<div class="flex items-center gap-1 text-muted-foreground">
-											<User size={14} />
-											<span>{ownerLabel(deal.owner)}</span>
-										</div>
-									</Card.Content>
-								</Card.Root>
-							</a>
-						{/each}
-					</div>
+					{/each}
 				</div>
-			{/each}
-		</div>
+			</DragDropProvider>
 		{/if}
 	</div>
 {/if}

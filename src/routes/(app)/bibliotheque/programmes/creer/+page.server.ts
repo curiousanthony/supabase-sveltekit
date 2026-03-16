@@ -175,6 +175,11 @@ export const actions: Actions = {
 			return row;
 		});
 
+		const returnTo = new URL(request.url).searchParams.get('returnTo');
+		if (returnTo) {
+			const sep = returnTo.includes('?') ? '&' : '?';
+			throw redirect(303, `${returnTo}${sep}programmeId=${inserted.id}`);
+		}
 		throw redirect(303, `/bibliotheque/programmes/${inserted.id}`);
 	}
 };

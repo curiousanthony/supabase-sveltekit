@@ -7,17 +7,27 @@ import {
 	varchar,
 	numeric,
 	integer,
+	smallint,
 	date,
 	boolean,
 	primaryKey
 } from 'drizzle-orm/pg-core';
-import { dealStage, dealFundingType, dealFormat, dealIntraInter } from './enums';
+import {
+	dealStage,
+	dealFundingType,
+	dealFormat,
+	dealIntraInter,
+	dealSource,
+	dealLossReason,
+	dealFundingStatus
+} from './enums';
 import { workspaces } from './workspaces';
 import { clients } from './clients';
 import { users } from './users';
 import { formations } from './formations';
 import { contacts } from './contacts';
 import { companies } from './companies';
+import { biblioProgrammes } from './biblio-programmes';
 
 export const deals = pgTable(
 	'deals',
@@ -30,19 +40,28 @@ export const deals = pgTable(
 			.defaultNow()
 			.notNull(),
 		workspaceId: uuid('workspace_id').notNull(),
-		clientId: uuid('client_id').notNull(),
+		clientId: uuid('client_id'),
 		name: text().notNull(),
 		description: text(),
-		stage: dealStage().default('Lead').notNull(),
+		stage: dealStage().default('Suspect').notNull(),
 		value: numeric('value', { precision: 12, scale: 2 }),
 		currency: varchar('currency', { length: 3 }).default('EUR').notNull(),
 		ownerId: uuid('owner_id').notNull(),
 		createdBy: uuid('created_by').notNull(),
 		closedAt: timestamp('closed_at', { withTimezone: true, mode: 'string' }),
 		formationId: uuid('formation_id'),
-		// CRM (N3): Contact/Company and pipeline fields
-		contactId: uuid('contact_id').references(() => contacts.id, { onUpdate: 'cascade', onDelete: 'set null' }),
-		companyId: uuid('company_id').references(() => companies.id, { onUpdate: 'cascade', onDelete: 'set null' }),
+		contactId: uuid('contact_id').references(() => contacts.id, {
+			onUpdate: 'cascade',
+			onDelete: 'set null'
+		}),
+		companyId: uuid('company_id').references(() => companies.id, {
+			onUpdate: 'cascade',
+			onDelete: 'set null'
+		}),
+		programmeId: uuid('programme_id').references(() => biblioProgrammes.id, {
+			onUpdate: 'cascade',
+			onDelete: 'set null'
+		}),
 		fundingType: dealFundingType('funding_type'),
 		dealFormat: dealFormat('deal_format'),
 		intraInter: dealIntraInter('intra_inter'),
@@ -50,10 +69,21 @@ export const deals = pgTable(
 		dealAmount: numeric('deal_amount', { precision: 12, scale: 2 }),
 		fundedAmount: numeric('funded_amount', { precision: 12, scale: 2 }),
 		isFunded: boolean('is_funded').default(false),
+		fundingStatus: dealFundingStatus('funding_status'),
+		fundingReference: text('funding_reference'),
 		durationHours: integer('duration_hours'),
+		nbApprenants: smallint('nb_apprenants'),
 		desiredStartDate: date('desired_start_date'),
 		desiredEndDate: date('desired_end_date'),
-		commercialId: uuid('commercial_id').references(() => users.id, { onUpdate: 'cascade', onDelete: 'set null' })
+		expectedCloseDate: date('expected_close_date'),
+		probability: smallint('probability'),
+		source: dealSource('source'),
+		lossReason: dealLossReason('loss_reason'),
+		lossReasonDetail: text('loss_reason_detail'),
+		commercialId: uuid('commercial_id').references(() => users.id, {
+			onUpdate: 'cascade',
+			onDelete: 'set null'
+		})
 	},
 	(table) => [
 		foreignKey({
@@ -94,7 +124,6 @@ export const deals = pgTable(
 	]
 );
 
-/** Many-to-many: deals ↔ companies. */
 export const dealCompanies = pgTable(
 	'deal_companies',
 	{

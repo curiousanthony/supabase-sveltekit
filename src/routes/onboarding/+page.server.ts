@@ -125,8 +125,10 @@ export const actions: Actions = {
 							workspaceId: inserted.id,
 							clientId: sampleClient.id,
 							name: 'Deal exemple – Formation Excel',
+							dealAmount: '4500',
 							value: '4500',
-							stage: 'Proposition',
+							stage: 'Négociation',
+							source: 'Ancien client',
 							ownerId: user.id,
 							createdBy: user.id
 						},
@@ -134,8 +136,10 @@ export const actions: Actions = {
 							workspaceId: inserted.id,
 							clientId: sampleClient.id,
 							name: 'Deal exemple – Anglais business',
+							dealAmount: '3200',
 							value: '3200',
-							stage: 'Qualification',
+							stage: 'Prospect',
+							source: 'Site web',
 							ownerId: user.id,
 							createdBy: user.id
 						},
@@ -143,8 +147,10 @@ export const actions: Actions = {
 							workspaceId: inserted.id,
 							clientId: sampleClient.id,
 							name: 'Deal exemple – Management',
+							dealAmount: '6800',
 							value: '6800',
-							stage: 'Lead',
+							stage: 'Suspect',
+							source: 'Bouche-à-oreille',
 							ownerId: user.id,
 							createdBy: user.id
 						}
