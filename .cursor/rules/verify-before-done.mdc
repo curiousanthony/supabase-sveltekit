@@ -1,0 +1,55 @@
+---
+description: Enforces browser-based verification, edge case testing, and production readiness checks before declaring any user-facing change complete. Applies to every conversation.
+alwaysApply: true
+---
+
+# Verify Before Done
+
+After any code change that affects what the end user sees or does, you MUST verify it works before telling the user it is done. Never confirm based on code reading alone.
+
+## 1. Browser verification (mandatory)
+
+- Use the browser MCP tools (`browser_navigate`, `browser_snapshot`, `browser_click`, `browser_fill`, etc.) to walk through the affected page(s).
+- If the page is auth-gated, sign in first using the test-user flow described in `AGENTS.md`.
+- Test the **happy path** first, then edge cases.
+- Read `browser_console_messages` after each interaction — zero JS errors/warnings expected.
+- Check `browser_network_requests` for failed API calls (4xx/5xx).
+
+## 2. Edge cases to consider
+
+Test as many of the following as applicable:
+
+- **Empty states** — does the UI handle zero data gracefully?
+- **Validation** — submit forms with missing, invalid, or boundary-value inputs.
+- **Double submit** — click the submit button twice rapidly; no duplicate records or crashes.
+- **Error feedback** — force an error and verify the user sees a toast, inline message, or redirect.
+- **Navigation** — back button, direct URL access, breadcrumb consistency.
+- **Loading states** — spinners/skeletons appear during async operations.
+- **Data persistence** — reload the page or query the DB to confirm data actually saved.
+- **Responsive layout** — resize viewport (`browser_resize`) if the change involves layout.
+- **RLS / authorization** — if the feature is role-gated, verify access with appropriate user profiles.
+
+## 3. Terminal and server-side monitoring
+
+- Read the dev-server terminal output for server-side errors, unhandled rejections, or Supabase query failures.
+- Surface any error to the user and fix it before declaring success.
+
+## 4. Automated tests (when warranted)
+
+- For repeatable flows or regression-prone features, write and run a Playwright test.
+- For pure logic (utils, validators, transforms), write a Vitest unit test (`bun run test`).
+- Use judgment — not every change needs a new test file, but critical flows should be covered.
+
+## 5. Fix loop
+
+- When testing reveals bugs, create a todo list of issues and use subagents to fix them (in parallel when independent, sequentially when dependent).
+- Re-test each fix via the browser — do not mark a todo complete until the fix is browser-verified.
+
+## 6. Production readiness gate
+
+Before declaring the work done:
+
+1. **Migrations** — if schema was changed, verify a migration exists in `supabase/migrations/` and was applied locally (`supabase migration up` or `supabase db reset`). Follow the `supabase-database-migration` skill.
+2. **Build** — run `bun run build` to catch SSR or import errors invisible during dev.
+3. **Types** — run `bun run check` to catch type errors.
+4. Warn the user if any gate fails; do not silently skip them.
