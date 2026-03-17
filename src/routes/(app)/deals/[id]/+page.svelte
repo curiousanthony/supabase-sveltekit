@@ -300,7 +300,7 @@
 			<div class="space-y-4">
 				<!-- Contact Card -->
 				<Card.Root>
-					<Card.Header class="pb-3">
+					<Card.Header>
 						<div class="flex items-center justify-between">
 							<Card.Title class="text-sm font-medium text-muted-foreground">Contact</Card.Title>
 							<div class="flex gap-1">
@@ -401,9 +401,9 @@
 				{#if deal.company || companyFromContact(deal.contact)}
 				{@const resolvedCompany = (deal.company ?? companyFromContact(deal.contact))!}
 					<Card.Root>
-						<Card.Header class="pb-3">
-							<Card.Title class="text-sm font-medium text-muted-foreground">Entreprise</Card.Title>
-						</Card.Header>
+					<Card.Header>
+						<Card.Title class="text-sm font-medium text-muted-foreground">Entreprise</Card.Title>
+					</Card.Header>
 						<Card.Content class="space-y-2">
 							<div class="flex items-center gap-2">
 								<Building2 class="size-4 text-muted-foreground" />
@@ -427,7 +427,7 @@
 
 				<!-- Programme Card -->
 				<Card.Root>
-					<Card.Header class="pb-3">
+					<Card.Header>
 						<div class="flex items-center justify-between">
 							<Card.Title class="text-sm font-medium text-muted-foreground">Programme</Card.Title>
 							<button
@@ -577,8 +577,8 @@
 				{#if activeTab === 'apercu'}
 				<div class="space-y-4 mt-4">
 						<Card.Root>
-							<Card.Content class="pt-6 space-y-5">
-								{@render editableRow('Nom du deal', 'name', deal.name)}
+					<Card.Content class="space-y-5">
+							{@render editableRow('Nom du deal', 'name', deal.name)}
 
 								<div class="grid grid-cols-2 gap-x-6 gap-y-5">
 									{@render editableRow('Montant (€)', 'dealAmount', deal.dealAmount, 'number')}
@@ -643,9 +643,9 @@
 
 						{#if deal.stage !== 'Gagné' && deal.stage !== 'Perdu' && !deal.formation}
 						<Card.Root>
-							<Card.Content class="flex items-center justify-between pt-6">
-								<div>
-									<p class="text-sm font-medium">Convertir en formation</p>
+						<Card.Content class="flex items-center justify-between">
+							<div>
+								<p class="text-sm font-medium">Convertir en formation</p>
 									<p class="text-xs text-muted-foreground">Créer une formation à partir de ce deal</p>
 								</div>
 								<Dialog.Root bind:open={openCloseDialog}>
@@ -678,9 +678,9 @@
 					{/if}
 
 						<Card.Root class="border-destructive/30">
-							<Card.Content class="flex items-center justify-between pt-6">
-								<div>
-									<p class="text-sm font-medium text-destructive">Supprimer le deal</p>
+						<Card.Content class="flex items-center justify-between">
+							<div>
+								<p class="text-sm font-medium text-destructive">Supprimer le deal</p>
 									<p class="text-xs text-muted-foreground">Cette action est irréversible.</p>
 								</div>
 								<Dialog.Root bind:open={openDeleteDialog}>
@@ -730,9 +730,9 @@
 				{#if activeTab === 'financement'}
 				<div class="space-y-4 mt-4">
 						<Card.Root>
-							<Card.Content class="pt-6 space-y-5">
-								<div class="grid grid-cols-2 gap-x-6 gap-y-5">
-									{@render editableRow('Montant du deal (€)', 'dealAmount', deal.dealAmount, 'number')}
+						<Card.Content class="space-y-5">
+							<div class="grid grid-cols-2 gap-x-6 gap-y-5">
+								{@render editableRow('Montant du deal (€)', 'dealAmount', deal.dealAmount, 'number')}
 									{@render editableRow('Montant financé (€)', 'fundedAmount', deal.fundedAmount, 'number')}
 									{@render editableSelect('Type de financement', 'fundingType', deal.fundingType, FUNDING_TYPES)}
 									{@render editableSelect('Statut financement', 'fundingStatus', deal.fundingStatus, FUNDING_STATUSES)}
@@ -778,9 +778,9 @@
 				{#if activeTab === 'logistique'}
 				<div class="space-y-4 mt-4">
 						<Card.Root>
-							<Card.Content class="pt-6 space-y-5">
-								<div class="grid grid-cols-2 gap-x-6 gap-y-5">
-									{@render editableSelect('Format', 'dealFormat', deal.dealFormat, DEAL_FORMATS)}
+						<Card.Content class="space-y-5">
+							<div class="grid grid-cols-2 gap-x-6 gap-y-5">
+								{@render editableSelect('Format', 'dealFormat', deal.dealFormat, DEAL_FORMATS)}
 									{@render editableSelect('Intra / Inter', 'intraInter', deal.intraInter, INTRA_INTER)}
 									{@render editableRow('Durée (heures)', 'durationHours', deal.durationHours?.toString(), 'number')}
 									{@render editableRow('Nb apprenants', 'nbApprenants', deal.nbApprenants?.toString(), 'number')}
