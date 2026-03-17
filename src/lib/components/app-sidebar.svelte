@@ -6,8 +6,8 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
-
-	const currentPath = $derived(page?.url?.pathname ?? '');
+	import { browser } from '$app/environment';
+	import { Kbd } from '$lib/components/ui/kbd/index.js';
 	import { defaultWipTooltip, sitemap, sidebarHidden } from '$lib/settings/config';
 	import VersionSwitcher from './workspace-switcher.svelte';
 	import { openCommandPalette } from '$lib/stores/command-palette-store';
@@ -19,6 +19,8 @@
 	import Handshake from '@lucide/svelte/icons/handshake';
 	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 	import Coins from '@lucide/svelte/icons/coins';
+
+	const currentPath = $derived(page?.url?.pathname ?? '');
 
 	let {
 		userObject,
@@ -130,6 +132,9 @@
 	);
 
 	const showMessagerieShortcut = $derived(!sidebarHidden.includes('/messagerie'));
+
+	const isMac = browser ? /Mac|iPhone|iPad/.test(navigator.userAgent) : false;
+	const shortcutLabel = isMac ? '⌘K' : 'Ctrl K';
 </script>
 
 <Sidebar.Root collapsible="icon" {...restProps}>
@@ -199,12 +204,15 @@
 					</Sidebar.MenuItem>
 					<Sidebar.MenuItem>
 						<Sidebar.MenuButton
-							tooltipContent="Chercher (⌘K)"
+							tooltipContent="Chercher ({shortcutLabel})"
 							onclick={() => openCommandPalette()}
 							class="cursor-pointer"
 						>
 							<Search class="size-[1.1em]" />
 							<span class="text-[1.1em]">Chercher</span>
+							{#if sidebar.state !== 'collapsed'}
+								<Kbd class="ms-auto">{shortcutLabel}</Kbd>
+							{/if}
 						</Sidebar.MenuButton>
 					</Sidebar.MenuItem>
 					<Sidebar.MenuItem>

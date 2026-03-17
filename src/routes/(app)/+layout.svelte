@@ -184,7 +184,7 @@
 			<!-- <Command.Separator /> -->
 		{/if}
 		<Command.Group heading="Principal">
-			{#each sitemap.filter((item) => !sidebarHidden.includes(item.url)) as item (item.url)}
+			{#each sitemap.filter((item) => !sidebarHidden.includes(item.url) && !item.wip) as item (item.url)}
 				{#if item.url !== page.url.pathname}
 					<Command.LinkItem href={item.url} onSelect={() => (open = false)} class="cursor-pointer">
 						<item.icon />

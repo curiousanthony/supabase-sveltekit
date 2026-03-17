@@ -1,12 +1,13 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
 	import { DragDropProvider } from '@dnd-kit-svelte/svelte';
+	import { useDroppable } from '@dnd-kit-svelte/svelte';
 	import { useSortable, isSortable } from '@dnd-kit-svelte/svelte/sortable';
 	import { move } from '@dnd-kit/helpers';
-	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import * as Card from '$lib/components/ui/card';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
+	import DealCardContextMenu from '$lib/components/crm/DealCardContextMenu.svelte';
 	import { cn } from '$lib/utils';
 	import {
 		DEAL_STAGES,
@@ -18,13 +19,13 @@
 	} from '$lib/crm/deal-schema';
 	import Euro from '@lucide/svelte/icons/euro';
 	import User2 from '@lucide/svelte/icons/user-round';
-	import Building2 from '@lucide/svelte/icons/building-2';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
 	import Plus from '@lucide/svelte/icons/plus';
+	import Coins from '@lucide/svelte/icons/coins';
 
 	let { data }: PageProps = $props();
-	let { deals: rawDeals, stages, workspaceId } = $derived(data);
+	let { deals: rawDeals, workspaceId, members } = $derived(data);
 
 	type Deal = (typeof rawDeals)[number];
 
@@ -75,7 +76,20 @@
 		return '';
 	}
 
-	let pendingStageUpdate: { dealId: string; stage: string } | null = $state(null);
+	function contactAndCompany(deal: Deal): string {
+		const contact = contactLabel(deal);
+		const company = companyFromDeal(deal);
+		if (contact && company) return `${contact}  ·  ${company}`;
+		return contact || company;
+	}
+
+	async function persistStageChange(dealId: string, stage: string) {
+		const fd = new FormData();
+		fd.set('dealId', dealId);
+		fd.set('stage', stage);
+		await fetch('?/updateStage', { method: 'POST', body: fd });
+		await invalidateAll();
+	}
 
 	async function handleDragEnd(event: any) {
 		if (event.canceled) return;
@@ -86,44 +100,17 @@
 		const dealId = source.id as string;
 		const deal = getDeal(dealId);
 
+		dealsByStage = move(dealsByStage, event);
+
 		if (deal && deal.stage !== newGroup) {
-			dealsByStage = move(dealsByStage, event);
-			pendingStageUpdate = { dealId, stage: newGroup };
-		} else {
-			dealsByStage = move(dealsByStage, event);
+			persistStageChange(dealId, newGroup);
 		}
 	}
-
-	$effect(() => {
-		if (pendingStageUpdate) {
-			const form = document.getElementById('stage-update-form') as HTMLFormElement;
-			if (form) form.requestSubmit();
-		}
-	});
 </script>
 
 <svelte:head>
 	<title>Deals</title>
 </svelte:head>
-
-{#if pendingStageUpdate}
-	<form
-		id="stage-update-form"
-		method="POST"
-		action="?/updateStage"
-		class="hidden"
-		use:enhance={() => {
-			return async ({ update }) => {
-				pendingStageUpdate = null;
-				await update();
-				await invalidateAll();
-			};
-		}}
-	>
-		<input type="hidden" name="dealId" value={pendingStageUpdate.dealId} />
-		<input type="hidden" name="stage" value={pendingStageUpdate.stage} />
-	</form>
-{/if}
 
 {#if !workspaceId}
 	<div class="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
@@ -153,6 +140,7 @@
 						{@const items = dealsByStage[stage] ?? []}
 						{@const total = stageTotal(stage)}
 						{@const weighted = stageWeightedTotal(stage)}
+						{@const droppable = useDroppable({ id: stage, type: 'column' })}
 						<div class="flex h-full min-w-[290px] max-w-[320px] flex-1 flex-col rounded-lg border bg-muted/30">
 							<div class={cn('flex shrink-0 flex-col gap-1 border-b px-3 py-2.5', colors.border)}>
 								<div class="flex items-center justify-between">
@@ -173,11 +161,15 @@
 								{/if}
 							</div>
 
-							<div class="flex min-h-[60px] flex-1 flex-col gap-1.5 overflow-y-auto p-2">
+							<div
+								class="flex min-h-[60px] flex-1 flex-col gap-1.5 overflow-y-auto p-2"
+								{@attach droppable.ref}
+							>
 								{#each items as item, index (item.id)}
 									{@const deal = getDeal(item.id)}
 									{@const sortable = useSortable({ id: item.id, index: () => index, group: stage })}
-									{#if deal}
+								{#if deal}
+									<DealCardContextMenu {deal} {members}>
 										<a
 											href="/deals/{deal.id}"
 											class="block"
@@ -185,88 +177,81 @@
 										>
 											<Card.Root
 												class={cn(
-													'cursor-pointer border transition-all hover:shadow-sm hover:ring-2 hover:ring-primary/20 active:cursor-grabbing',
+													'py-0! gap-0! cursor-pointer border transition-all hover:shadow-sm hover:ring-2 hover:ring-primary/20 active:cursor-grabbing',
 													sortable.isDragging.current && 'opacity-50 shadow-lg ring-2 ring-primary/20',
 													stage === 'Gagné' && 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30',
 													stage === 'Perdu' && 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30'
 												)}
 											>
-											<div class="p-3 space-y-2">
-												<div class="flex items-center gap-2">
+											<div class="p-2.5 space-y-1.5">
+												<div class="flex items-start gap-1.5">
 													{#if deal.idInWorkspace}
-														<span class="text-[10px] font-mono text-muted-foreground shrink-0">DL-{deal.idInWorkspace}</span>
+														<span class="mt-0.5 text-[10px] font-mono text-muted-foreground shrink-0">DL-{deal.idInWorkspace}</span>
 													{/if}
 													<p class="text-sm font-medium leading-tight line-clamp-2">{deal.name}</p>
 												</div>
 
-													{#if contactLabel(deal) || companyFromDeal(deal)}
-														<div class="flex flex-col gap-0.5">
-															{#if contactLabel(deal)}
-																<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-																	<User2 class="size-3 shrink-0" />
-																	<span class="truncate">{contactLabel(deal)}</span>
-																</div>
-															{/if}
-															{#if companyFromDeal(deal)}
-																<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-																	<Building2 class="size-3 shrink-0" />
-																	<span class="truncate">{companyFromDeal(deal)}</span>
-																</div>
-															{/if}
+												{#if contactAndCompany(deal)}
+													<div class="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+														<User2 class="size-3 shrink-0" />
+														<span class="truncate">{contactAndCompany(deal)}</span>
+													</div>
+												{/if}
+
+												{#if deal.programme}
+													<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+														<BookOpen class="size-3 shrink-0" />
+														<span class="truncate">{deal.programme.titre}</span>
+													</div>
+												{/if}
+
+												<div class="flex items-center justify-between">
+													<div class="flex items-center gap-1 text-sm font-medium tabular-nums">
+														<Euro class="size-3.5" />
+														{formatCurrency(deal.dealAmount ?? deal.value)}
+													</div>
+													{#if deal.desiredStartDate}
+														<div class="flex items-center gap-1 text-xs text-muted-foreground">
+															<CalendarDays class="size-3" />
+															{new Date(deal.desiredStartDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
 														</div>
 													{/if}
-
-													{#if deal.programme}
-														<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-															<BookOpen class="size-3 shrink-0" />
-															<span class="truncate">{deal.programme.titre}</span>
-														</div>
-													{/if}
-
-													<div class="flex items-center justify-between pt-1">
-														<div class="flex items-center gap-1 text-sm font-medium tabular-nums">
-															<Euro class="size-3.5" />
-															{formatCurrency(deal.dealAmount ?? deal.value)}
-														</div>
-														{#if deal.desiredStartDate}
-															<div class="flex items-center gap-1 text-xs text-muted-foreground">
-																<CalendarDays class="size-3" />
-																{new Date(deal.desiredStartDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-															</div>
-														{/if}
-													</div>
-
-													<div class="flex items-center justify-between pt-0.5">
-														{#if deal.intraInter || deal.modalities?.length}
-															<div class="flex flex-wrap gap-1">
-																{#if deal.intraInter}
-																	<Badge variant="outline" class="text-[10px] px-1.5 py-0">
-																		{deal.intraInter}
-																	</Badge>
-																{/if}
-																{#each (deal.modalities ?? []).slice(0, 2) as mod}
-																	<Badge variant="outline" class="text-[10px] px-1.5 py-0">
-																		{mod}
-																	</Badge>
-																{/each}
-															</div>
-														{:else}
-															<div></div>
-														{/if}
-														{#if deal.commercial || deal.owner}
-															{@const person = deal.commercial ?? deal.owner}
-															<span
-																class="inline-flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium"
-																title={userDisplayName(person)}
-															>
-																{(person?.firstName?.[0] ?? '').toUpperCase()}{(person?.lastName?.[0] ?? '').toUpperCase()}
-															</span>
-														{/if}
-													</div>
 												</div>
+
+												<div class="flex items-center justify-between">
+													<div class="flex flex-wrap gap-1">
+														{#if deal.intraInter}
+															<Badge variant="outline" class="text-[10px] px-1.5 py-0">
+																{deal.intraInter}
+															</Badge>
+														{/if}
+														{#each (deal.modalities ?? []).slice(0, 2) as mod}
+															<Badge variant="outline" class="text-[10px] px-1.5 py-0">
+																{mod}
+															</Badge>
+														{/each}
+														{#if deal.fundingStatus}
+															<Badge variant="secondary" class="text-[10px] px-1.5 py-0">
+																<Coins class="size-2.5 mr-0.5" />
+																{deal.fundingStatus}
+															</Badge>
+														{/if}
+													</div>
+													{#if deal.commercial || deal.owner}
+														{@const person = deal.commercial ?? deal.owner}
+														<span
+															class="inline-flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium shrink-0"
+															title={userDisplayName(person)}
+														>
+															{(person?.firstName?.[0] ?? '').toUpperCase()}{(person?.lastName?.[0] ?? '').toUpperCase()}
+														</span>
+													{/if}
+												</div>
+											</div>
 											</Card.Root>
 										</a>
-									{/if}
+									</DealCardContextMenu>
+								{/if}
 								{/each}
 							</div>
 						</div>
