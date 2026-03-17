@@ -11,7 +11,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
-	import { enhance } from '$app/forms';
+	import { enhance, deserialize } from '$app/forms';
 	import { invalidateAll, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { tick } from 'svelte';
@@ -77,6 +77,7 @@
 	let editValue = $state('');
 	let editOriginalValue = $state('');
 	let editInputEl = $state<HTMLInputElement | null>(null);
+	let isFieldSubmitting = $state(false);
 
 	async function startEdit(field: string, currentValue: string | number | null | undefined) {
 		editingField = field;
@@ -94,30 +95,38 @@
 	}
 
 	async function submitFieldUpdate(field: string, value: string) {
+		if (isFieldSubmitting) return;
 		if (value === editOriginalValue && editingField) {
 			cancelEdit();
 			return;
 		}
 
-		const formData = new FormData();
-		formData.set('field', field);
-		formData.set('value', value);
+		isFieldSubmitting = true;
+		try {
+			const formData = new FormData();
+			formData.set('field', field);
+			formData.set('value', value);
 
-		const response = await fetch('?/updateField', {
-			method: 'POST',
-			body: formData,
-			headers: { 'x-sveltekit-action': 'true' }
-		});
+			const response = await fetch('?/updateField', {
+				method: 'POST',
+				body: formData,
+				headers: { 'x-sveltekit-action': 'true' }
+			});
 
-		const result = await response.json();
-		if (result.type === 'success') {
-			toast.success('Mis à jour');
-			editingField = null;
-			editValue = '';
-			editOriginalValue = '';
-			await invalidateAll();
-		} else {
-			toast.error(result.data?.message ?? 'Erreur lors de la mise à jour');
+			const result = deserialize(await response.text());
+			if (result.type === 'success') {
+				toast.success('Mis à jour');
+				editingField = null;
+				editValue = '';
+				editOriginalValue = '';
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				toast.error((result.data as Record<string, string>)?.message ?? 'Erreur lors de la mise à jour');
+			} else {
+				toast.error('Erreur lors de la mise à jour');
+			}
+		} finally {
+			isFieldSubmitting = false;
 		}
 	}
 
@@ -275,7 +284,11 @@
 						></textarea>
 					</div>
 					<Dialog.Footer>
-						<Dialog.Close><Button variant="outline">Annuler</Button></Dialog.Close>
+						<Dialog.Close>
+							{#snippet child({ props })}
+								<Button {...props} variant="outline">Annuler</Button>
+							{/snippet}
+						</Dialog.Close>
 						<Button type="submit" variant="destructive" disabled={!lossReason}>Marquer comme Perdu</Button>
 					</Dialog.Footer>
 				</form>
@@ -496,26 +509,25 @@
 					<div class="flex items-start justify-between gap-4">
 						<div class="min-w-0 flex-1">
 							<p class="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-						{#if editingField === field}
-							<Input
-								bind:ref={editInputEl}
-								type={type}
-								bind:value={editValue}
-								onkeydown={(e) => handleFieldKeydown(e, field)}
-								onblur={() => submitFieldUpdate(field, editValue)}
-								class="h-8 text-sm"
-							/>
-							{:else}
-								<!-- svelte-ignore a11y_click_events_have_key_events -->
-								<!-- svelte-ignore a11y_no_static_element_interactions -->
-								<div
-									onclick={() => startEdit(field, value)}
-									class="group flex cursor-text items-center gap-2 rounded px-1 py-0.5 -mx-1 hover:bg-accent/50 transition-colors"
-								>
-									<span class={cn('text-sm', value ? '' : 'text-muted-foreground')}>{value || '—'}</span>
-									<Pencil class="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-								</div>
-							{/if}
+			{#if editingField === field}
+						<Input
+							bind:ref={editInputEl}
+							type={type}
+							bind:value={editValue}
+							onkeydown={(e) => handleFieldKeydown(e, field)}
+							onblur={() => submitFieldUpdate(field, editValue)}
+							class="h-8 text-sm"
+						/>
+						{:else}
+							<button
+								type="button"
+								onclick={() => startEdit(field, value)}
+								class="group flex w-full cursor-text items-center gap-2 rounded bg-transparent px-1 py-0.5 -mx-1 text-left hover:bg-accent/50 transition-colors"
+							>
+								<span class={cn('text-sm', value ? '' : 'text-muted-foreground')}>{value || '—'}</span>
+								<Pencil class="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+							</button>
+						{/if}
 						</div>
 					</div>
 				{/snippet}
@@ -638,7 +650,9 @@
 								</div>
 								<Dialog.Root bind:open={openCloseDialog}>
 									<Dialog.Trigger>
-										<Button>Convertir en Formation</Button>
+										{#snippet child({ props })}
+											<Button {...props}>Convertir en Formation</Button>
+										{/snippet}
 									</Dialog.Trigger>
 									<Dialog.Content>
 										<Dialog.Header>
@@ -648,7 +662,11 @@
 											</Dialog.Description>
 										</Dialog.Header>
 										<Dialog.Footer>
-											<Dialog.Close><Button variant="outline">Annuler</Button></Dialog.Close>
+											<Dialog.Close>
+												{#snippet child({ props })}
+													<Button {...props} variant="outline">Annuler</Button>
+												{/snippet}
+											</Dialog.Close>
 											<form method="POST" action="?/closeAndCreateFormation" use:enhance>
 												<Button type="submit" onclick={() => (openCloseDialog = false)}>Créer la formation</Button>
 											</form>
@@ -667,10 +685,12 @@
 								</div>
 								<Dialog.Root bind:open={openDeleteDialog}>
 									<Dialog.Trigger>
-										<Button variant="destructive" size="sm">
-											<Trash2 class="size-4 mr-1.5" />
-											Supprimer
-										</Button>
+										{#snippet child({ props })}
+											<Button {...props} variant="destructive" size="sm">
+												<Trash2 class="size-4 mr-1.5" />
+												Supprimer
+											</Button>
+										{/snippet}
 									</Dialog.Trigger>
 									<Dialog.Content>
 										<Dialog.Header>
@@ -680,7 +700,11 @@
 											</Dialog.Description>
 										</Dialog.Header>
 										<Dialog.Footer>
-											<Dialog.Close><Button variant="outline">Annuler</Button></Dialog.Close>
+											<Dialog.Close>
+												{#snippet child({ props })}
+													<Button {...props} variant="outline">Annuler</Button>
+												{/snippet}
+											</Dialog.Close>
 											<form
 												method="POST"
 												action="?/deleteDeal"

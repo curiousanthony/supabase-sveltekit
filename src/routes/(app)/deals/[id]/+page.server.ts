@@ -9,7 +9,7 @@ import {
 	workspacesUsers
 } from '$lib/db/schema';
 import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { redirect, fail } from '@sveltejs/kit';
 import { DEAL_STAGES, LOSS_REASONS } from '$lib/crm/deal-schema';
 import { contactSchema, posteOptions } from '$lib/crm/contact-schema';

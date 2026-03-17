@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { enhance } from '$app/forms';
+	import { enhance, deserialize } from '$app/forms';
 	import { invalidateAll, goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { toast } from 'svelte-sonner';
@@ -96,14 +96,14 @@
 			body: formData,
 			headers: { 'x-sveltekit-action': 'true' }
 		});
-		const result = await response.json();
+		const result = deserialize(await response.text());
 		if (result.type === 'success') {
 			toast.success('Commercial assigné');
 			openAssignDialog = false;
 			assignSearch = '';
 			await invalidateAll();
-		} else {
-			toast.error(result.data?.message ?? "Erreur lors de l'assignation");
+		} else if (result.type === 'failure') {
+			toast.error((result.data as Record<string, string>)?.message ?? "Erreur lors de l'assignation");
 		}
 	}
 
@@ -156,12 +156,12 @@
 							body: formData,
 							headers: { 'x-sveltekit-action': 'true' }
 						});
-						const result = await response.json();
+						const result = deserialize(await response.text());
 						if (result.type === 'success') {
 							toast.success(`Étape mise à jour : ${stage}`);
 							await invalidateAll();
-						} else {
-							toast.error(result.data?.message ?? "Erreur lors du changement d'étape");
+						} else if (result.type === 'failure') {
+							toast.error((result.data as Record<string, string>)?.message ?? "Erreur lors du changement d'étape");
 						}
 					}}
 					>
@@ -197,12 +197,12 @@
 					body: formData,
 					headers: { 'x-sveltekit-action': 'true' }
 				});
-				const result = await response.json();
+				const result = deserialize(await response.text());
 				if (result.type === 'redirect') {
 					toast.success('Deal dupliqué');
 					await goto(result.location);
-				} else if (result.type !== 'success') {
-					toast.error(result.data?.message ?? 'Erreur lors de la duplication');
+				} else if (result.type === 'failure') {
+					toast.error((result.data as Record<string, string>)?.message ?? 'Erreur lors de la duplication');
 				}
 			}}
 		>
@@ -223,12 +223,12 @@
 						body: formData,
 						headers: { 'x-sveltekit-action': 'true' }
 					});
-					const result = await response.json();
+					const result = deserialize(await response.text());
 					if (result.type === 'success') {
 						toast.success('Deal marqué comme Gagné');
 						await invalidateAll();
-					} else {
-						toast.error(result.data?.message ?? 'Erreur');
+					} else if (result.type === 'failure') {
+						toast.error((result.data as Record<string, string>)?.message ?? 'Erreur');
 					}
 				}}
 			>
