@@ -113,13 +113,15 @@
 		const dealId = source.id as string;
 		if (isPlaceholder(dealId)) return;
 
-		const newGroup = (source as any).group as string;
 		const deal = getDeal(dealId);
 
 		dealsByStage = move(dealsByStage, event);
 
-		if (deal && deal.stage !== newGroup) {
-			persistStageChange(dealId, newGroup);
+		const newStage = Object.entries(dealsByStage)
+			.find(([, items]) => items.some((i) => i.id === dealId))?.[0];
+
+		if (deal && newStage && deal.stage !== newStage) {
+			persistStageChange(dealId, newStage);
 		}
 	}
 </script>

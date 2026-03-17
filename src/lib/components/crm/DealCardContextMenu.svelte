@@ -325,6 +325,8 @@
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>Annuler</AlertDialog.Cancel>
 			<form
+				method="POST"
+				action="?/deleteDeal"
 				use:enhance={() => {
 					return async ({ result, update }) => {
 						if (result.type === 'success') {
