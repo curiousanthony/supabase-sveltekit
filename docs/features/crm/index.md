@@ -32,7 +32,7 @@ Le CRM est intégré directement dans Mentore Manager. Vos contacts, vos entrepr
 
 ## 📋 Vue d'ensemble
 
-Le CRM se compose de 3 espaces :
+Le CRM se compose de 2 espaces :
 
 ### 👤 Contacts
 Vos interlocuteurs : les personnes physiques (directeurs, responsables formation, DRH...).
@@ -64,19 +64,11 @@ Vos clients : les organismes, sociétés, associations qui achètent vos formati
 
 ---
 
-### 💼 Deals (Opportunités)
-Vos ventes en cours : les formations que vous êtes en train de vendre.
+### 💼 Deals (fonctionnalité liée)
 
-**Contenu d'un Deal :**
-- Nom, montant, devise
-- Étape du pipeline (Lead, Qualification, Proposition, Négociation, Gagné/Perdu)
-- Contact et entreprise liés
-- Formation liée (quand le Deal est gagné)
-- Type de financement, modalités
-- Date de démarrage souhaitée
-- Commercial responsable
+Les [Deals (Opportunités commerciales)](../deals/index.md) s'appuient sur les Contacts et Entreprises du CRM pour gérer votre pipeline de vente. Chaque Deal est lié à un contact et/ou une entreprise.
 
-👉 [En savoir plus sur les Deals](./deals.md)
+👉 [Voir la documentation Deals](../deals/index.md)
 
 ---
 
@@ -226,7 +218,7 @@ R: Dans la fiche entreprise, vous pouvez indiquer l'OPCO et les dispositifs (CPF
 
 - [Gérer vos Contacts](./contacts.md)
 - [Gérer vos Entreprises](./entreprises.md)
-- [Gérer vos Deals](./deals.md)
+- [Gérer vos Deals (Opportunités)](../deals/index.md)
 - [Créer une Formation depuis un Deal](#)
 - [Importer des contacts depuis Excel](#)
 

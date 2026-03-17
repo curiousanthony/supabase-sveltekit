@@ -94,11 +94,7 @@ export const sitemap: SitemapItem[] = [
 	{
 		title: 'Deals',
 		url: '/deals',
-		icon: Handshake,
-		wip: true,
-		disabled: false,
-		wipTooltip: 'Les deals sont en cours de développement et sont partiellement disponibles.',
-		wipBadge: 'Bêta'
+		icon: Handshake
 	},
 	{
 		title: 'Formations',

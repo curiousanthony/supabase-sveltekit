@@ -294,7 +294,7 @@ R: Les contacts sont stockés de manière sécurisée. Si un contact demande à 
 
 - [Retour à la vue d'ensemble du CRM](./index.md)
 - [Lier des Contacts à des Entreprises](./entreprises.md)
-- [Créer des Deals avec vos Contacts](./deals.md)
+- [Créer des Deals avec vos Contacts](../deals/index.md)
 - [Gérer les Apprenants dans les Formations](#)
 
 ---

@@ -319,7 +319,7 @@ R: Illimité ! Gérez autant d'entreprises que vous voulez.
 
 - [Retour à la vue d'ensemble du CRM](./index.md)
 - [Gérer les Contacts des entreprises](./contacts.md)
-- [Créer des Deals avec vos Entreprises](./deals.md)
+- [Créer des Deals avec vos Entreprises](../deals/index.md)
 - [Liste des OPCO et leurs secteurs](#)
 - [Comment trouver un SIRET ?](#)
 

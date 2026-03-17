@@ -211,34 +211,34 @@
 					rows="3"
 					class="flex-1 min-w-0 rounded-md border border-ring bg-background px-2 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
 				></textarea>
-		{:else}
-			<input
-				bind:this={inputEl}
-				type={type === 'url' ? 'text' : type}
-				bind:value={editValue}
-				onkeydown={handleKeydown}
-				onblur={save}
-				placeholder={type === 'url' ? 'https://... ou google.com' : undefined}
-				class="flex-1 min-w-0 rounded-md border border-ring bg-background px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-			/>
-		{/if}
-			<button
-				type="button"
-				onclick={save}
-				class="mt-0.5 flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-				aria-label="Enregistrer"
-			>
-				<Check class="size-3.5" />
-			</button>
-			<button
-				type="button"
-				onmousedown={(e) => e.preventDefault()}
-				onclick={cancel}
-				class="mt-0.5 flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-				aria-label="Annuler"
-			>
-				<X class="size-3.5" />
-			</button>
+				<button
+					type="button"
+					onclick={save}
+					class="mt-0.5 flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+					aria-label="Enregistrer"
+				>
+					<Check class="size-3.5" />
+				</button>
+				<button
+					type="button"
+					onmousedown={(e) => e.preventDefault()}
+					onclick={cancel}
+					class="mt-0.5 flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+					aria-label="Annuler"
+				>
+					<X class="size-3.5" />
+				</button>
+			{:else}
+				<input
+					bind:this={inputEl}
+					type={type === 'url' ? 'text' : type}
+					bind:value={editValue}
+					onkeydown={handleKeydown}
+					onblur={save}
+					placeholder={type === 'url' ? 'https://... ou google.com' : undefined}
+					class="flex-1 min-w-0 rounded-md border border-ring bg-background px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+				/>
+			{/if}
 		</div>
 	{:else}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
