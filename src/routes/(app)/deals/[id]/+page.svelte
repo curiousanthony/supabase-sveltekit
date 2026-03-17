@@ -12,7 +12,8 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { cn } from '$lib/utils';
@@ -48,7 +49,12 @@
 	let { data }: PageProps = $props();
 	let { deal, contacts, companies, programmes, members, header } = $derived(data);
 
-	let activeTab = $state('apercu');
+	const VALID_TABS = ['apercu', 'financement', 'logistique'] as const;
+	function initialTab(): string {
+		const t = page.url.searchParams.get('tab');
+		return t && (VALID_TABS as readonly string[]).includes(t) ? t : 'apercu';
+	}
+	let activeTab = $state(initialTab());
 	let openCloseDialog = $state(false);
 	let openLossDialog = $state(false);
 	let openDeleteDialog = $state(false);
@@ -99,17 +105,19 @@
 
 		const response = await fetch('?/updateField', {
 			method: 'POST',
-			body: formData
+			body: formData,
+			headers: { 'x-sveltekit-action': 'true' }
 		});
 
-		if (response.ok) {
+		const result = await response.json();
+		if (result.type === 'success') {
 			toast.success('Mis à jour');
 			editingField = null;
 			editValue = '';
 			editOriginalValue = '';
 			await invalidateAll();
 		} else {
-			toast.error('Erreur lors de la mise à jour');
+			toast.error(result.data?.message ?? 'Erreur lors de la mise à jour');
 		}
 	}
 
@@ -545,7 +553,12 @@
 						{ value: 'logistique', label: 'Logistique', icon: Truck }
 					]}
 					activeValue={activeTab}
-					onTabChange={(v) => (activeTab = v)}
+					onTabChange={(v) => {
+						activeTab = v;
+						const url = new URL(page.url);
+						url.searchParams.set('tab', v);
+						replaceState(url, {});
+					}}
 					ariaLabel="Sections du deal"
 				/>
 
