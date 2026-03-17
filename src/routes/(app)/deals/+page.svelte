@@ -2,7 +2,6 @@
 	import type { PageProps } from './$types';
 	import { DragDropProvider } from '@dnd-kit-svelte/svelte';
 	import { useSortable, isSortable } from '@dnd-kit-svelte/svelte/sortable';
-	import { move } from '@dnd-kit/helpers';
 	import { invalidateAll } from '$app/navigation';
 	import * as Card from '$lib/components/ui/card';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
@@ -116,9 +115,23 @@
 		const deal = getDeal(dealId);
 		const newStage = (source as any).sortable?.group as string | undefined;
 
-		dealsByStage = move(dealsByStage, event);
-
 		if (deal && newStage && deal.stage !== newStage) {
+			const movedEl = (source as any).sortable?.element as HTMLElement | undefined;
+			if (movedEl) movedEl.remove();
+
+			const oldStage = deal.stage;
+			const updated = { ...dealsByStage };
+			updated[oldStage] = updated[oldStage].filter((i) => i.id !== dealId);
+			const targetItems = [...(updated[newStage] ?? [])];
+			const phIdx = targetItems.findIndex((i) => isPlaceholder(i.id));
+			if (phIdx >= 0) {
+				targetItems.splice(phIdx, 0, { id: dealId });
+			} else {
+				targetItems.push({ id: dealId });
+			}
+			updated[newStage] = targetItems;
+			dealsByStage = updated;
+
 			persistStageChange(dealId, newStage);
 		}
 	}
@@ -184,16 +197,12 @@
 							{:else}
 								{@const deal = getDeal(item.id)}
 							{#if deal}
-								<DealCardContextMenu {deal} {members}>
-										<a
-											href="/deals/{deal.id}"
-											class="block"
-											{@attach sortable.ref}
-										>
+								<div {@attach sortable.ref} class={cn(sortable.isDragging.current && 'opacity-50')}>
+									<DealCardContextMenu {deal} {members}>
+										<a href="/deals/{deal.id}" class="block">
 											<Card.Root
 												class={cn(
 													'py-0! gap-0! cursor-pointer border transition-all hover:shadow-sm hover:ring-2 hover:ring-primary/20 active:cursor-grabbing',
-													sortable.isDragging.current && 'opacity-50 shadow-lg ring-2 ring-primary/20',
 													stage === 'Gagné' && 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30',
 													stage === 'Perdu' && 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30'
 												)}
@@ -266,6 +275,7 @@
 											</Card.Root>
 										</a>
 									</DealCardContextMenu>
+								</div>
 								{/if}
 							{/if}
 							{/each}
