@@ -53,3 +53,38 @@ Before declaring the work done:
 2. **Build** — run `bun run build` to catch SSR or import errors invisible during dev.
 3. **Types** — run `bun run check` to catch type errors.
 4. Warn the user if any gate fails; do not silently skip them.
+
+## 7. Commit after completion
+
+Once **all** prior sections have passed with no outstanding issues, create a git commit to sync version control. This step is **mandatory** even when the user has not explicitly asked for a commit.
+
+1. **Stage only touched files** — use `git add <specific files>` rather than `git add .` to keep the commit focused on the current task.
+2. **Conventional commit message** — write a concise message that describes *why* the change was made (e.g. `feat(deals): add context menu for deal cards`). Do not merely list what files changed.
+3. **Never bypass hooks** — do not use `--no-verify`, `--no-gpg-sign`, or any flag that skips pre-commit hooks.
+4. **Verify the working tree** — run `git status` after committing and confirm it is clean.
+5. **Do not force-push** — never run `git push --force` or `git push --force-with-lease` unless the user explicitly requests it.
+
+### 7a. Propagating agent/config changes to `develop` and `main`
+
+If **any** of the changed files belong to the following categories, they must be propagated to both `develop` and `main` immediately after committing on the current branch:
+
+- `docs/**` — project documentation
+- `.cursor/rules/**` — Cursor rules
+- `.cursor/skills/**` — agent skills
+- `.cursor/plans/**` — agent plans
+- `AGENTS.md`, `README.md`, or any other root-level guidance/config file intended to be authoritative across all branches
+
+**Propagation steps** (run after the commit on the current branch):
+
+```bash
+CURRENT=$(git rev-parse --abbrev-ref HEAD)
+COMMIT=$(git rev-parse HEAD)
+
+git checkout develop && git cherry-pick $COMMIT && git push origin develop
+git checkout main    && git cherry-pick $COMMIT && git push origin main
+git checkout $CURRENT
+```
+
+- If `develop` or `main` do not exist locally, fetch them first (`git fetch origin develop main`).
+- If `cherry-pick` produces a conflict, resolve it, complete the cherry-pick (`git cherry-pick --continue`), push, then return to the original branch.
+- Confirm the working tree is clean on the original branch after returning.
