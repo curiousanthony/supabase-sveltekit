@@ -299,7 +299,7 @@
 			<!-- Left Sidebar: Contact & Company -->
 			<div class="space-y-4">
 				<!-- Contact Card -->
-				<Card.Root>
+				<Card.Root class="gap-2">
 					<Card.Header>
 						<div class="flex items-center justify-between">
 							<Card.Title class="text-sm font-medium text-muted-foreground">Contact</Card.Title>
@@ -400,7 +400,7 @@
 				<!-- Company Card (from contact or direct) -->
 				{#if deal.company || companyFromContact(deal.contact)}
 				{@const resolvedCompany = (deal.company ?? companyFromContact(deal.contact))!}
-					<Card.Root>
+					<Card.Root class="gap-2">
 					<Card.Header>
 						<Card.Title class="text-sm font-medium text-muted-foreground">Entreprise</Card.Title>
 					</Card.Header>
@@ -426,7 +426,7 @@
 				{/if}
 
 				<!-- Programme Card -->
-				<Card.Root>
+				<Card.Root class="gap-2">
 					<Card.Header>
 						<div class="flex items-center justify-between">
 							<Card.Title class="text-sm font-medium text-muted-foreground">Programme</Card.Title>
