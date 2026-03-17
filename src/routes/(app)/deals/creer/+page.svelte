@@ -37,18 +37,14 @@
 
 	let { data }: PageProps = $props();
 
+	const DRAFT_KEY = 'deal_creer_draft';
+
 	// Form state
 	let name = $state('');
 	let stage = $state<string>('Suspect');
 	let contactId = $state<string | null>(null);
 	let companyId = $state<string | null>(null);
 	let programmeId = $state<string | null>(null);
-
-	$effect(() => {
-		if (data.preselectedProgrammeId) {
-			programmeId = data.preselectedProgrammeId;
-		}
-	});
 	let dealAmount = $state<string>('');
 	let fundedAmount = $state<string>('');
 	let isFunded = $state(false);
@@ -67,6 +63,63 @@
 	let source = $state<string>('');
 	let commercialId = $state<string>('');
 	let description = $state('');
+
+	let commercialIdInitialized = false;
+	$effect(() => {
+		if (!commercialIdInitialized && data.currentUserId) {
+			commercialId = data.currentUserId;
+			commercialIdInitialized = true;
+		}
+	});
+
+	function saveDraftToSession() {
+		try {
+			sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+				name, stage, contactId, companyId, programmeId, dealAmount, fundedAmount,
+				isFunded, fundingType, fundingStatus, fundingReference, dealFormat, intraInter,
+				selectedModalities, desiredStartDate, desiredEndDate, expectedCloseDate,
+				durationHours, nbApprenants, probability, source, commercialId, description,
+				clientSectionOpen, programmeSectionOpen, detailsSectionOpen
+			}));
+		} catch { /* quota exceeded – ignore */ }
+	}
+
+	$effect(() => {
+		if (!data.preselectedProgrammeId) return;
+		const raw = sessionStorage.getItem(DRAFT_KEY);
+		if (raw) {
+			try {
+				const d = JSON.parse(raw);
+				name = d.name ?? '';
+				stage = d.stage ?? 'Suspect';
+				contactId = d.contactId ?? null;
+				companyId = d.companyId ?? null;
+				dealAmount = d.dealAmount ?? '';
+				fundedAmount = d.fundedAmount ?? '';
+				isFunded = d.isFunded ?? false;
+				fundingType = d.fundingType ?? '';
+				fundingStatus = d.fundingStatus ?? '';
+				fundingReference = d.fundingReference ?? '';
+				dealFormat = d.dealFormat ?? '';
+				intraInter = d.intraInter ?? '';
+				selectedModalities = d.selectedModalities ?? [];
+				desiredStartDate = d.desiredStartDate ?? '';
+				desiredEndDate = d.desiredEndDate ?? '';
+				expectedCloseDate = d.expectedCloseDate ?? '';
+				durationHours = d.durationHours ?? '';
+				nbApprenants = d.nbApprenants ?? '';
+				probability = d.probability ?? '';
+				source = d.source ?? '';
+				commercialId = d.commercialId ?? data.currentUserId ?? '';
+				description = d.description ?? '';
+				clientSectionOpen = d.clientSectionOpen ?? true;
+				programmeSectionOpen = d.programmeSectionOpen ?? true;
+				detailsSectionOpen = d.detailsSectionOpen ?? false;
+			} catch { /* corrupt data – ignore */ }
+			sessionStorage.removeItem(DRAFT_KEY);
+		}
+		programmeId = data.preselectedProgrammeId;
+	});
 
 	// Picker state
 	let contactOpen = $state(false);
@@ -149,6 +202,7 @@
 	{:else}
 		<form
 			method="POST"
+			action="?/createDeal"
 			use:enhance={() => {
 				return async ({ result, update }) => {
 					if (result.type === 'redirect') toast.success('Deal créé');
@@ -378,13 +432,14 @@
 											</Command.Root>
 										</Popover.Content>
 									</Popover.Root>
-									<a
-										href="/bibliotheque/programmes/creer?returnTo=/deals/creer"
-										class="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-dashed border-input px-3 text-sm text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
-									>
-										<Plus class="size-3.5" />
-										Créer
-									</a>
+								<a
+									href="/bibliotheque/programmes/creer?returnTo=/deals/creer"
+									onclick={saveDraftToSession}
+									class="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-dashed border-input px-3 text-sm text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+								>
+									<Plus class="size-3.5" />
+									Créer
+								</a>
 								</div>
 							</div>
 

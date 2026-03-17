@@ -11,7 +11,7 @@
 	const pathname = $derived(page?.url?.pathname ?? '');
 
 	const TAB_ROUTES = [
-		{ href: '/contacts', label: 'Clients', icon: Users },
+		{ href: '/contacts', label: 'Contacts', icon: Users },
 		{ href: '/contacts/entreprises', label: 'Entreprises', icon: Building2 },
 		{ href: '/contacts/formateurs', label: 'Formateurs', icon: GraduationCap }
 	] as const;

@@ -10,7 +10,7 @@
 	import * as Command from '$lib/components/ui/command';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { Switch } from '$lib/components/ui/switch';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { tick } from 'svelte';
@@ -42,6 +42,7 @@
 	import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 	import Banknote from '@lucide/svelte/icons/banknote';
 	import Truck from '@lucide/svelte/icons/truck';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import ContactModal from '$lib/components/crm/ContactModal.svelte';
 
 	let { data }: PageProps = $props();
@@ -50,6 +51,7 @@
 	let activeTab = $state('apercu');
 	let openCloseDialog = $state(false);
 	let openLossDialog = $state(false);
+	let openDeleteDialog = $state(false);
 	let lossReason = $state<string>('');
 	let lossReasonDetail = $state('');
 	let contactModalOpen = $state(false);
@@ -67,11 +69,13 @@
 	// Inline edit state
 	let editingField = $state<string | null>(null);
 	let editValue = $state('');
+	let editOriginalValue = $state('');
 	let editInputEl = $state<HTMLInputElement | null>(null);
 
 	async function startEdit(field: string, currentValue: string | number | null | undefined) {
 		editingField = field;
 		editValue = currentValue?.toString() ?? '';
+		editOriginalValue = editValue;
 		await tick();
 		editInputEl?.focus();
 		editInputEl?.select();
@@ -80,9 +84,15 @@
 	function cancelEdit() {
 		editingField = null;
 		editValue = '';
+		editOriginalValue = '';
 	}
 
 	async function submitFieldUpdate(field: string, value: string) {
+		if (value === editOriginalValue && editingField) {
+			cancelEdit();
+			return;
+		}
+
 		const formData = new FormData();
 		formData.set('field', field);
 		formData.set('value', value);
@@ -96,6 +106,7 @@
 			toast.success('Mis à jour');
 			editingField = null;
 			editValue = '';
+			editOriginalValue = '';
 			await invalidateAll();
 		} else {
 			toast.error('Erreur lors de la mise à jour');
@@ -606,35 +617,77 @@
 						</Card.Root>
 
 						{#if deal.stage !== 'Gagné' && deal.stage !== 'Perdu' && !deal.formation}
-							<Card.Root>
-								<Card.Content class="flex items-center justify-between pt-6">
-									<div>
-										<p class="text-sm font-medium">Convertir en formation</p>
-										<p class="text-xs text-muted-foreground">Créer une formation à partir de ce deal</p>
-									</div>
-									<Dialog.Root bind:open={openCloseDialog}>
-										<Dialog.Trigger>
-											<Button>Convertir en Formation</Button>
-										</Dialog.Trigger>
-										<Dialog.Content>
-											<Dialog.Header>
-												<Dialog.Title>Créer une formation ?</Dialog.Title>
-												<Dialog.Description>
-													Une formation sera créée avec les informations du deal. Le deal sera marqué comme Gagné.
-												</Dialog.Description>
-											</Dialog.Header>
-											<Dialog.Footer>
-												<Dialog.Close><Button variant="outline">Annuler</Button></Dialog.Close>
-												<form method="POST" action="?/closeAndCreateFormation" use:enhance>
-													<Button type="submit" onclick={() => (openCloseDialog = false)}>Créer la formation</Button>
-												</form>
-											</Dialog.Footer>
-										</Dialog.Content>
-									</Dialog.Root>
-								</Card.Content>
-							</Card.Root>
-						{/if}
-				</div>
+						<Card.Root>
+							<Card.Content class="flex items-center justify-between pt-6">
+								<div>
+									<p class="text-sm font-medium">Convertir en formation</p>
+									<p class="text-xs text-muted-foreground">Créer une formation à partir de ce deal</p>
+								</div>
+								<Dialog.Root bind:open={openCloseDialog}>
+									<Dialog.Trigger>
+										<Button>Convertir en Formation</Button>
+									</Dialog.Trigger>
+									<Dialog.Content>
+										<Dialog.Header>
+											<Dialog.Title>Créer une formation ?</Dialog.Title>
+											<Dialog.Description>
+												Une formation sera créée avec les informations du deal. Le deal sera marqué comme Gagné.
+											</Dialog.Description>
+										</Dialog.Header>
+										<Dialog.Footer>
+											<Dialog.Close><Button variant="outline">Annuler</Button></Dialog.Close>
+											<form method="POST" action="?/closeAndCreateFormation" use:enhance>
+												<Button type="submit" onclick={() => (openCloseDialog = false)}>Créer la formation</Button>
+											</form>
+										</Dialog.Footer>
+									</Dialog.Content>
+								</Dialog.Root>
+							</Card.Content>
+						</Card.Root>
+					{/if}
+
+						<Card.Root class="border-destructive/30">
+							<Card.Content class="flex items-center justify-between pt-6">
+								<div>
+									<p class="text-sm font-medium text-destructive">Supprimer le deal</p>
+									<p class="text-xs text-muted-foreground">Cette action est irréversible.</p>
+								</div>
+								<Dialog.Root bind:open={openDeleteDialog}>
+									<Dialog.Trigger>
+										<Button variant="destructive" size="sm">
+											<Trash2 class="size-4 mr-1.5" />
+											Supprimer
+										</Button>
+									</Dialog.Trigger>
+									<Dialog.Content>
+										<Dialog.Header>
+											<Dialog.Title>Supprimer ce deal ?</Dialog.Title>
+											<Dialog.Description>
+												Le deal « {deal.name} » sera supprimé définitivement. Cette action est irréversible.
+											</Dialog.Description>
+										</Dialog.Header>
+										<Dialog.Footer>
+											<Dialog.Close><Button variant="outline">Annuler</Button></Dialog.Close>
+											<form
+												method="POST"
+												action="?/deleteDeal"
+												use:enhance={() => {
+													return async ({ result, update }) => {
+														if (result.type === 'redirect') {
+															toast.success('Deal supprimé');
+														}
+														await update();
+													};
+												}}
+											>
+												<Button type="submit" variant="destructive">Supprimer définitivement</Button>
+											</form>
+										</Dialog.Footer>
+									</Dialog.Content>
+								</Dialog.Root>
+							</Card.Content>
+						</Card.Root>
+			</div>
 				{/if}
 
 				{#if activeTab === 'financement'}
@@ -671,13 +724,13 @@
 									{/if}
 								{/if}
 
-								<div>
-									<p class="text-xs font-medium text-muted-foreground mb-1">Financement accordé</p>
-									<Checkbox
-										checked={deal.isFunded ?? false}
-										onCheckedChange={(v) => submitFieldUpdate('isFunded', v ? 'true' : 'false')}
-									/>
-								</div>
+							<div class="flex items-center gap-3">
+								<Switch
+									checked={deal.isFunded ?? false}
+									onCheckedChange={(v) => submitFieldUpdate('isFunded', v ? 'true' : 'false')}
+								/>
+								<p class="text-sm">Financement accordé</p>
+							</div>
 
 								{@render editableRow('Réf. dossier OPCO', 'fundingReference', deal.fundingReference)}
 							</Card.Content>

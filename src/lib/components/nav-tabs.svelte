@@ -26,14 +26,16 @@
 
 	function isActive(tab: TabItem): boolean {
 		if (tab.href != null) {
-			return pathname === tab.href || pathname === tab.href + '/';
+			const normalizedPathname = pathname.replace(/\/$/, '');
+			const normalizedHref = tab.href.replace(/\/$/, '');
+			return normalizedPathname === normalizedHref;
 		}
 		return tab.value != null && tab.value === activeValue;
 	}
 
 	const tabClass = (active: boolean) =>
 		cn(
-			'flex items-center gap-2 rounded-t-md border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+			'flex cursor-pointer items-center gap-2 rounded-t-md border-b-2 px-4 py-2 text-sm font-medium transition-colors',
 			active
 				? 'border-primary text-primary'
 				: 'border-transparent text-muted-foreground hover:text-foreground'

@@ -1,9 +1,10 @@
 import { db } from '$lib/db';
-import { deals, contacts, companies, biblioProgrammes, workspacesUsers } from '$lib/db/schema';
-import { getUserWorkspace } from '$lib/auth';
+import { deals, contacts, companies, contactCompanies, biblioProgrammes, workspacesUsers } from '$lib/db/schema';
+import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
 import { redirect, fail } from '@sveltejs/kit';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, desc } from 'drizzle-orm';
 import { dealSchema, DEAL_STAGES } from '$lib/crm/deal-schema';
+import { contactSchema, posteOptions } from '$lib/crm/contact-schema';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load = (async ({ locals, url }) => {
@@ -19,6 +20,7 @@ export const load = (async ({ locals, url }) => {
 			members: [],
 			workspaceId: null,
 			preselectedProgrammeId: null,
+			currentUserId: user.id,
 			header: {
 				pageName: 'Nouveau deal',
 				backButton: true,
@@ -60,6 +62,7 @@ export const load = (async ({ locals, url }) => {
 		members: membersList.map((m) => m.user).filter(Boolean),
 		workspaceId,
 		preselectedProgrammeId,
+		currentUserId: user.id,
 		header: {
 			pageName: 'Nouveau deal',
 			backButton: true,
@@ -70,7 +73,7 @@ export const load = (async ({ locals, url }) => {
 }) satisfies PageServerLoad;
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
+	createDeal: async ({ request, locals }) => {
 		const { user } = await locals.safeGetSession();
 		if (!user) return fail(401, { message: 'Non autorisé' });
 
@@ -111,6 +114,15 @@ export const actions: Actions = {
 		}
 
 		const v = result.data;
+
+		const maxIdResult = await db
+			.select({ n: deals.idInWorkspace })
+			.from(deals)
+			.where(eq(deals.workspaceId, workspaceId))
+			.orderBy(desc(deals.idInWorkspace))
+			.limit(1);
+		const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
+
 		const [{ id: insertedId }] = await db
 			.insert(deals)
 			.values({
@@ -140,10 +152,82 @@ export const actions: Actions = {
 				description: v.description,
 				ownerId: user.id,
 				createdBy: user.id,
-				value: v.dealAmount != null ? String(v.dealAmount) : null
+				value: v.dealAmount != null ? String(v.dealAmount) : null,
+				idInWorkspace: nextIdInWorkspace
 			})
 			.returning({ id: deals.id });
 
 		throw redirect(303, `/deals/${insertedId}`);
+	},
+
+	createContact: async ({ request, locals }) => {
+		const { user } = await locals.safeGetSession();
+		if (!user) return fail(401, { message: 'Non autorisé' });
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(400, { message: 'Aucun espace de travail' });
+
+		const fd = await request.formData();
+		const raw = {
+			firstName: (fd.get('firstName') as string)?.trim() ?? '',
+			lastName: (fd.get('lastName') as string)?.trim() ?? '',
+			email: (fd.get('email') as string)?.trim() ?? '',
+			phone: (fd.get('phone') as string)?.trim() || undefined,
+			poste: (fd.get('poste') as string) || undefined,
+			linkedinUrl: (fd.get('linkedinUrl') as string)?.trim() || undefined,
+			internalNotes: (fd.get('internalNotes') as string)?.trim() || undefined,
+			companyIds: fd.getAll('companyIds').filter((v): v is string => typeof v === 'string')
+		};
+
+		const parsed = contactSchema.safeParse(raw);
+		if (!parsed.success) {
+			return fail(400, { message: parsed.error.errors.map((e) => e.message).join(' ') });
+		}
+		const poste = parsed.data.poste?.trim();
+		if (poste && !posteOptions.includes(poste as (typeof posteOptions)[number])) {
+			return fail(400, { message: 'Poste invalide' });
+		}
+
+		await ensureUserInPublicUsers(locals);
+
+		try {
+			const inserted = await db
+				.insert(contacts)
+				.values({
+					workspaceId,
+					firstName: parsed.data.firstName,
+					lastName: parsed.data.lastName,
+					email: parsed.data.email,
+					phone: parsed.data.phone ?? null,
+					poste: poste ? (poste as (typeof posteOptions)[number]) : null,
+					linkedinUrl: parsed.data.linkedinUrl ?? null,
+					internalNotes: parsed.data.internalNotes ?? null,
+					createdBy: user.id
+				})
+				.returning({ id: contacts.id });
+
+			const contactId = inserted[0]?.id;
+			if (!contactId) return fail(500, { message: 'Création du contact échouée' });
+
+			const allCompanyIds = [...parsed.data.companyIds];
+			const newCompanyName = (fd.get('newCompanyName') as string)?.trim();
+			if (newCompanyName) {
+				const [newCo] = await db
+					.insert(companies)
+					.values({ workspaceId, name: newCompanyName })
+					.returning({ id: companies.id });
+				if (newCo?.id) allCompanyIds.push(newCo.id);
+			}
+
+			if (allCompanyIds.length > 0) {
+				await db
+					.insert(contactCompanies)
+					.values(allCompanyIds.map((companyId) => ({ contactId, companyId })));
+			}
+			return { success: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error('[CRM createContact from deal creer]', message);
+			return fail(500, { message: 'Impossible de créer le contact.' });
+		}
 	}
 };

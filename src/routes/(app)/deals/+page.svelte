@@ -191,8 +191,13 @@
 													stage === 'Perdu' && 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30'
 												)}
 											>
-												<div class="p-3 space-y-2">
+											<div class="p-3 space-y-2">
+												<div class="flex items-center gap-2">
+													{#if deal.idInWorkspace}
+														<span class="text-[10px] font-mono text-muted-foreground shrink-0">DL-{deal.idInWorkspace}</span>
+													{/if}
 													<p class="text-sm font-medium leading-tight line-clamp-2">{deal.name}</p>
+												</div>
 
 													{#if contactLabel(deal) || companyFromDeal(deal)}
 														<div class="flex flex-col gap-0.5">

@@ -10,7 +10,8 @@ import {
 	smallint,
 	date,
 	boolean,
-	primaryKey
+	primaryKey,
+	unique
 } from 'drizzle-orm/pg-core';
 import {
 	dealStage,
@@ -83,7 +84,8 @@ export const deals = pgTable(
 		commercialId: uuid('commercial_id').references(() => users.id, {
 			onUpdate: 'cascade',
 			onDelete: 'set null'
-		})
+		}),
+		idInWorkspace: integer('id_in_workspace')
 	},
 	(table) => [
 		foreignKey({
@@ -120,7 +122,11 @@ export const deals = pgTable(
 			name: 'deals_formation_id_fkey'
 		})
 			.onUpdate('cascade')
-			.onDelete('set null')
+			.onDelete('set null'),
+		unique('deals_workspace_id_in_workspace_unique').on(
+			table.workspaceId,
+			table.idInWorkspace
+		)
 	]
 );
 

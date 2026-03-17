@@ -50,9 +50,9 @@
 			{:else}
 				<h1 class="text-base font-medium">{header?.pageName ?? pageName ?? 'Page'}</h1>
 			{/if}
-			{#if header?.idInWorkspace != null}
-				<span class="text-muted-foreground text-sm font-mono">#{header.idInWorkspace}</span>
-			{/if}
+		{#if header?.idInWorkspace != null}
+			<span class="text-muted-foreground text-sm font-mono">{header.idPrefix ?? '#'}{header.idInWorkspace}</span>
+		{/if}
 			{#each header?.actions ?? [] as action}
 				{#if action.type === 'badge'}
 					<Badge variant={action?.variant ?? 'default'} class={action?.className}>
