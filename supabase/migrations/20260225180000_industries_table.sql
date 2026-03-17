@@ -33,13 +33,20 @@ ON CONFLICT ("name") DO NOTHING;
 ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "industry_id" uuid REFERENCES "public"."industries"("id") ON DELETE set null ON UPDATE cascade;
 
 --> statement-breakpoint
-UPDATE "companies" c
-SET "industry_id" = i.id
-FROM "industries" i
-WHERE c."industry"::text = i."name";
-
---> statement-breakpoint
-ALTER TABLE "companies" DROP COLUMN IF EXISTS "industry";
+-- Idempotent: only migrate data if "industry" column still exists (remote may have been migrated already)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'companies' AND column_name = 'industry'
+  ) THEN
+    UPDATE "companies" c
+    SET "industry_id" = i.id
+    FROM "industries" i
+    WHERE c."industry"::text = i."name";
+    ALTER TABLE "companies" DROP COLUMN IF EXISTS "industry";
+  END IF;
+END $$;
 
 --> statement-breakpoint
 DROP TYPE IF EXISTS "public"."company_industry";

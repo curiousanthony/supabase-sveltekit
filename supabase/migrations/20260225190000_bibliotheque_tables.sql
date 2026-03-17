@@ -1,9 +1,15 @@
 -- Bibliothèque feature: core tables, junction tables, and enums
+-- Idempotent: skip enum creation if already exists (remote may have been migrated already)
 
--- Enums
-CREATE TYPE "public"."modalite_evaluation" AS ENUM('QCM', 'QCU', 'Pratique', 'Projet');
-CREATE TYPE "public"."statut_programme" AS ENUM('Brouillon', 'En cours', 'Publié', 'Archivé');
-CREATE TYPE "public"."type_questionnaire" AS ENUM('Test de niveau', 'Quiz / Exercice', 'Audit des besoins');
+DO $$ BEGIN
+  CREATE TYPE "public"."modalite_evaluation" AS ENUM('QCM', 'QCU', 'Pratique', 'Projet');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE TYPE "public"."statut_programme" AS ENUM('Brouillon', 'En cours', 'Publié', 'Archivé');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE TYPE "public"."type_questionnaire" AS ENUM('Test de niveau', 'Quiz / Exercice', 'Audit des besoins');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Reusable trigger function: set NEW.updated_at = now() on UPDATE
 CREATE OR REPLACE FUNCTION public.set_updated_at()
