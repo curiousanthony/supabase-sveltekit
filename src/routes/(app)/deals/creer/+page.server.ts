@@ -2,7 +2,7 @@ import { db } from '$lib/db';
 import { deals, contacts, companies, contactCompanies, biblioProgrammes, workspacesUsers } from '$lib/db/schema';
 import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
 import { redirect, fail } from '@sveltejs/kit';
-import { eq, asc, desc } from 'drizzle-orm';
+import { eq, asc, sql } from 'drizzle-orm';
 import { dealSchema, DEAL_STAGES } from '$lib/crm/deal-schema';
 import { contactSchema, posteOptions } from '$lib/crm/contact-schema';
 import type { PageServerLoad, Actions } from './$types';
@@ -115,47 +115,51 @@ export const actions: Actions = {
 
 		const v = result.data;
 
-		const maxIdResult = await db
-			.select({ n: deals.idInWorkspace })
-			.from(deals)
-			.where(eq(deals.workspaceId, workspaceId))
-			.orderBy(desc(deals.idInWorkspace))
-			.limit(1);
-		const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
+		const [{ id: insertedId }] = await db.transaction(async (tx) => {
+			await tx.execute(
+				sql`SELECT pg_advisory_xact_lock(726, hashtext(${workspaceId}))`
+			);
 
-		const [{ id: insertedId }] = await db
-			.insert(deals)
-			.values({
-				workspaceId,
-				name: v.name,
-				stage: v.stage,
-				contactId: v.contactId,
-				companyId: v.companyId,
-				programmeId: v.programmeId,
-				dealAmount: v.dealAmount != null ? String(v.dealAmount) : null,
-				fundedAmount: v.fundedAmount != null ? String(v.fundedAmount) : null,
-				isFunded: v.isFunded,
-				fundingType: v.fundingType as any,
-				fundingStatus: v.fundingStatus as any,
-				fundingReference: v.fundingReference,
-				dealFormat: v.dealFormat as any,
-				intraInter: v.intraInter as any,
-				modalities: v.modalities.length > 0 ? v.modalities : null,
-				desiredStartDate: v.desiredStartDate,
-				desiredEndDate: v.desiredEndDate,
-				expectedCloseDate: v.expectedCloseDate,
-				durationHours: v.durationHours,
-				nbApprenants: v.nbApprenants,
-				probability: v.probability,
-				source: v.source as any,
-				commercialId: v.commercialId,
-				description: v.description,
-				ownerId: user.id,
-				createdBy: user.id,
-				value: v.dealAmount != null ? String(v.dealAmount) : null,
-				idInWorkspace: nextIdInWorkspace
-			})
-			.returning({ id: deals.id });
+			const maxIdResult = await tx
+				.select({ n: sql<number>`COALESCE(MAX(${deals.idInWorkspace}), 0)` })
+				.from(deals)
+				.where(eq(deals.workspaceId, workspaceId));
+			const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
+
+			return tx
+				.insert(deals)
+				.values({
+					workspaceId,
+					name: v.name,
+					stage: v.stage,
+					contactId: v.contactId,
+					companyId: v.companyId,
+					programmeId: v.programmeId,
+					dealAmount: v.dealAmount != null ? String(v.dealAmount) : null,
+					fundedAmount: v.fundedAmount != null ? String(v.fundedAmount) : null,
+					isFunded: v.isFunded,
+					fundingType: v.fundingType as any,
+					fundingStatus: v.fundingStatus as any,
+					fundingReference: v.fundingReference,
+					dealFormat: v.dealFormat as any,
+					intraInter: v.intraInter as any,
+					modalities: v.modalities.length > 0 ? v.modalities : null,
+					desiredStartDate: v.desiredStartDate,
+					desiredEndDate: v.desiredEndDate,
+					expectedCloseDate: v.expectedCloseDate,
+					durationHours: v.durationHours,
+					nbApprenants: v.nbApprenants,
+					probability: v.probability,
+					source: v.source as any,
+					commercialId: v.commercialId,
+					description: v.description,
+					ownerId: user.id,
+					createdBy: user.id,
+					value: v.dealAmount != null ? String(v.dealAmount) : null,
+					idInWorkspace: nextIdInWorkspace
+				})
+				.returning({ id: deals.id });
+		});
 
 		throw redirect(303, `/deals/${insertedId}`);
 	},

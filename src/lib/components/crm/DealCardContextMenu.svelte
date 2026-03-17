@@ -73,10 +73,14 @@
 
 	const showAssignOption = $derived(members.length > 1);
 
-	function handleCopyLink() {
+	async function handleCopyLink() {
 		const url = `${$page.url.origin}/deals/${deal.id}`;
-		navigator.clipboard.writeText(url);
-		toast.success('Lien copié');
+		try {
+			await navigator.clipboard.writeText(url);
+			toast.success('Lien copié');
+		} catch {
+			toast.error('Impossible de copier le lien');
+		}
 	}
 
 	function handleOpenNewTab() {
@@ -87,14 +91,19 @@
 		const formData = new FormData();
 		formData.set('dealId', deal.id);
 		formData.set('commercialId', memberId);
-		const response = await fetch('?/assignCommercial', { method: 'POST', body: formData });
-		if (response.ok) {
+		const response = await fetch('?/assignCommercial', {
+			method: 'POST',
+			body: formData,
+			headers: { 'x-sveltekit-action': 'true' }
+		});
+		const result = await response.json();
+		if (result.type === 'success') {
 			toast.success('Commercial assigné');
 			openAssignDialog = false;
 			assignSearch = '';
 			await invalidateAll();
 		} else {
-			toast.error("Erreur lors de l'assignation");
+			toast.error(result.data?.message ?? "Erreur lors de l'assignation");
 		}
 	}
 
@@ -134,22 +143,27 @@
 					<ContextMenu.Item
 						disabled={isCurrent}
 						class={isCurrent ? 'font-semibold' : ''}
-						onclick={async () => {
-							if (stage === 'Perdu') {
-								openLossDialog = true;
-								return;
-							}
-							const formData = new FormData();
-							formData.set('dealId', deal.id);
-							formData.set('stage', stage);
-							const response = await fetch('?/updateStage', { method: 'POST', body: formData });
-							if (response.ok) {
-								toast.success(`Étape mise à jour : ${stage}`);
-								await invalidateAll();
-							} else {
-								toast.error("Erreur lors du changement d'étape");
-							}
-						}}
+					onclick={async () => {
+						if (stage === 'Perdu') {
+							openLossDialog = true;
+							return;
+						}
+						const formData = new FormData();
+						formData.set('dealId', deal.id);
+						formData.set('stage', stage);
+						const response = await fetch('?/updateStage', {
+							method: 'POST',
+							body: formData,
+							headers: { 'x-sveltekit-action': 'true' }
+						});
+						const result = await response.json();
+						if (result.type === 'success') {
+							toast.success(`Étape mise à jour : ${stage}`);
+							await invalidateAll();
+						} else {
+							toast.error(result.data?.message ?? "Erreur lors du changement d'étape");
+						}
+					}}
 					>
 						<span class={`inline-block size-2 rounded-full ${colors.bg} ${colors.border} border`}></span>
 						{stage}
@@ -178,12 +192,17 @@
 			onclick={async () => {
 				const formData = new FormData();
 				formData.set('dealId', deal.id);
-				const response = await fetch('?/duplicateDeal', { method: 'POST', body: formData });
-				if (response.redirected) {
+				const response = await fetch('?/duplicateDeal', {
+					method: 'POST',
+					body: formData,
+					headers: { 'x-sveltekit-action': 'true' }
+				});
+				const result = await response.json();
+				if (result.type === 'redirect') {
 					toast.success('Deal dupliqué');
-					await goto(response.url);
-				} else if (!response.ok) {
-					toast.error('Erreur lors de la duplication');
+					await goto(result.location);
+				} else if (result.type !== 'success') {
+					toast.error(result.data?.message ?? 'Erreur lors de la duplication');
 				}
 			}}
 		>
@@ -199,12 +218,17 @@
 					const formData = new FormData();
 					formData.set('dealId', deal.id);
 					formData.set('stage', 'Gagné');
-					const response = await fetch('?/updateStage', { method: 'POST', body: formData });
-					if (response.ok) {
+					const response = await fetch('?/updateStage', {
+						method: 'POST',
+						body: formData,
+						headers: { 'x-sveltekit-action': 'true' }
+					});
+					const result = await response.json();
+					if (result.type === 'success') {
 						toast.success('Deal marqué comme Gagné');
 						await invalidateAll();
 					} else {
-						toast.error('Erreur');
+						toast.error(result.data?.message ?? 'Erreur');
 					}
 				}}
 			>
@@ -249,6 +273,8 @@
 						resetLossDialog();
 						toast.success('Deal marqué comme Perdu');
 						await invalidateAll();
+					} else if (result.type === 'failure' || result.type === 'error') {
+						toast.error('Erreur lors de la mise à jour');
 					}
 					await update();
 				};
@@ -299,14 +325,14 @@
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>Annuler</AlertDialog.Cancel>
 			<form
-				method="POST"
-				action="?/deleteDeal"
 				use:enhance={() => {
 					return async ({ result, update }) => {
 						if (result.type === 'success') {
 							openDeleteDialog = false;
 							toast.success('Deal supprimé');
 							await invalidateAll();
+						} else if (result.type === 'failure' || result.type === 'error') {
+							toast.error('Erreur lors de la suppression');
 						}
 						await update();
 					};

@@ -1,7 +1,7 @@
 import { db } from '$lib/db';
 import { deals, workspacesUsers } from '$lib/db/schema';
 import { getUserWorkspace } from '$lib/auth';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import { DEAL_STAGES } from '$lib/crm/deal-schema';
 import { PERMISSIONS } from '$lib/server/permissions';
@@ -96,6 +96,9 @@ export const actions: Actions = {
 		if (stage === 'Perdu') {
 			updateData.lossReason = lossReason || null;
 			updateData.lossReasonDetail = lossReasonDetail || null;
+		} else {
+			updateData.lossReason = null;
+			updateData.lossReasonDetail = null;
 		}
 
 		const [updated] = await db
@@ -120,6 +123,17 @@ export const actions: Actions = {
 		const commercialId = fd.get('commercialId') as string;
 
 		if (!dealId || !commercialId) return fail(400, { message: 'Paramètres manquants' });
+
+		const commercialInWorkspace = await db.query.workspacesUsers.findFirst({
+			where: and(
+				eq(workspacesUsers.userId, commercialId),
+				eq(workspacesUsers.workspaceId, workspaceId)
+			),
+			columns: { userId: true }
+		});
+		if (!commercialInWorkspace) {
+			return fail(403, { message: 'Commercial non membre de cet espace de travail' });
+		}
 
 		const [updated] = await db
 			.update(deals)
@@ -147,50 +161,56 @@ export const actions: Actions = {
 		});
 		if (!source) return fail(404, { message: 'Deal introuvable' });
 
-		const maxIdResult = await db
-			.select({ n: deals.idInWorkspace })
-			.from(deals)
-			.where(eq(deals.workspaceId, workspaceId))
-			.orderBy(desc(deals.idInWorkspace))
-			.limit(1);
-		const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
-
 		const nullIfEmpty = <T>(v: T): T | null => (v === '' || v == null ? null : v);
 
-		const [inserted] = await db
-			.insert(deals)
-			.values({
-				workspaceId,
-				name: `${source.name} (copie)`,
-				stage: 'Suspect',
-				contactId: nullIfEmpty(source.contactId),
-				companyId: nullIfEmpty(source.companyId),
-				programmeId: nullIfEmpty(source.programmeId),
-				dealAmount: nullIfEmpty(source.dealAmount),
-				fundedAmount: nullIfEmpty(source.fundedAmount),
-				isFunded: source.isFunded ?? false,
-				fundingType: nullIfEmpty(source.fundingType),
-				fundingStatus: nullIfEmpty(source.fundingStatus),
-				fundingReference: nullIfEmpty(source.fundingReference),
-				dealFormat: nullIfEmpty(source.dealFormat),
-				intraInter: nullIfEmpty(source.intraInter),
-				modalities: source.modalities ?? [],
-				desiredStartDate: nullIfEmpty(source.desiredStartDate),
-				desiredEndDate: nullIfEmpty(source.desiredEndDate),
-				expectedCloseDate: nullIfEmpty(source.expectedCloseDate),
-				durationHours: nullIfEmpty(source.durationHours),
-				nbApprenants: nullIfEmpty(source.nbApprenants),
-				probability: nullIfEmpty(source.probability),
-				source: nullIfEmpty(source.source),
-				commercialId: nullIfEmpty(source.commercialId),
-				description: nullIfEmpty(source.description),
-				value: nullIfEmpty(source.value),
-				ownerId: user.id,
-				createdBy: user.id,
-				idInWorkspace: nextIdInWorkspace
-			})
-			.returning({ id: deals.id });
+		const result = await db.transaction(async (tx) => {
+			// Lock workspace-scoped to prevent concurrent idInWorkspace allocation
+			await tx.execute(
+				sql`SELECT pg_advisory_xact_lock(726, hashtext(${workspaceId}))`
+			);
 
+			const maxIdResult = await tx
+				.select({ n: sql<number>`COALESCE(MAX(${deals.idInWorkspace}), 0)` })
+				.from(deals)
+				.where(eq(deals.workspaceId, workspaceId));
+			const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
+
+			return tx
+				.insert(deals)
+				.values({
+					workspaceId,
+					name: `${source.name} (copie)`,
+					stage: 'Suspect',
+					contactId: nullIfEmpty(source.contactId),
+					companyId: nullIfEmpty(source.companyId),
+					programmeId: nullIfEmpty(source.programmeId),
+					dealAmount: nullIfEmpty(source.dealAmount),
+					fundedAmount: nullIfEmpty(source.fundedAmount),
+					isFunded: source.isFunded ?? false,
+					fundingType: nullIfEmpty(source.fundingType),
+					fundingStatus: nullIfEmpty(source.fundingStatus),
+					fundingReference: nullIfEmpty(source.fundingReference),
+					dealFormat: nullIfEmpty(source.dealFormat),
+					intraInter: nullIfEmpty(source.intraInter),
+					modalities: source.modalities ?? [],
+					desiredStartDate: nullIfEmpty(source.desiredStartDate),
+					desiredEndDate: nullIfEmpty(source.desiredEndDate),
+					expectedCloseDate: nullIfEmpty(source.expectedCloseDate),
+					durationHours: nullIfEmpty(source.durationHours),
+					nbApprenants: nullIfEmpty(source.nbApprenants),
+					probability: nullIfEmpty(source.probability),
+					source: nullIfEmpty(source.source),
+					commercialId: nullIfEmpty(source.commercialId),
+					description: nullIfEmpty(source.description),
+					value: nullIfEmpty(source.value),
+					ownerId: user.id,
+					createdBy: user.id,
+					idInWorkspace: nextIdInWorkspace
+				})
+				.returning({ id: deals.id });
+		});
+
+		const inserted = result[0];
 		if (!inserted) return fail(500, { message: 'Erreur lors de la duplication' });
 		throw redirect(303, `/deals/${inserted.id}`);
 	},

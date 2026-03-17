@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
 	import { DragDropProvider } from '@dnd-kit-svelte/svelte';
-	import { useDroppable } from '@dnd-kit-svelte/svelte';
 	import { useSortable, isSortable } from '@dnd-kit-svelte/svelte/sortable';
 	import { move } from '@dnd-kit/helpers';
 	import { invalidateAll } from '$app/navigation';
@@ -24,6 +23,8 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import Coins from '@lucide/svelte/icons/coins';
 
+	const PLACEHOLDER_PREFIX = '__placeholder_';
+
 	let { data }: PageProps = $props();
 	let { deals: rawDeals, workspaceId, members } = $derived(data);
 
@@ -34,12 +35,21 @@
 	$effect(() => {
 		const grouped: Record<string, { id: string }[]> = {};
 		for (const stage of DEAL_STAGES) {
-			grouped[stage] = (rawDeals ?? [])
+			const stageDeals = (rawDeals ?? [])
 				.filter((d) => d.stage === stage)
 				.map((d) => ({ id: d.id }));
+			grouped[stage] = [...stageDeals, { id: `${PLACEHOLDER_PREFIX}${stage}` }];
 		}
 		dealsByStage = grouped;
 	});
+
+	function isPlaceholder(id: string): boolean {
+		return id.startsWith(PLACEHOLDER_PREFIX);
+	}
+
+	function dealCount(stage: string): number {
+		return (dealsByStage[stage] ?? []).filter((i) => !isPlaceholder(i.id)).length;
+	}
 
 	const dealsMap = $derived(
 		new Map((rawDeals ?? []).map((d) => [d.id, d]))
@@ -87,7 +97,11 @@
 		const fd = new FormData();
 		fd.set('dealId', dealId);
 		fd.set('stage', stage);
-		await fetch('?/updateStage', { method: 'POST', body: fd });
+		await fetch('?/updateStage', {
+			method: 'POST',
+			body: fd,
+			headers: { 'x-sveltekit-action': 'true' }
+		});
 		await invalidateAll();
 	}
 
@@ -96,8 +110,10 @@
 		const { source } = event.operation;
 		if (!isSortable(source)) return;
 
-		const newGroup = (source as any).group as string;
 		const dealId = source.id as string;
+		if (isPlaceholder(dealId)) return;
+
+		const newGroup = (source as any).group as string;
 		const deal = getDeal(dealId);
 
 		dealsByStage = move(dealsByStage, event);
@@ -136,40 +152,39 @@
 			<DragDropProvider onDragEnd={handleDragEnd}>
 				<div class="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
 					{#each DEAL_STAGES as stage}
-						{@const colors = STAGE_COLORS[stage]}
-						{@const items = dealsByStage[stage] ?? []}
-						{@const total = stageTotal(stage)}
-						{@const weighted = stageWeightedTotal(stage)}
-						{@const droppable = useDroppable({ id: stage, type: 'column' })}
-						<div class="flex h-full min-w-[290px] max-w-[320px] flex-1 flex-col rounded-lg border bg-muted/30">
-							<div class={cn('flex shrink-0 flex-col gap-1 border-b px-3 py-2.5', colors.border)}>
-								<div class="flex items-center justify-between">
-									<div class="flex items-center gap-2">
-										<span class={cn('inline-block size-2 rounded-full', colors.bg, colors.border, 'border')}></span>
-										<h2 class="text-sm font-semibold">{stage}</h2>
-									</div>
-									<Badge variant="secondary" class="text-xs tabular-nums">
-										{items.length}
-									</Badge>
+					{@const colors = STAGE_COLORS[stage]}
+					{@const items = dealsByStage[stage] ?? []}
+					{@const total = stageTotal(stage)}
+					{@const weighted = stageWeightedTotal(stage)}
+					<div class="flex h-full min-w-[290px] max-w-[320px] flex-1 flex-col rounded-lg border bg-muted/30">
+						<div class={cn('flex shrink-0 flex-col gap-1 border-b px-3 py-2.5', colors.border)}>
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-2">
+									<span class={cn('inline-block size-2 rounded-full', colors.bg, colors.border, 'border')}></span>
+									<h2 class="text-sm font-semibold">{stage}</h2>
 								</div>
-								{#if total > 0}
-									<div class="flex items-center gap-2 text-xs text-muted-foreground">
-										<span>{formatCurrency(total)}</span>
-										<span class="opacity-50">·</span>
-										<span title="Montant pondéré ({STAGE_PROBABILITIES[stage]}%)">{formatCurrency(weighted)} pondéré</span>
-									</div>
-								{/if}
+								<Badge variant="secondary" class="text-xs tabular-nums">
+									{dealCount(stage)}
+								</Badge>
 							</div>
+							{#if total > 0}
+								<div class="flex items-center gap-2 text-xs text-muted-foreground">
+									<span>{formatCurrency(total)}</span>
+									<span class="opacity-50">·</span>
+									<span title="Montant pondéré ({STAGE_PROBABILITIES[stage]}%)">{formatCurrency(weighted)} pondéré</span>
+								</div>
+							{/if}
+						</div>
 
-							<div
-								class="flex min-h-[60px] flex-1 flex-col gap-1.5 overflow-y-auto p-2"
-								{@attach droppable.ref}
-							>
-								{#each items as item, index (item.id)}
-									{@const deal = getDeal(item.id)}
-									{@const sortable = useSortable({ id: item.id, index: () => index, group: stage })}
-								{#if deal}
-									<DealCardContextMenu {deal} {members}>
+						<div class="flex min-h-[60px] flex-1 flex-col gap-1.5 overflow-y-auto p-2">
+							{#each items as item, index (item.id)}
+								{@const sortable = useSortable({ id: item.id, index: () => index, group: stage })}
+							{#if isPlaceholder(item.id)}
+								<div {@attach sortable.ref} class="min-h-[2px]"></div>
+							{:else}
+								{@const deal = getDeal(item.id)}
+							{#if deal}
+								<DealCardContextMenu {deal} {members}>
 										<a
 											href="/deals/{deal.id}"
 											class="block"
@@ -252,8 +267,9 @@
 										</a>
 									</DealCardContextMenu>
 								{/if}
-								{/each}
-							</div>
+							{/if}
+							{/each}
+						</div>
 						</div>
 					{/each}
 				</div>

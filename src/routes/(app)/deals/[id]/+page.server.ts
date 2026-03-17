@@ -9,7 +9,7 @@ import {
 	workspacesUsers
 } from '$lib/db/schema';
 import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { redirect, fail } from '@sveltejs/kit';
 import { DEAL_STAGES, LOSS_REASONS } from '$lib/crm/deal-schema';
 import { contactSchema, posteOptions } from '$lib/crm/contact-schema';
@@ -273,41 +273,53 @@ export const actions: Actions = {
 		if (!deal) return fail(404, { message: 'Deal introuvable' });
 		if (deal.formationId) return fail(400, { message: 'Une formation est déjà liée' });
 
-		const maxIdResult = await db
-			.select({ n: formations.idInWorkspace })
-			.from(formations)
-			.where(eq(formations.workspaceId, workspaceId))
-			.orderBy(desc(formations.idInWorkspace))
-			.limit(1);
+		let formation: { id: string };
+		try {
+			formation = await db.transaction(async (tx) => {
+				await tx.execute(
+					sql`SELECT pg_advisory_xact_lock(727, hashtext(${workspaceId}))`
+				);
 
-		const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
+				const maxIdResult = await tx
+					.select({ n: formations.idInWorkspace })
+					.from(formations)
+					.where(eq(formations.workspaceId, workspaceId))
+					.orderBy(desc(formations.idInWorkspace))
+					.limit(1);
+				const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
 
-		const [formation] = await db
-			.insert(formations)
-			.values({
-				workspaceId,
-				createdBy: user.id,
-				name: deal.name,
-				description: deal.description ?? undefined,
-				clientId: deal.clientId ?? undefined,
-				statut: 'En attente',
-				modalite: (deal.modalities?.[0] as any) ?? 'Présentiel',
-				duree: deal.durationHours ?? 14,
-				idInWorkspace: nextIdInWorkspace
-			})
-			.returning({ id: formations.id });
+				const [inserted] = await tx
+					.insert(formations)
+					.values({
+						workspaceId,
+						createdBy: user.id,
+						name: deal.name,
+						description: deal.description ?? undefined,
+						clientId: deal.clientId ?? undefined,
+						statut: 'En attente',
+						modalite: (deal.modalities?.[0] as any) ?? 'Présentiel',
+						duree: deal.durationHours ?? 14,
+						idInWorkspace: nextIdInWorkspace
+					})
+					.returning({ id: formations.id });
 
-		if (!formation) return fail(500, { message: 'Erreur création formation' });
+				if (!inserted) throw new Error('Erreur création formation');
 
-		await db
-			.update(deals)
-			.set({
-				stage: 'Gagné',
-				closedAt: new Date().toISOString(),
-				formationId: formation.id,
-				updatedAt: new Date().toISOString()
-			})
-			.where(and(eq(deals.id, params.id), eq(deals.workspaceId, workspaceId)));
+				await tx
+					.update(deals)
+					.set({
+						stage: 'Gagné',
+						closedAt: new Date().toISOString(),
+						formationId: inserted.id,
+						updatedAt: new Date().toISOString()
+					})
+					.where(and(eq(deals.id, params.id), eq(deals.workspaceId, workspaceId)));
+
+				return inserted;
+			});
+		} catch {
+			return fail(500, { message: 'Erreur création formation' });
+		}
 
 		throw redirect(303, `/formations/${formation.id}`);
 	},
