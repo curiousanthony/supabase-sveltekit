@@ -104,21 +104,33 @@
 		await invalidateAll();
 	}
 
-	async function handleDragEnd(event: any) {
+	function handleDragOver(event: any) {
+		const { source, target } = event.operation;
+		if (!source || !target) return;
+		if (!isSortable(source) || !isSortable(target)) return;
+		const srcGroup = (source as any).sortable?.group;
+		const tgtGroup = (target as any).sortable?.group;
+		if (srcGroup && tgtGroup && srcGroup !== tgtGroup) {
+			event.preventDefault();
+		}
+	}
+
+	function handleDragEnd(event: any) {
 		if (event.canceled) return;
-		const { source } = event.operation;
+		const { source, target } = event.operation;
 		if (!isSortable(source)) return;
 
 		const dealId = source.id as string;
 		if (isPlaceholder(dealId)) return;
 
 		const deal = getDeal(dealId);
-		const newStage = (source as any).sortable?.group as string | undefined;
+
+		let newStage: string | undefined;
+		if (target && isSortable(target)) {
+			newStage = (target as any).sortable?.group as string | undefined;
+		}
 
 		if (deal && newStage && deal.stage !== newStage) {
-			const movedEl = (source as any).sortable?.element as HTMLElement | undefined;
-			if (movedEl) movedEl.remove();
-
 			const oldStage = deal.stage;
 			const updated = { ...dealsByStage };
 			updated[oldStage] = updated[oldStage].filter((i) => i.id !== dealId);
@@ -162,7 +174,7 @@
 				</div>
 			</div>
 		{:else}
-			<DragDropProvider onDragEnd={handleDragEnd}>
+			<DragDropProvider onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
 				<div class="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
 					{#each DEAL_STAGES as stage}
 					{@const colors = STAGE_COLORS[stage]}
