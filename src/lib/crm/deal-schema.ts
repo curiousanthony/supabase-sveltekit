@@ -53,6 +53,7 @@ export const DEAL_SOURCES = [
 	'Appel entrant',
 	'LinkedIn',
 	'Partenaire',
+	'Prospecté',
 	'Autre'
 ] as const;
 

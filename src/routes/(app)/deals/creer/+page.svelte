@@ -10,7 +10,6 @@
 	import * as Popover from '$lib/components/ui/popover';
 	import * as Command from '$lib/components/ui/command';
 	import * as Collapsible from '$lib/components/ui/collapsible';
-	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { cn } from '$lib/utils';
 	import type { PageProps } from './$types';
@@ -33,6 +32,9 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Plus from '@lucide/svelte/icons/plus';
+	import X from '@lucide/svelte/icons/x';
+	import Mail from '@lucide/svelte/icons/mail';
+	import Phone from '@lucide/svelte/icons/phone';
 	import ContactModal from '$lib/components/crm/ContactModal.svelte';
 
 	let { data }: PageProps = $props();
@@ -159,12 +161,23 @@
 		)
 	);
 
+	$effect(() => {
+		if (contactId && selectedContact?.contactCompanies?.[0]?.company) {
+			companyId = selectedContact.contactCompanies[0].company.id;
+		}
+	});
+
+	$effect(() => {
+		if (programmeId) {
+			const prog = data.programmes?.find((p) => p.id === programmeId);
+			if (prog?.dureeHeures) durationHours = String(prog.dureeHeures);
+		}
+	});
+
+	const PROBABILITY_OPTIONS = [10, 25, 50, 75, 90, 100];
+
 	function selectContact(id: string) {
 		contactId = id;
-		const contact = data.contacts?.find((c) => c.id === id);
-		if (contact?.contactCompanies?.[0]?.company) {
-			companyId = contact.contactCompanies[0].company.id;
-		}
 		contactOpen = false;
 		contactSearch = '';
 	}
@@ -190,9 +203,15 @@
 	<title>Nouveau deal</title>
 </svelte:head>
 
-<ContactModal bind:open={contactModalOpen} companies={data.companies ?? []} />
+<ContactModal
+	bind:open={contactModalOpen}
+	companies={data.companies ?? []}
+	onCreated={(id) => {
+		contactId = id;
+	}}
+/>
 
-<div class="mx-auto max-w-2xl space-y-6 pb-8">
+<div class="mx-auto w-full max-w-3xl space-y-6 pb-8">
 	{#if !data.workspaceId}
 		<Card.Root>
 			<Card.Content class="py-8 text-center text-muted-foreground">
@@ -290,8 +309,8 @@
 
 			<!-- Section 2: Client -->
 			<Collapsible.Root bind:open={clientSectionOpen}>
-				<Card.Root>
-					<Collapsible.Trigger class="w-full">
+				<Card.Root class="overflow-hidden">
+					<Collapsible.Trigger class="w-full cursor-pointer">
 						<Card.Header class="flex flex-row items-center justify-between pb-4">
 							<Card.Title class="text-base">Client</Card.Title>
 							<ChevronDown
@@ -346,6 +365,16 @@
 											</Command.Root>
 										</Popover.Content>
 									</Popover.Root>
+									{#if contactId}
+										<button
+											type="button"
+											onclick={() => { contactId = null; companyId = null; }}
+											class="flex h-9 shrink-0 cursor-pointer items-center rounded-md border border-input px-2 text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+											title="Retirer le contact"
+										>
+											<X class="size-4" />
+										</button>
+									{/if}
 									<button
 										type="button"
 										onclick={() => (contactModalOpen = true)}
@@ -357,15 +386,53 @@
 								</div>
 							</div>
 
-							{#if selectedContact?.contactCompanies?.length}
-								{@const company = selectedContact.contactCompanies[0]?.company}
-								{#if company}
-									<div class="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
-										<Building2 class="size-4 text-muted-foreground" />
-										<span>{company.name}</span>
-										<Badge variant="secondary" class="text-[10px] ml-auto">via contact</Badge>
+							{#if selectedContact}
+								<div class="rounded-md border bg-muted/30 p-3 space-y-2">
+									<div class="flex items-center justify-between">
+										<span class="font-medium text-sm">
+											{[selectedContact.firstName, selectedContact.lastName].filter(Boolean).join(' ')}
+										</span>
+										<a
+											href="/contacts/{selectedContact.id}"
+											target="_blank"
+											rel="noopener noreferrer"
+											class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+											title="Voir le contact"
+										>
+											<ExternalLink class="size-3.5" />
+										</a>
 									</div>
-								{/if}
+									<div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+										{#if selectedContact.email}
+											<span class="flex items-center gap-1">
+												<Mail class="size-3" />
+												{selectedContact.email}
+											</span>
+										{/if}
+										{#if selectedContact.phone}
+											<span class="flex items-center gap-1">
+												<Phone class="size-3" />
+												{selectedContact.phone}
+											</span>
+										{/if}
+									</div>
+									{#if selectedContact.contactCompanies?.length}
+										{@const company = selectedContact.contactCompanies[0]?.company}
+										{#if company}
+											<a
+												href="/contacts/{selectedContact.id}"
+												target="_blank"
+												rel="noopener noreferrer"
+												class="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+												title="Voir l'entreprise"
+											>
+												<Building2 class="size-3" />
+												<span>{company.name}</span>
+												<Badge variant="secondary" class="text-[10px]">via contact</Badge>
+											</a>
+										{/if}
+									{/if}
+								</div>
 							{/if}
 						</Card.Content>
 					</Collapsible.Content>
@@ -374,8 +441,8 @@
 
 			<!-- Section 3: Programme souhaité -->
 			<Collapsible.Root bind:open={programmeSectionOpen}>
-				<Card.Root>
-					<Collapsible.Trigger class="w-full">
+				<Card.Root class="overflow-hidden">
+					<Collapsible.Trigger class="w-full cursor-pointer">
 						<Card.Header class="flex flex-row items-center justify-between pb-4">
 							<Card.Title class="text-base">Programme souhaité</Card.Title>
 							<ChevronDown
@@ -432,41 +499,50 @@
 											</Command.Root>
 										</Popover.Content>
 									</Popover.Root>
-								<a
-									href="/bibliotheque/programmes/creer?returnTo=/deals/creer"
-									onclick={saveDraftToSession}
-									class="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-dashed border-input px-3 text-sm text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
-								>
-									<Plus class="size-3.5" />
-									Créer
-								</a>
+									{#if programmeId}
+										<button
+											type="button"
+											onclick={() => { programmeId = null; }}
+											class="flex h-9 shrink-0 cursor-pointer items-center rounded-md border border-input px-2 text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+											title="Retirer le programme"
+										>
+											<X class="size-4" />
+										</button>
+									{/if}
+									<a
+										href="/bibliotheque/programmes/creer?returnTo=/deals/creer"
+										onclick={saveDraftToSession}
+										class="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-dashed border-input px-3 text-sm text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+									>
+										<Plus class="size-3.5" />
+										Créer
+									</a>
 								</div>
 							</div>
 
 							{#if selectedProgramme}
-								<div class="rounded-md border bg-muted/30 p-3 space-y-1">
-									<div class="flex items-center justify-between">
+								<div class="relative">
+									<a
+										href="/bibliotheque/programmes/{selectedProgramme.id}"
+										target="_blank"
+										rel="noopener noreferrer"
+										class="block rounded-md border bg-muted/30 p-3 space-y-1 hover:border-foreground/30 transition-colors"
+									>
 										<span class="font-medium text-sm">{selectedProgramme.titre}</span>
-										<a
-											href="/bibliotheque/programmes/{selectedProgramme.id}"
-											class="text-xs text-muted-foreground hover:text-foreground"
-										>
-											<ExternalLink class="size-3.5" />
-										</a>
-									</div>
-									{#if selectedProgramme.modalite || selectedProgramme.dureeHeures || selectedProgramme.prixPublic}
-										<div class="flex gap-3 text-xs text-muted-foreground">
-											{#if selectedProgramme.modalite}
-												<span>{selectedProgramme.modalite}</span>
-											{/if}
-											{#if selectedProgramme.dureeHeures}
-												<span>{selectedProgramme.dureeHeures}h</span>
-											{/if}
-											{#if selectedProgramme.prixPublic}
-												<span>{Number(selectedProgramme.prixPublic).toLocaleString('fr-FR')} €</span>
-											{/if}
-										</div>
-									{/if}
+										{#if selectedProgramme.modalite || selectedProgramme.dureeHeures || selectedProgramme.prixPublic}
+											<div class="flex gap-3 text-xs text-muted-foreground">
+												{#if selectedProgramme.modalite}
+													<span>{selectedProgramme.modalite}</span>
+												{/if}
+												{#if selectedProgramme.dureeHeures}
+													<span>{selectedProgramme.dureeHeures}h</span>
+												{/if}
+												{#if selectedProgramme.prixPublic}
+													<span>{Number(selectedProgramme.prixPublic).toLocaleString('fr-FR')} &euro;</span>
+												{/if}
+											</div>
+										{/if}
+									</a>
 								</div>
 							{/if}
 						</Card.Content>
@@ -476,8 +552,8 @@
 
 			<!-- Section 4: Détails de l'opportunité -->
 			<Collapsible.Root bind:open={detailsSectionOpen}>
-				<Card.Root>
-					<Collapsible.Trigger class="w-full">
+				<Card.Root class="overflow-hidden">
+					<Collapsible.Trigger class="w-full cursor-pointer">
 						<Card.Header class="flex flex-row items-center justify-between pb-4">
 							<Card.Title class="text-base">Détails de l'opportunité</Card.Title>
 							<ChevronDown
@@ -531,15 +607,9 @@
 								</div>
 							</div>
 
-							<div class="grid grid-cols-2 gap-4">
-								<div class="flex items-center gap-2 pt-4">
-									<Checkbox id="isFunded" bind:checked={isFunded} />
-									<Label for="isFunded" class="cursor-pointer">Financement accordé</Label>
-								</div>
-								<div class="space-y-1.5">
-									<Label for="fundingReference">Réf. dossier OPCO</Label>
-									<Input id="fundingReference" name="fundingReference" bind:value={fundingReference} placeholder="N° dossier" />
-								</div>
+							<div class="space-y-1.5">
+								<Label for="fundingReference">Réf. dossier OPCO</Label>
+								<Input id="fundingReference" name="fundingReference" bind:value={fundingReference} placeholder="N° dossier" />
 							</div>
 
 							<!-- Format & Modalités -->
@@ -591,7 +661,7 @@
 							</div>
 
 							<!-- Dates & Logistique -->
-							<div class="grid grid-cols-3 gap-4">
+							<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 								<div class="space-y-1.5">
 									<Label for="desiredStartDate">Début souhaité</Label>
 									<Input id="desiredStartDate" name="desiredStartDate" type="date" bind:value={desiredStartDate} />
@@ -606,7 +676,7 @@
 								</div>
 							</div>
 
-							<div class="grid grid-cols-3 gap-4">
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div class="space-y-1.5">
 									<Label for="durationHours">Durée (h)</Label>
 									<Input id="durationHours" name="durationHours" type="number" min="0" bind:value={durationHours} />
@@ -615,9 +685,26 @@
 									<Label for="nbApprenants">Nb apprenants</Label>
 									<Input id="nbApprenants" name="nbApprenants" type="number" min="0" bind:value={nbApprenants} />
 								</div>
-								<div class="space-y-1.5">
-									<Label for="probability">Probabilité (%)</Label>
-									<Input id="probability" name="probability" type="number" min="0" max="100" bind:value={probability} />
+							</div>
+
+							<div class="space-y-1.5">
+								<Label>Probabilité (%)</Label>
+								<input type="hidden" name="probability" value={probability} />
+								<div class="flex flex-wrap gap-2">
+									{#each PROBABILITY_OPTIONS as p}
+										<button
+											type="button"
+											onclick={() => (probability = String(p))}
+											class={cn(
+												'rounded-md border px-3 py-1.5 text-sm transition-colors cursor-pointer',
+												probability === String(p)
+													? 'border-primary bg-primary/10 text-primary'
+													: 'border-input text-muted-foreground hover:border-foreground hover:text-foreground'
+											)}
+										>
+											{p}%
+										</button>
+									{/each}
 								</div>
 							</div>
 

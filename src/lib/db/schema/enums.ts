@@ -48,6 +48,7 @@ export const dealSource = pgEnum('deal_source', [
 	'Appel entrant',
 	'LinkedIn',
 	'Partenaire',
+	'Prospecté',
 	'Autre'
 ]);
 export const dealLossReason = pgEnum('deal_loss_reason', [

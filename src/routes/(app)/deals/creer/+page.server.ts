@@ -223,7 +223,7 @@ export const actions: Actions = {
 					.insert(contactCompanies)
 					.values(allCompanyIds.map((companyId) => ({ contactId, companyId })));
 			}
-			return { success: true };
+			return { success: true, contactId };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			console.error('[CRM createContact from deal creer]', message);

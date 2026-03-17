@@ -33,11 +33,13 @@
 	let {
 		open = $bindable(false),
 		contact = null as ContactForForm | null,
-		companies = [] as Company[]
+		companies = [] as Company[],
+		onCreated
 	}: {
 		open?: boolean;
 		contact?: ContactForForm | null;
 		companies?: Company[];
+		onCreated?: (contactId: string) => void;
 	} = $props();
 
 	const isEdit = $derived(!!contact?.id);
@@ -129,13 +131,16 @@
 			result
 		}: {
 			result:
-				| { type: 'success'; data?: { message?: string } }
+				| { type: 'success'; data?: { message?: string; contactId?: string } }
 				| { type: 'failure'; data?: { message?: string } }
 				| { type: 'error'; data?: { message?: string } }
 				| { type: 'redirect'; location: string };
 		}) => {
 			if (result.type === 'success') {
 				toast.success(isEdit ? 'Contact mis à jour' : 'Contact créé');
+				if (!isEdit && result.data?.contactId) {
+					onCreated?.(result.data.contactId);
+				}
 				open = false;
 				await invalidateAll();
 			}
