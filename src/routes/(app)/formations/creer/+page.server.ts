@@ -1,6 +1,6 @@
 import { db } from '$lib/db';
 import { formations, clients, modules } from '$lib/db/schema';
-import { eq, asc, desc } from 'drizzle-orm';
+import { eq, asc, desc, sql } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms/server';
 import { zod } from 'sveltekit-superforms/adapters';
@@ -110,29 +110,35 @@ export const actions: Actions = {
 			form.data.topicId && UUID_REGEX.test(form.data.topicId) ? form.data.topicId : null;
 		const clientId = form.data.clientId && UUID_REGEX.test(form.data.clientId) ? form.data.clientId : null;
 
-		const maxIdResult = await db
-			.select({ n: formations.idInWorkspace })
-			.from(formations)
-			.where(eq(formations.workspaceId, workspaceId))
-			.orderBy(desc(formations.idInWorkspace))
-			.limit(1);
-		const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
+		const [inserted] = await db.transaction(async (tx) => {
+			await tx.execute(
+				sql`SELECT pg_advisory_xact_lock(727, hashtext(${workspaceId}))`
+			);
 
-		const [inserted] = await db
-			.insert(formations)
-			.values({
-				workspaceId,
-				createdBy: user.id,
-				name: form.data.name ?? null,
-				description: form.data.description?.trim() || null,
-				topicId,
-				clientId,
-				duree: form.data.duree,
-				modalite: form.data.modalite,
-				idInWorkspace: nextIdInWorkspace,
-				statut: 'En attente'
-			})
-			.returning({ id: formations.id });
+			const maxIdResult = await tx
+				.select({ n: formations.idInWorkspace })
+				.from(formations)
+				.where(eq(formations.workspaceId, workspaceId))
+				.orderBy(desc(formations.idInWorkspace))
+				.limit(1);
+			const nextIdInWorkspace = (maxIdResult[0]?.n ?? 0) + 1;
+
+			return tx
+				.insert(formations)
+				.values({
+					workspaceId,
+					createdBy: user.id,
+					name: form.data.name ?? null,
+					description: form.data.description?.trim() || null,
+					topicId,
+					clientId,
+					duree: form.data.duree,
+					modalite: form.data.modalite,
+					idInWorkspace: nextIdInWorkspace,
+					statut: 'En attente'
+				})
+				.returning({ id: formations.id });
+		});
 
 		if (!inserted) return fail(500, { message: 'Erreur lors de la création de la formation', form });
 

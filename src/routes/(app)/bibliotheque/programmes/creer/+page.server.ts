@@ -22,8 +22,9 @@ function safeParseJSON<T>(raw: string | null, fallback: T): { ok: true; value: T
 	}
 }
 
-export const load = (async ({ locals }) => {
+export const load = (async ({ locals, url }) => {
 	const workspaceId = await getUserWorkspace(locals);
+	const returnTo = url.searchParams.get('returnTo');
 
 	const [availableModules, availableSupports] = workspaceId
 		? await Promise.all([
@@ -46,8 +47,8 @@ export const load = (async ({ locals }) => {
 		header: {
 			pageName: 'Nouveau programme',
 			backButton: true,
-			backButtonHref: '/bibliotheque/programmes',
-			backButtonLabel: 'Programmes',
+			backButtonHref: returnTo ?? '/bibliotheque/programmes',
+			backButtonLabel: returnTo ? 'Retour' : 'Programmes',
 			actions: []
 		}
 	};
@@ -175,6 +176,11 @@ export const actions: Actions = {
 			return row;
 		});
 
+		const returnTo = new URL(request.url).searchParams.get('returnTo');
+		if (returnTo) {
+			const sep = returnTo.includes('?') ? '&' : '?';
+			throw redirect(303, `${returnTo}${sep}programmeId=${inserted.id}`);
+		}
 		throw redirect(303, `/bibliotheque/programmes/${inserted.id}`);
 	}
 };

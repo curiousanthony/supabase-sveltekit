@@ -44,15 +44,15 @@
 			<!-- <Separator orientation="vertical" class="mx-2 data-[orientation=vertical]:h-4" /> -->
 		{/if}
 		<!-- Title, Formation ID (#n), then status badge (order per design) -->
-		<div class="flex items-center gap-2">
+		<div class="flex min-w-0 items-center gap-2">
 			{#if title}
 				{@render title()}
 			{:else}
 				<h1 class="text-base font-medium">{header?.pageName ?? pageName ?? 'Page'}</h1>
 			{/if}
-			{#if header?.idInWorkspace != null}
-				<span class="text-muted-foreground text-sm font-mono">#{header.idInWorkspace}</span>
-			{/if}
+		{#if header?.idInWorkspace != null}
+			<span class="text-muted-foreground text-sm font-mono">{header.idPrefix ?? '#'}{header.idInWorkspace}</span>
+		{/if}
 			{#each header?.actions ?? [] as action}
 				{#if action.type === 'badge'}
 					<Badge variant={action?.variant ?? 'default'} class={action?.className}>

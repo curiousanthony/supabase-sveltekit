@@ -395,6 +395,10 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
 		fields: [deals.companyId],
 		references: [companies.id]
 	}),
+	programme: one(biblioProgrammes, {
+		fields: [deals.programmeId],
+		references: [biblioProgrammes.id]
+	}),
 	owner: one(users, {
 		fields: [deals.ownerId],
 		references: [users.id],

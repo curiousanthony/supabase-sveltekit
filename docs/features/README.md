@@ -25,16 +25,27 @@ Créez et gérez vos modules, programmes, questionnaires et supports pédagogiqu
 ---
 
 ### ✅ CRM (Gestion Contacts & Entreprises)
-Gérez vos contacts, entreprises et opportunités commerciales en un seul endroit.
+Gérez vos contacts et entreprises en un seul endroit.
 
 **Documentation :**
 - [Vue d'ensemble du CRM](./crm/index.md)
 - [Contacts](./crm/contacts.md)
 - [Entreprises](./crm/entreprises.md)
-- [Deals (Opportunités)](./crm/deals.md)
 
 **Pour qui ?** Directeurs, Commerciaux  
 **Indicateurs Qualiopi :** 1, 3  
+**Status :** ✅ Documenté
+
+---
+
+### ✅ Deals (Opportunités commerciales)
+Gérez votre pipeline de vente de A à Z et transformez vos opportunités en formations en 1 clic.
+
+**Documentation :**
+- [Vue d'ensemble des Deals](./deals/index.md)
+
+**Pour qui ?** Directeurs, Commerciaux  
+**Indicateurs Qualiopi :** 3  
 **Status :** ✅ Documenté
 
 ---
