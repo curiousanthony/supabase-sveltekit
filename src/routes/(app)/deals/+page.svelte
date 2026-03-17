@@ -114,11 +114,9 @@
 		if (isPlaceholder(dealId)) return;
 
 		const deal = getDeal(dealId);
+		const newStage = (source as any).sortable?.group as string | undefined;
 
 		dealsByStage = move(dealsByStage, event);
-
-		const newStage = Object.entries(dealsByStage)
-			.find(([, items]) => items.some((i) => i.id === dealId))?.[0];
 
 		if (deal && newStage && deal.stage !== newStage) {
 			persistStageChange(dealId, newStage);
