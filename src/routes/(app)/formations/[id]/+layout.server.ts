@@ -49,7 +49,7 @@ export const load = (async ({ params }) => {
 					formateur: {
 						columns: { id: true },
 						with: {
-							user: { columns: { id: true, email: true, rawUserMetaData: true } }
+							user: { columns: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
 						}
 					}
 				}
@@ -84,7 +84,7 @@ export const load = (async ({ params }) => {
 					formateur: {
 						columns: { id: true },
 						with: {
-							user: { columns: { id: true, rawUserMetaData: true } }
+							user: { columns: { id: true, firstName: true, lastName: true, avatarUrl: true } }
 						}
 					},
 					emargements: {

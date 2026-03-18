@@ -121,11 +121,11 @@
 								{/if}
 
 								{#if seance.formateur?.user}
-									<p class="text-sm flex items-center gap-1.5">
-										<User class="size-4 text-muted-foreground shrink-0" />
-										{seance.formateur.user.rawUserMetaData?.full_name ?? 'Formateur'}
-									</p>
-								{/if}
+								<p class="text-sm flex items-center gap-1.5">
+									<User class="size-4 text-muted-foreground shrink-0" />
+									{[seance.formateur.user.firstName, seance.formateur.user.lastName].filter(Boolean).join(' ') || 'Formateur'}
+								</p>
+							{/if}
 							</div>
 
 							<!-- Émargement section -->

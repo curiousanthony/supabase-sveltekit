@@ -63,11 +63,11 @@
 	const displaySeances = $derived([...recentSeances, ...upcomingSeances].slice(0, 4));
 
 	const formateurs = $derived(
-		(formation?.formationFormateurs ?? []).map((ff) => ({
-			id: ff.formateur.id,
-			name: ff.formateur.user?.rawUserMetaData?.full_name ?? ff.formateur.user?.email ?? 'Formateur',
-			avatarUrl: ff.formateur.user?.rawUserMetaData?.avatar_url ?? ''
-		}))
+		(formation?.formationFormateurs ?? []).map((ff) => {
+			const u = ff.formateur.user;
+			const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ') || u?.email || 'Formateur';
+			return { id: ff.formateur.id, name, avatarUrl: u?.avatarUrl ?? '' };
+		})
 	);
 
 	const apprenants = $derived(
@@ -351,53 +351,55 @@
 				</p>
 			{:else}
 				<ul class="space-y-4">
-					{#each displaySeances as seance}
-						{@const status = sessionStatus(seance.startAt)}
-						<li class="border-b border-muted pb-4 last:border-0 last:pb-0">
-							<button
-								type="button"
-								class="flex w-full flex-col gap-1.5 text-left transition-colors hover:bg-muted/50 rounded-md -m-1 p-1 cursor-pointer"
-								onclick={() => goToTab('seances')}
-							>
-								<div class="flex items-baseline justify-between gap-2 flex-wrap">
-									<span class="text-base font-semibold text-foreground">{formatDate(seance.startAt)}</span>
-									<span class={cn(
-										'text-xs font-medium px-2 py-0.5 rounded-full',
-										status === 'past' && 'bg-muted text-muted-foreground',
-										status === 'today' && 'bg-primary/15 text-primary',
-										status === 'future' && 'bg-muted text-muted-foreground'
-									)}>
-										{#if status === 'past'}Passé{:else if status === 'today'}Aujourd'hui{:else}À venir{/if}
-									</span>
-									<span class="text-sm text-foreground w-full sm:w-auto">{formatTime(seance.startAt)} – {formatTime(seance.endAt)}</span>
-								</div>
-								{#if seance.module}
-									<p class="text-sm font-medium text-foreground">{seance.module.name}</p>
+				{#each displaySeances as seance}
+					{@const status = sessionStatus(seance.startAt)}
+					{@const signed = seance.emargements?.filter((e) => e.signedAt).length ?? 0}
+					{@const total = seance.emargements?.length ?? 0}
+					<li class="border-b border-muted pb-4 last:border-0 last:pb-0">
+						<button
+							type="button"
+							class="flex w-full flex-col gap-1.5 text-left transition-colors hover:bg-muted/50 rounded-md -m-1 p-1 cursor-pointer"
+							onclick={() => goToTab('seances')}
+						>
+							<div class="flex items-baseline justify-between gap-2 flex-wrap">
+								<span class="text-base font-semibold text-foreground">{formatDate(seance.startAt)}</span>
+								<span class={cn(
+									'text-xs font-medium px-2 py-0.5 rounded-full',
+									status === 'past' && 'bg-muted text-muted-foreground',
+									status === 'today' && 'bg-primary/15 text-primary',
+									status === 'future' && 'bg-muted text-muted-foreground'
+								)}>
+									{#if status === 'past'}Passé{:else if status === 'today'}Aujourd'hui{:else}À venir{/if}
+								</span>
+								<span class="text-sm text-foreground w-full sm:w-auto">{formatTime(seance.startAt)} – {formatTime(seance.endAt)}</span>
+							</div>
+							{#if seance.module}
+								<p class="text-sm font-medium text-foreground">{seance.module.name}</p>
+							{/if}
+							{#if seance.formateur?.user}
+								<p class="text-sm text-foreground">
+									{[seance.formateur.user.firstName, seance.formateur.user.lastName].filter(Boolean).join(' ') || 'Formateur'}
+								</p>
+							{/if}
+							<div class="flex items-center gap-2 text-sm text-foreground flex-wrap">
+								<FileSignature class="size-4 shrink-0 text-muted-foreground" />
+								Émargement {signed}/{total}
+								{#if total > 0}
+									<div class="flex gap-0.5" aria-hidden="true">
+										{#each Array(total) as _, i}
+											<span
+												class={cn(
+													'h-2 w-2.5 rounded-sm',
+													i < signed ? 'bg-green-500' : 'bg-muted'
+												)}
+											></span>
+										{/each}
+									</div>
 								{/if}
-								{#if seance.formateur?.user}
-									<p class="text-sm text-foreground">{seance.formateur.user.rawUserMetaData?.full_name ?? 'Formateur'}</p>
-								{/if}
-								<div class="flex items-center gap-2 text-sm text-foreground flex-wrap">
-									<FileSignature class="size-4 shrink-0 text-muted-foreground" />
-									{@const signed = seance.emargements?.filter((e) => e.signedAt).length ?? 0}
-									{@const total = seance.emargements?.length ?? 0}
-									Émargement {signed}/{total}
-									{#if total > 0}
-										<div class="flex gap-0.5" aria-hidden="true">
-											{#each Array(total) as _, i}
-												<span
-													class={cn(
-														'h-2 w-2.5 rounded-sm',
-														i < signed ? 'bg-green-500' : 'bg-muted'
-													)}
-												></span>
-											{/each}
-										</div>
-									{/if}
-								</div>
-							</button>
-						</li>
-					{/each}
+							</div>
+						</button>
+					</li>
+				{/each}
 				</ul>
 			{/if}
 		</Card.Content>

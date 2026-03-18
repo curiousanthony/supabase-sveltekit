@@ -16,13 +16,17 @@
 
 	const formation = $derived(data?.formation);
 	const formateurs = $derived(
-		(formation?.formationFormateurs ?? []).map((ff) => ({
-			id: ff.formateur.id,
-			joinId: ff.id,
-			name: ff.formateur.user?.rawUserMetaData?.full_name ?? ff.formateur.user?.email ?? 'Formateur',
-			email: ff.formateur.user?.email ?? '',
-			avatarUrl: ff.formateur.user?.rawUserMetaData?.avatar_url ?? ''
-		}))
+		(formation?.formationFormateurs ?? []).map((ff) => {
+			const u = ff.formateur.user;
+			const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ') || u?.email || 'Formateur';
+			return {
+				id: ff.formateur.id,
+				joinId: ff.id,
+				name,
+				email: u?.email ?? '',
+				avatarUrl: u?.avatarUrl ?? ''
+			};
+		})
 	);
 
 	function getInitials(name: string) {
