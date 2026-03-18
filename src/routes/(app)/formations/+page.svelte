@@ -15,7 +15,7 @@
 
 	type SortOption = 'recent' | 'name-asc' | 'name-desc' | 'duree-asc' | 'duree-desc' | 'ref';
 	type ViewMode = 'kanban' | 'grid' | 'list';
-	const STATUTS = ['En attente', 'En cours', 'Terminée'] as const;
+	const STATUTS = ['À traiter', 'Signature convention', 'Financement', 'Planification', 'En cours', 'Terminée', 'Archivée'] as const;
 	const MODALITES = ['Distanciel', 'Présentiel', 'Hybride', 'E-Learning'] as const;
 	const SORT_LABELS: Record<SortOption, string> = {
 		recent: 'Récent',
@@ -195,28 +195,34 @@
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 			{#each STATUTS as status}
 				{@const columnFormations = getFormationsByStatut(status)}
+			<div
+				class={cn(
+					'flex flex-col rounded-xl border bg-muted/30 overflow-hidden',
+					(status === 'À traiter' || status === 'Signature convention') && 'border-l-muted-foreground/40',
+					status === 'Financement' && 'border-l-yellow-500/50',
+					status === 'Planification' && 'border-l-purple-500/50',
+					status === 'En cours' && 'border-l-blue-500/50',
+					status === 'Terminée' && 'border-l-green-500/50',
+					status === 'Archivée' && 'border-l-red-500/50'
+				)}
+			>
 				<div
 					class={cn(
-						'flex flex-col rounded-xl border bg-muted/30 overflow-hidden',
-						status === 'En attente' && 'border-l-muted-foreground/40',
-						status === 'En cours' && 'border-l-amber-500/50',
-						status === 'Terminée' && 'border-l-green-500/50'
+						'flex items-center justify-between px-4 py-3 border-b font-semibold text-sm',
+						(status === 'À traiter' || status === 'Signature convention') && 'bg-muted/50',
+						status === 'Financement' && 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+						status === 'Planification' && 'bg-purple-500/10 text-purple-700 dark:text-purple-400',
+						status === 'En cours' && 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+						status === 'Terminée' && 'bg-green-500/10 text-green-700 dark:text-green-400',
+						status === 'Archivée' && 'bg-red-500/10 text-red-700 dark:text-red-400'
 					)}
 				>
-					<div
+					<span>{status}</span>
+					<span
 						class={cn(
-							'flex items-center justify-between px-4 py-3 border-b font-semibold text-sm',
-							status === 'En attente' && 'bg-muted/50',
-							status === 'En cours' && 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-							status === 'Terminée' && 'bg-green-500/10 text-green-700 dark:text-green-400'
-						)}
-					>
-						<span>{status}</span>
-						<span
-							class={cn(
-								'rounded-full px-2 py-0.5 text-xs font-medium',
-								status === 'En attente' && 'bg-muted text-muted-foreground',
-								status === 'En cours' && 'bg-amber-500/20 text-amber-700 dark:text-amber-400',
+							'rounded-full px-2 py-0.5 text-xs font-medium',
+							(status === 'À traiter' || status === 'Signature convention') && 'bg-muted text-muted-foreground',
+							status === 'En cours' && 'bg-blue-500/20 text-blue-700 dark:text-blue-400',
 								status === 'Terminée' && 'bg-green-500/20 text-green-700 dark:text-green-400'
 							)}
 						>

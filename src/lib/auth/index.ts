@@ -153,7 +153,7 @@ export const ensureUserInPublicUsers = async (locals: App.Locals): Promise<boole
 					.set({ completedBy: user.id })
 					.where(eq(formationWorkflowSteps.completedBy, oldId));
 				await tx.update(seances).set({ createdBy: user.id }).where(eq(seances.createdBy, oldId));
-				await tx.update(seances).set({ instructor: user.id }).where(eq(seances.instructor, oldId));
+				// formateurId now FK to formateurs table, not users — no user-merge needed
 				await tx.update(formateurs).set({ userId: user.id }).where(eq(formateurs.userId, oldId));
 				await tx.update(modules).set({ createdBy: user.id }).where(eq(modules.createdBy, oldId));
 				await tx.update(clients).set({ createdBy: user.id }).where(eq(clients.createdBy, oldId));

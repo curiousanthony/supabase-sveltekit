@@ -7,20 +7,21 @@
 	import Book2 from '@tabler/icons-svelte/icons/book-2';
 	import { cn } from '$lib/utils';
 
+	type FormationStatut = 'À traiter' | 'Signature convention' | 'Financement' | 'Planification' | 'En cours' | 'Terminée' | 'Archivée';
+
 	interface Props {
 		formation: {
 			id: string;
 			name: string | null;
-			statut: 'En attente' | 'En cours' | 'Terminée';
+			statut: FormationStatut;
 			duree: number | null;
 			modalite: 'Distanciel' | 'Présentiel' | 'Hybride' | 'E-Learning' | null;
 			idInWorkspace: number | null;
-			typeFinancement?: string | null;
+			type?: string | null;
 			thematique?: { name: string } | null;
 			client?: { legalName: string | null } | null;
 			modules?: { id: string }[];
 		};
-		/** 'card' = full card (Kanban/Grid), 'compact' = single row for list view */
 		variant?: 'card' | 'compact';
 	}
 
@@ -29,20 +30,22 @@
 	const moduleCount = $derived(formation.modules?.length ?? 0);
 	const clientName = $derived(formation.client?.legalName ?? '—');
 	const themeName = $derived(formation.thematique?.name ?? '—');
-	const statutVariant = $derived(
-		formation.statut === 'Terminée'
-			? 'default'
-			: formation.statut === 'En cours'
-				? 'secondary'
-				: 'outline'
-	);
-	const statutBorderClass = $derived(
-		formation.statut === 'Terminée'
-			? 'border-l-green-500'
-			: formation.statut === 'En cours'
-				? 'border-l-amber-500'
-				: 'border-l-muted-foreground/40'
-	);
+
+	function getStatutStyle(s: FormationStatut) {
+		switch (s) {
+			case 'Terminée': return { variant: 'default' as const, border: 'border-l-green-500' };
+			case 'En cours': return { variant: 'secondary' as const, border: 'border-l-blue-500' };
+			case 'Planification': return { variant: 'secondary' as const, border: 'border-l-purple-500' };
+			case 'Financement': return { variant: 'outline' as const, border: 'border-l-yellow-500' };
+			case 'Signature convention': return { variant: 'outline' as const, border: 'border-l-orange-500' };
+			case 'Archivée': return { variant: 'outline' as const, border: 'border-l-red-500' };
+			default: return { variant: 'outline' as const, border: 'border-l-muted-foreground/40' };
+		}
+	}
+
+	const statutStyle = $derived(getStatutStyle(formation.statut));
+	const statutVariant = $derived(statutStyle.variant);
+	const statutBorderClass = $derived(statutStyle.border);
 </script>
 
 <a

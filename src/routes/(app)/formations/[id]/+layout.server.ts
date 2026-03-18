@@ -13,7 +13,7 @@ export const load = (async ({ params }) => {
 		idInWorkspace: 246,
 		duree: 35,
 		modalite: 'Présentiel',
-		statut: 'En attente',
+		statut: 'À traiter',
 		typeFinancement: 'Intra',
 		thematique: { name: 'IA générative' },
 		sousthematique: null,

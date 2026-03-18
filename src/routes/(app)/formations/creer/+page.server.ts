@@ -135,7 +135,7 @@ export const actions: Actions = {
 					duree: form.data.duree,
 					modalite: form.data.modalite,
 					idInWorkspace: nextIdInWorkspace,
-					statut: 'En attente'
+					statut: 'À traiter'
 				})
 				.returning({ id: formations.id });
 		});

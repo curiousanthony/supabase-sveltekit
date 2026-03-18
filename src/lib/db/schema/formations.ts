@@ -7,13 +7,25 @@ import {
 	integer,
 	varchar,
 	numeric,
-	unique
+	unique,
+	boolean,
+	date
 } from 'drizzle-orm/pg-core';
-import { modalites, statutsFormation, typesFinancement } from './enums';
+import {
+	modalites,
+	statutsFormation,
+	typesFinancement,
+	formationType,
+	actionStatus,
+	actionEtape
+} from './enums';
 import { workspaces } from './workspaces';
 import { users } from './users';
 import { thematiques, sousthematiques } from './thematiques';
 import { clients } from './clients';
+import { biblioProgrammes } from './biblio-programmes';
+import { contacts } from './contacts';
+import { formateurs } from './formateurs';
 
 export const formations = pgTable(
 	'formations',
@@ -32,9 +44,17 @@ export const formations = pgTable(
 		modalite: modalites(),
 		codeRncp: text('code_rncp'),
 		idInWorkspace: integer('id_in_workspace'),
-		statut: statutsFormation().default('En attente').notNull(),
+		statut: statutsFormation().default('À traiter').notNull(),
 		typeFinancement: typesFinancement('type_financement'),
-		clientId: uuid('client_id')
+		clientId: uuid('client_id'),
+		type: formationType('type'),
+		dateDebut: date('date_debut'),
+		dateFin: date('date_fin'),
+		programmeSourceId: uuid('programme_source_id'),
+		financementAccorde: boolean('financement_accorde').default(false),
+		montantAccorde: numeric('montant_accorde', { precision: 12, scale: 2 }),
+		tjmFormateur: numeric('tjm_formateur', { precision: 10, scale: 2 }),
+		location: text()
 	},
 	(table) => [
 		foreignKey({
@@ -67,6 +87,13 @@ export const formations = pgTable(
 			columns: [table.clientId],
 			foreignColumns: [clients.id],
 			name: 'formations_client_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('set null'),
+		foreignKey({
+			columns: [table.programmeSourceId],
+			foreignColumns: [biblioProgrammes.id],
+			name: 'formations_programme_source_id_fkey'
 		})
 			.onUpdate('cascade')
 			.onDelete('set null'),
@@ -117,6 +144,105 @@ export const formationWorkflowSteps = pgTable(
 			name: 'formation_workflow_steps_completed_by_fkey'
 		}),
 		unique('unique_formation_step').on(table.formationId, table.stepKey)
+	]
+);
+
+export const formationActions = pgTable(
+	'formation_actions',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		formationId: uuid('formation_id').notNull(),
+		title: text().notNull(),
+		description: text(),
+		status: actionStatus().default('Pas commencé').notNull(),
+		etape: actionEtape(),
+		dueDate: date('due_date'),
+		completedAt: timestamp('completed_at', { withTimezone: true, mode: 'string' }),
+		completedBy: uuid('completed_by'),
+		blockedByActionId: uuid('blocked_by_action_id'),
+		orderIndex: integer('order_index').default(0).notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.formationId],
+			foreignColumns: [formations.id],
+			name: 'formation_actions_formation_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.completedBy],
+			foreignColumns: [users.id],
+			name: 'formation_actions_completed_by_fkey'
+		}),
+		foreignKey({
+			columns: [table.blockedByActionId],
+			foreignColumns: [table.id],
+			name: 'formation_actions_blocked_by_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('set null')
+	]
+);
+
+export const formationFormateurs = pgTable(
+	'formation_formateurs',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		formationId: uuid('formation_id').notNull(),
+		formateurId: uuid('formateur_id').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.formationId],
+			foreignColumns: [formations.id],
+			name: 'formation_formateurs_formation_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.formateurId],
+			foreignColumns: [formateurs.id],
+			name: 'formation_formateurs_formateur_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		unique('unique_formation_formateur').on(table.formationId, table.formateurId)
+	]
+);
+
+export const formationApprenants = pgTable(
+	'formation_apprenants',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		formationId: uuid('formation_id').notNull(),
+		contactId: uuid('contact_id').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.formationId],
+			foreignColumns: [formations.id],
+			name: 'formation_apprenants_formation_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.contactId],
+			foreignColumns: [contacts.id],
+			name: 'formation_apprenants_contact_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		unique('unique_formation_apprenant').on(table.formationId, table.contactId)
 	]
 );
 
