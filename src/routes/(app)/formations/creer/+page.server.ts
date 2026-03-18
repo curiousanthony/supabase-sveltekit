@@ -1,16 +1,24 @@
 import { db } from '$lib/db';
-import { formations, clients, modules } from '$lib/db/schema';
+import {
+	formations,
+	clients,
+	modules,
+	formationActions,
+	biblioProgrammes,
+	biblioProgrammeModules
+} from '$lib/db/schema';
 import { eq, asc, desc, sql } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms/server';
 import { zod } from 'sveltekit-superforms/adapters';
 import { formationSchema } from './schema';
 import { getUserWorkspace } from '$lib/auth';
+import { DEFAULT_FORMATION_ACTIONS } from '$lib/formation-workflow';
 import type { PageServerLoad, Actions } from './$types';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const load = (async ({ locals }) => {
+export const load = (async ({ locals, url }) => {
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) {
 		return {
@@ -19,7 +27,13 @@ export const load = (async ({ locals }) => {
 			prerequisites: [],
 			targetPublics: [],
 			topics: [],
-			header: { pageName: 'Créer une formation', backButton: true, backButtonLabel: 'Formations', backButtonHref: '/formations' }
+			programmes: [],
+			header: {
+				pageName: 'Créer une formation',
+				backButton: true,
+				backButtonLabel: 'Formations',
+				backButtonHref: '/formations'
+			}
 		};
 	}
 
@@ -28,12 +42,26 @@ export const load = (async ({ locals }) => {
 		columns: { id: true, legalName: true },
 		orderBy: [asc(clients.legalName)]
 	});
-	// Mock data for the UI-first approach
-	const mockClients = [
-		{ id: '1', legalName: 'Acme Corp' },
-		{ id: '2', legalName: 'Globex Corporation' },
-		{ id: '3', legalName: 'Soylent Corp' }
-	];
+
+	const programmesData = await db.query.biblioProgrammes.findMany({
+		where: eq(biblioProgrammes.workspaceId, workspaceId),
+		columns: { id: true, titre: true, dureeHeures: true, modalite: true },
+		with: {
+			programmeModules: {
+				with: {
+					module: {
+						columns: {
+							id: true,
+							titre: true,
+							dureeHeures: true,
+							objectifsPedagogiques: true
+						}
+					}
+				},
+				orderBy: (pm, { asc }) => [asc(pm.orderIndex)]
+			}
+		}
+	});
 
 	const mockPrerequisites = [
 		{ id: 'p1', name: "Maîtrise des bases de l'informatique" },
@@ -54,28 +82,51 @@ export const load = (async ({ locals }) => {
 		{ id: 't4', name: 'Management' }
 	];
 
-	const form = await superValidate(zod(formationSchema), {
-		defaults: {
-			name: 'Formation sans titre',
-			clientId: '',
-			duree: 7,
-			modalite: 'Présentiel',
-			topicId: '',
-			customTopic: '',
-			targetPublicIds: [],
-			prerequisiteIds: [],
-			customPrerequisites: [],
-			modules: [
-				{
-					title: 'Formation sans titre',
-					durationHours: 7,
-					objectifs: 'Objectifs du premier module'
-				}
-			],
-			evaluationMode: 'QCM de fin de formation',
-			suiviAssiduite: "Feuille d'émargement signée par demi-journée"
+	const programmeId = url.searchParams.get('programme');
+	let defaults: Record<string, unknown> = {
+		name: 'Formation sans titre',
+		clientId: '',
+		duree: 7,
+		modalite: 'Présentiel',
+		topicId: '',
+		customTopic: '',
+		targetPublicIds: [],
+		prerequisiteIds: [],
+		customPrerequisites: [],
+		modules: [
+			{
+				title: 'Formation sans titre',
+				durationHours: 7,
+				objectifs: 'Objectifs du premier module'
+			}
+		],
+		evaluationMode: 'QCM de fin de formation',
+		suiviAssiduite: "Feuille d'émargement signée par demi-journée"
+	};
+
+	if (programmeId && UUID_REGEX.test(programmeId)) {
+		const prog = programmesData.find((p) => p.id === programmeId);
+		if (prog) {
+			const totalHours = prog.programmeModules.reduce(
+				(sum, pm) => sum + (pm.module.dureeHeures ? Number(pm.module.dureeHeures) : 0),
+				0
+			);
+			defaults = {
+				...defaults,
+				name: prog.titre,
+				programmeSourceId: prog.id,
+				duree: totalHours || 7,
+				modalite: prog.modalite ?? 'Présentiel',
+				modules: prog.programmeModules.map((pm) => ({
+					title: pm.module.titre,
+					durationHours: pm.module.dureeHeures ? Number(pm.module.dureeHeures) : 1,
+					objectifs: pm.module.objectifsPedagogiques ?? ''
+				}))
+			};
 		}
-	});
+	}
+
+	const form = await superValidate(zod(formationSchema), { defaults });
 
 	return {
 		form,
@@ -83,6 +134,13 @@ export const load = (async ({ locals }) => {
 		prerequisites: mockPrerequisites,
 		targetPublics: mockTargetPublics,
 		topics: mockTopics,
+		programmes: programmesData.map((p) => ({
+			id: p.id,
+			titre: p.titre,
+			dureeHeures: p.dureeHeures,
+			modalite: p.modalite,
+			moduleCount: p.programmeModules.length
+		})),
 		header: {
 			pageName: 'Créer une formation',
 			backButton: true,
@@ -108,12 +166,15 @@ export const actions: Actions = {
 
 		const topicId =
 			form.data.topicId && UUID_REGEX.test(form.data.topicId) ? form.data.topicId : null;
-		const clientId = form.data.clientId && UUID_REGEX.test(form.data.clientId) ? form.data.clientId : null;
+		const clientId =
+			form.data.clientId && UUID_REGEX.test(form.data.clientId) ? form.data.clientId : null;
+		const programmeSourceId =
+			form.data.programmeSourceId && UUID_REGEX.test(form.data.programmeSourceId)
+				? form.data.programmeSourceId
+				: null;
 
 		const [inserted] = await db.transaction(async (tx) => {
-			await tx.execute(
-				sql`SELECT pg_advisory_xact_lock(727, hashtext(${workspaceId}))`
-			);
+			await tx.execute(sql`SELECT pg_advisory_xact_lock(727, hashtext(${workspaceId}))`);
 
 			const maxIdResult = await tx
 				.select({ n: formations.idInWorkspace })
@@ -134,6 +195,11 @@ export const actions: Actions = {
 					clientId,
 					duree: form.data.duree,
 					modalite: form.data.modalite,
+					type: form.data.type ?? null,
+					dateDebut: form.data.dateDebut || null,
+					dateFin: form.data.dateFin || null,
+					location: form.data.location?.trim() || null,
+					programmeSourceId,
 					idInWorkspace: nextIdInWorkspace,
 					statut: 'À traiter'
 				})
@@ -149,6 +215,16 @@ export const actions: Actions = {
 				name: m.title,
 				durationHours: String(m.durationHours),
 				orderIndex: i
+			}))
+		);
+
+		await db.insert(formationActions).values(
+			DEFAULT_FORMATION_ACTIONS.map((a) => ({
+				formationId: inserted.id,
+				title: a.title,
+				etape: a.etape,
+				orderIndex: a.order,
+				status: 'Pas commencé' as const
 			}))
 		);
 
