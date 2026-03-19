@@ -9,8 +9,10 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { tick } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import { cn } from '$lib/utils';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import Clock from '@lucide/svelte/icons/clock';
@@ -209,12 +211,18 @@
 			result,
 			update
 		}: {
-			result: { type: string };
+			result: { type: string; data?: Record<string, unknown> };
 			update: (opts?: { reset?: boolean }) => Promise<void>;
 		}) => {
-			await update();
 			if (result.type === 'success') {
 				addDialogOpen = false;
+				toast.success('Module ajouté');
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				const msg = (result.data as { message?: string } | undefined)?.message ?? 'Erreur';
+				toast.error(msg);
+			} else {
+				await update();
 			}
 		};
 	};
@@ -349,16 +357,20 @@
 								</div>
 
 								<div class="flex-1 min-w-0 space-y-3">
-									<form
-										id={`module-update-${mod.id}`}
-										method="POST"
-										action="?/updateModule"
-										use:enhance={() => {
-											return async ({ update }) => {
+								<form
+									id={`module-update-${mod.id}`}
+									method="POST"
+									action="?/updateModule"
+									use:enhance={() => {
+										return async ({ result, update }) => {
+											if (result.type === 'success') {
+												await invalidateAll();
+											} else {
 												await update({ reset: false });
-											};
-										}}
-									>
+											}
+										};
+									}}
+								>
 										<input type="hidden" name="moduleId" value={mod.id} />
 										<input type="hidden" name="name" value={getNameForSubmit(mod)} />
 										<input type="hidden" name="durationHours" value={getDurationForSubmit(mod)} />
@@ -513,7 +525,15 @@
 		method="POST"
 		action="?/reorderModules"
 		class="hidden"
-		use:enhance
+		use:enhance={() => {
+			return async ({ result, update }) => {
+				if (result.type === 'success') {
+					await invalidateAll();
+				} else {
+					await update();
+				}
+			};
+		}}
 	>
 		<input type="hidden" name="moduleIds" value={reorderInputValue} />
 	</form>
@@ -526,9 +546,12 @@
 		class="hidden"
 		use:enhance={() => {
 			return async ({ result, update }) => {
-				await update({ reset: false });
 				if (result.type === 'success') {
 					deleteModuleId = '';
+					toast.success('Module supprimé');
+					await invalidateAll();
+				} else {
+					await update({ reset: false });
 				}
 			};
 		}}

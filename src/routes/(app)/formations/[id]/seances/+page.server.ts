@@ -9,7 +9,7 @@ import {
 	modules
 } from '$lib/db/schema';
 import { and, eq, inArray, notInArray } from 'drizzle-orm';
-import { getUserWorkspace } from '$lib/auth';
+import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
 import { logAuditEvent } from '$lib/services/audit-log';
 import type { Actions } from './$types';
 
@@ -51,6 +51,7 @@ export const actions: Actions = {
 		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
 		const { session, user } = await locals.safeGetSession();
 		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+		await ensureUserInPublicUsers(locals);
 
 		if (!(await verifyFormationOwnership(params, workspaceId))) {
 			return fail(403, { message: 'Accès refusé' });
