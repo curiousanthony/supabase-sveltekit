@@ -123,16 +123,26 @@
 					</div>
 				</div>
 			</div>
-			<div class="h-[2px] rounded-b-lg bg-muted overflow-hidden">
-				<div
-					class="h-full bg-primary transition-[width]"
-					role="progressbar"
-					aria-valuenow={questProgress.overall.percent}
-					aria-valuemin={0}
-					aria-valuemax={100}
-					aria-label="Progression des quêtes"
-					style="width: {questProgress.overall.percent}%"
-				></div>
+			<div class="px-4 pb-2 pt-1 space-y-1">
+				<div class="flex items-center justify-between">
+					<span class="text-xs text-muted-foreground">
+						{questProgress.overall.completed} / {questProgress.overall.total} actions
+					</span>
+					<span class="text-xs font-medium text-muted-foreground">
+						{questProgress.overall.percent}%
+					</span>
+				</div>
+				<div class="h-2 rounded-full bg-muted overflow-hidden">
+					<div
+						class="h-full rounded-full bg-primary transition-[width]"
+						role="progressbar"
+						aria-valuenow={questProgress.overall.percent}
+						aria-valuemin={0}
+						aria-valuemax={100}
+						aria-label="Progression des actions"
+						style="width: {questProgress.overall.percent}%"
+					></div>
+				</div>
 			</div>
 		</div>
 	{:else}
@@ -192,16 +202,26 @@
 					<Badge variant="outline" class="text-xs font-normal">{formation.typeFinancement}</Badge>
 				{/if}
 			</Card.Content>
-			<div class="h-[3px] rounded-b-lg bg-muted overflow-hidden">
-				<div
-					class="h-full bg-primary transition-[width]"
-					role="progressbar"
-					aria-valuenow={questProgress.overall.percent}
-					aria-valuemin={0}
-					aria-valuemax={100}
-					aria-label="Progression des quêtes"
-					style="width: {questProgress.overall.percent}%"
-				></div>
+			<div class="px-4 pb-3 pt-1 space-y-1">
+				<div class="flex items-center justify-between">
+					<span class="text-xs text-muted-foreground">
+						{questProgress.overall.completed} / {questProgress.overall.total} actions
+					</span>
+					<span class="text-xs font-medium text-muted-foreground">
+						{questProgress.overall.percent}%
+					</span>
+				</div>
+				<div class="h-2 rounded-full bg-muted overflow-hidden">
+					<div
+						class="h-full rounded-full bg-primary transition-[width]"
+						role="progressbar"
+						aria-valuenow={questProgress.overall.percent}
+						aria-valuemin={0}
+						aria-valuemax={100}
+						aria-label="Progression des actions"
+						style="width: {questProgress.overall.percent}%"
+					></div>
+				</div>
 			</div>
 		</Card.Root>
 	{/if}
