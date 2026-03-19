@@ -215,6 +215,10 @@ export const formationFormateurs = pgTable(
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		formationId: uuid('formation_id').notNull(),
 		formateurId: uuid('formateur_id').notNull(),
+		tjm: numeric({ precision: 10, scale: 2 }),
+		numberOfDays: numeric('number_of_days', { precision: 5, scale: 1 }),
+		deplacementCost: numeric('deplacement_cost', { precision: 10, scale: 2 }),
+		hebergementCost: numeric('hebergement_cost', { precision: 10, scale: 2 }),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
 			.notNull()
@@ -282,6 +286,7 @@ export const questSubActions = pgTable(
 		ctaLabel: text('cta_label'),
 		ctaTarget: text('cta_target'),
 		documentRequired: boolean('document_required').default(false).notNull(),
+		acceptedFileTypes: text('accepted_file_types').array(),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
 			.notNull()
@@ -343,6 +348,7 @@ export const modules = pgTable(
 			.notNull(),
 		name: text().notNull(),
 		durationHours: numeric('duration_hours'),
+		objectifs: text(),
 		orderIndex: integer('order_index'),
 		createdBy: uuid('created_by').notNull(),
 		courseId: uuid('course_id').notNull()
@@ -360,5 +366,131 @@ export const modules = pgTable(
 		})
 			.onUpdate('cascade')
 			.onDelete('cascade')
+	]
+);
+
+export const questDocuments = pgTable(
+	'quest_documents',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		subActionId: uuid('sub_action_id').notNull(),
+		fileName: text('file_name').notNull(),
+		fileType: text('file_type').notNull(),
+		fileSize: integer('file_size').notNull(),
+		storagePath: text('storage_path').notNull(),
+		uploadedBy: uuid('uploaded_by'),
+		uploadedAt: timestamp('uploaded_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.subActionId],
+			foreignColumns: [questSubActions.id],
+			name: 'quest_documents_sub_action_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.uploadedBy],
+			foreignColumns: [users.id],
+			name: 'quest_documents_uploaded_by_fkey'
+		}),
+		unique('quest_documents_sub_action_id_unique').on(table.subActionId)
+	]
+);
+
+export const questComments = pgTable(
+	'quest_comments',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		formationActionId: uuid('formation_action_id').notNull(),
+		userId: uuid('user_id'),
+		content: text().notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.formationActionId],
+			foreignColumns: [formationActions.id],
+			name: 'quest_comments_formation_action_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: 'quest_comments_user_id_fkey'
+		})
+	]
+);
+
+export const formationInvoices = pgTable(
+	'formation_invoices',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		formationId: uuid('formation_id').notNull(),
+		invoiceNumber: text('invoice_number').notNull(),
+		date: date().notNull(),
+		amount: numeric({ precision: 12, scale: 2 }).notNull(),
+		recipient: text().notNull(),
+		recipientType: text('recipient_type').notNull().default('client'),
+		dueDate: date('due_date'),
+		status: text().notNull().default('Brouillon'),
+		paymentDate: date('payment_date'),
+		documentUrl: text('document_url'),
+		notes: text(),
+		createdBy: uuid('created_by'),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.formationId],
+			foreignColumns: [formations.id],
+			name: 'formation_invoices_formation_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [users.id],
+			name: 'formation_invoices_created_by_fkey'
+		})
+	]
+);
+
+export const formationCostItems = pgTable(
+	'formation_cost_items',
+	{
+		id: uuid().defaultRandom().primaryKey().notNull(),
+		formationId: uuid('formation_id').notNull(),
+		category: text().notNull(),
+		amount: numeric({ precision: 12, scale: 2 }).notNull().default('0'),
+		notes: text(),
+		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.formationId],
+			foreignColumns: [formations.id],
+			name: 'formation_cost_items_formation_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		unique('formation_cost_items_formation_category_unique').on(
+			table.formationId,
+			table.category
+		)
 	]
 );

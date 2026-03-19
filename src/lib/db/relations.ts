@@ -16,9 +16,13 @@ import {
 	formationWorkflowSteps,
 	formationActions,
 	questSubActions,
+	questDocuments,
+	questComments,
 	formationAuditLog,
 	formationFormateurs,
 	formationApprenants,
+	formationInvoices,
+	formationCostItems,
 	modules,
 	apprenants,
 	seances,
@@ -207,6 +211,8 @@ export const formationsRelations = relations(formations, ({ one, many }) => ({
 	formationFormateurs: many(formationFormateurs),
 	formationApprenants: many(formationApprenants),
 	seances: many(seances, { relationName: 'formation_seances' }),
+	invoices: many(formationInvoices),
+	costItems: many(formationCostItems),
 	dealsFromFormation: many(deals)
 }));
 
@@ -291,10 +297,11 @@ export const formationActionsRelations = relations(formationActions, ({ one, man
 		fields: [formationActions.blockedByActionId],
 		references: [formationActions.id]
 	}),
-	subActions: many(questSubActions)
+	subActions: many(questSubActions),
+	comments: many(questComments)
 }));
 
-export const questSubActionsRelations = relations(questSubActions, ({ one }) => ({
+export const questSubActionsRelations = relations(questSubActions, ({ one, many }) => ({
 	formationAction: one(formationActions, {
 		fields: [questSubActions.formationActionId],
 		references: [formationActions.id]
@@ -302,7 +309,8 @@ export const questSubActionsRelations = relations(questSubActions, ({ one }) => 
 	completedByUser: one(users, {
 		fields: [questSubActions.completedBy],
 		references: [users.id]
-	})
+	}),
+	documents: many(questDocuments)
 }));
 
 export const formationAuditLogRelations = relations(formationAuditLog, ({ one }) => ({
@@ -478,6 +486,46 @@ export const biblioModuleSupportsRelations = relations(biblioModuleSupports, ({ 
 	support: one(biblioSupports, {
 		fields: [biblioModuleSupports.supportId],
 		references: [biblioSupports.id]
+	})
+}));
+
+export const questDocumentsRelations = relations(questDocuments, ({ one }) => ({
+	subAction: one(questSubActions, {
+		fields: [questDocuments.subActionId],
+		references: [questSubActions.id]
+	}),
+	uploadedByUser: one(users, {
+		fields: [questDocuments.uploadedBy],
+		references: [users.id]
+	})
+}));
+
+export const questCommentsRelations = relations(questComments, ({ one }) => ({
+	formationAction: one(formationActions, {
+		fields: [questComments.formationActionId],
+		references: [formationActions.id]
+	}),
+	user: one(users, {
+		fields: [questComments.userId],
+		references: [users.id]
+	})
+}));
+
+export const formationInvoicesRelations = relations(formationInvoices, ({ one }) => ({
+	formation: one(formations, {
+		fields: [formationInvoices.formationId],
+		references: [formations.id]
+	}),
+	createdByUser: one(users, {
+		fields: [formationInvoices.createdBy],
+		references: [users.id]
+	})
+}));
+
+export const formationCostItemsRelations = relations(formationCostItems, ({ one }) => ({
+	formation: one(formations, {
+		fields: [formationCostItems.formationId],
+		references: [formations.id]
 	})
 }));
 
