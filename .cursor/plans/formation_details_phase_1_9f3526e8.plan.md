@@ -3,38 +3,38 @@ name: Formation Details Phase 1
 overview: Transform the Formation detail page into a gamified, Qualiopi-compliant quest tracker with 8 tabs (Apercu, Fiche, Actions, Programme, Seances, Formateurs, Apprenants, Finances), master-detail quest system, 3-tier sounds, animations, inline editing, and enhanced creation wizard.
 todos:
   - id: data-model
-    content: "Migration + Drizzle schema: quest_phase enum, extend formation_actions (phase, quest_key, assignee_id, guidance_dismissed), new quest_sub_actions table, new formation_audit_log table (schema only)"
-    status: pending
+    content: 'Migration + Drizzle schema: quest_phase enum, extend formation_actions (phase, quest_key, assignee_id, guidance_dismissed), new quest_sub_actions table, new formation_audit_log table (schema only)'
+    status: completed
   - id: quest-templates
-    content: "Create src/lib/formation-quests.ts with 22 quest templates (Conception: 9, Deploiement: 4, Evaluation: 9), sub-action definitions, dependency graph, helper functions (getQuestsForFormation, createFormationQuests, getNextQuest, shouldAutoAdvanceStatus, calculateDueDates)"
-    status: pending
+    content: 'Create src/lib/formation-quests.ts with 22 quest templates (Conception: 9, Deploiement: 4, Evaluation: 9), sub-action definitions, dependency graph, helper functions (getQuestsForFormation, createFormationQuests, getNextQuest, shouldAutoAdvanceStatus, calculateDueDates)'
+    status: completed
   - id: nav-tabs
-    content: "Extend nav-tabs.svelte: add dot property to TabItem, ensure 8-tab horizontal scrolling on mobile, auto-scroll active tab into view"
-    status: pending
+    content: 'Extend nav-tabs.svelte: add dot property to TabItem, ensure 8-tab horizontal scrolling on mobile, auto-scroll active tab into view'
+    status: completed
   - id: header
-    content: "Redesign formationButtonGroup in site-header.svelte: editable name, FOR- prefix, ProgressRing component, Link/History buttons, functional dropdown (copy info, delete dialog)"
-    status: pending
+    content: 'Redesign formationButtonGroup in site-header.svelte: editable name, FOR- prefix, ProgressRing component, Link/History buttons, functional dropdown (copy info, delete dialog)'
+    status: completed
   - id: fiche-tab
-    content: "New route formations/[id]/fiche/: 3 sections (Informations generales, Logistique, Financement) with InlineEditableField components, updateField server action, deal link if applicable"
-    status: pending
+    content: 'New route formations/[id]/fiche/: 3 sections (Informations generales, Logistique, Financement) with InlineEditableField components, updateField server action, deal link if applicable'
+    status: completed
   - id: actions-tab
-    content: "Redesign formations/[id]/suivi/: master-detail layout, QuestList + QuestPhaseGroup + QuestCard (left), QuestWorkspace + QuestSubAction + QuestGuidance (right), phase collapse/reveal animations, server actions (updateQuestStatus, toggleSubAction, updateAssignee, updateDueDate, dismissGuidance)"
-    status: pending
+    content: 'Redesign formations/[id]/suivi/: master-detail layout, QuestList + QuestPhaseGroup + QuestCard (left), QuestWorkspace + QuestSubAction + QuestGuidance (right), phase collapse/reveal animations, server actions (updateQuestStatus, toggleSubAction, updateAssignee, updateDueDate, dismissGuidance)'
+    status: completed
   - id: sounds-animations
-    content: "Create src/lib/sounds.ts (Web Audio API, 3-tier: micro tick, medium chime, macro level-up), LevelUpToast component, wire Svelte transitions (slide, fly, scale) for phase collapse/reveal, sub-action checkmarks, progress ring animation"
-    status: pending
+    content: 'Create src/lib/sounds.ts (Web Audio API, 3-tier: micro tick, medium chime, macro level-up), LevelUpToast component, wire Svelte transitions (slide, fly, scale) for phase collapse/reveal, sub-action checkmarks, progress ring animation'
+    status: completed
   - id: apercu-tab
-    content: "Redesign formations/[id]/+page.svelte as dashboard: NextActionCard hero, Key Info summary, Participants summary, Upcoming Sessions, Financial Summary (cost/margin/TJM), Recent Activity feed"
-    status: pending
+    content: 'Redesign formations/[id]/+page.svelte as dashboard: NextActionCard hero, Key Info summary, Participants summary, Upcoming Sessions, Financial Summary (cost/margin/TJM), Recent Activity feed'
+    status: completed
   - id: creation-wizard
-    content: "Enhance formations/creer/: add Step 3 (People: formateur + apprenants) and Step 4 (Financement), update schema.ts with new Zod fields, wire createFormationQuests() on creation with auto-assignment"
-    status: pending
+    content: 'Enhance formations/creer/: add Step 3 (People: formateur + apprenants) and Step 4 (Financement), update schema.ts with new Zod fields, wire createFormationQuests() on creation with auto-assignment'
+    status: completed
   - id: list-page
-    content: "Update formationCard.svelte and formations/+page.svelte: FOR- prefix, notification dots, mini progress bar, include quest completion stats in server query"
-    status: pending
+    content: 'Update formationCard.svelte and formations/+page.svelte: FOR- prefix, notification dots, mini progress bar, include quest completion stats in server query'
+    status: completed
   - id: phase2-stubs
     content: Create stub routes for formations/[id]/apprenants/ (move learner list from old overview + add/remove) and formations/[id]/finances/ (simple financial card), update layout.svelte with all 8 tabs + icons
-    status: pending
+    status: completed
 isProject: false
 ---
 
