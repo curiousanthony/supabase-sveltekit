@@ -3,6 +3,7 @@
 	import { deserialize } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
+	import { untrack } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { cn } from '$lib/utils';
 	import { PHASE_LABELS, getQuestTemplate, type QuestPhase } from '$lib/formation-quests';
@@ -65,18 +66,21 @@
 	let prevPhaseCompletion = $state<Record<string, boolean>>({});
 
 	$effect(() => {
+		const currentCompletion = Object.fromEntries(
+			phases.map((p) => [p, phaseProgress[p]?.allDone ?? false])
+		);
+
+		const prev = untrack(() => prevPhaseCompletion);
+
 		for (const phase of phases) {
-			const current = phaseProgress[phase]?.allDone ?? false;
-			const prev = prevPhaseCompletion[phase] ?? false;
-			if (current && !prev) {
+			if (currentCompletion[phase] && !prev[phase]) {
 				levelUpPhase = PHASE_LABELS[phase];
 				showLevelUp = true;
 				playMacroSound();
 			}
 		}
-		prevPhaseCompletion = Object.fromEntries(
-			phases.map((p) => [p, phaseProgress[p]?.allDone ?? false])
-		);
+
+		prevPhaseCompletion = currentCompletion;
 	});
 
 	function isBlocked(action: ActionType): boolean {

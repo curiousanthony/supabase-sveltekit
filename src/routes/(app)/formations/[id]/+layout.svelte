@@ -20,7 +20,7 @@
 	const tabs = $derived([
 		{ href: basePath, label: 'Aperçu', icon: LayoutGrid },
 		{ href: basePath + '/fiche', label: 'Fiche', icon: FileText },
-		{ href: basePath + '/suivi', label: 'Actions', icon: Target, dot: overdueQuests || undefined },
+		{ href: basePath + '/actions', label: 'Actions', icon: Target, dot: overdueQuests || undefined },
 		{ href: basePath + '/programme', label: 'Programme', icon: BookOpen },
 		{ href: basePath + '/seances', label: 'Séances', icon: Calendar, dot: missingSignatures || undefined },
 		{ href: basePath + '/formateurs', label: 'Formateurs', icon: GraduationCap },

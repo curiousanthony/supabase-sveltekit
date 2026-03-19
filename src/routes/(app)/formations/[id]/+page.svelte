@@ -150,7 +150,7 @@
 					<Button
 						variant="outline"
 						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('suivi')}
+						onclick={() => goTo('actions')}
 					>
 						Voir le suivi
 					</Button>
@@ -175,7 +175,7 @@
 					</div>
 					<Button
 						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('suivi')}
+						onclick={() => goTo('actions')}
 					>
 						Faire
 						<ChevronRight class="ml-1 size-4" />
@@ -188,7 +188,7 @@
 						<button
 							type="button"
 							class="text-primary underline-offset-4 hover:underline cursor-pointer ml-1"
-							onclick={() => goTo('suivi')}
+							onclick={() => goTo('actions')}
 						>
 							Configurer les actions
 						</button>
@@ -197,7 +197,7 @@
 						variant="outline"
 						size="sm"
 						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('suivi')}
+						onclick={() => goTo('actions')}
 					>
 						Configurer
 					</Button>
