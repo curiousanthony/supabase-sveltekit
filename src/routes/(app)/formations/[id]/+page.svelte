@@ -132,7 +132,7 @@
 				: 'border-primary/30 bg-primary/5'
 		)}
 	>
-		<Card.Content class="p-6">
+		<Card.Content class="py-0">
 			{#if allComplete}
 				<div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
 					<CheckCircle
@@ -175,7 +175,7 @@
 					</div>
 					<Button
 						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('actions')}
+						href="/formations/{formationId}/actions{nextQuest.questKey ? `?quest=${nextQuest.questKey}` : ''}"
 					>
 						Faire
 						<ChevronRight class="ml-1 size-4" />

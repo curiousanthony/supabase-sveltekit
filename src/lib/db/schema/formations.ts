@@ -278,6 +278,10 @@ export const questSubActions = pgTable(
 		completedAt: timestamp('completed_at', { withTimezone: true, mode: 'string' }),
 		completedBy: uuid('completed_by'),
 		orderIndex: integer('order_index').default(0).notNull(),
+		ctaType: varchar('cta_type', { length: 20 }),
+		ctaLabel: text('cta_label'),
+		ctaTarget: text('cta_target'),
+		documentRequired: boolean('document_required').default(false).notNull(),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
 			.notNull()

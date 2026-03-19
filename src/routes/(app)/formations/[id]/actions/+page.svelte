@@ -1,14 +1,22 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
+	import { page } from '$app/stores';
 	import { deserialize } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { untrack } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { cn } from '$lib/utils';
-	import { PHASE_LABELS, getQuestTemplate, type QuestPhase } from '$lib/formation-quests';
+	import {
+		PHASE_LABELS,
+		getQuestTemplate,
+		getBlockingInfo,
+		type QuestPhase
+	} from '$lib/formation-quests';
 	import { playMicroSound, playMediumSound, playMacroSound } from '$lib/sounds';
 	import LevelUpToast from '$lib/components/formations/level-up-toast.svelte';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import Check from '@lucide/svelte/icons/check';
 	import Circle from '@lucide/svelte/icons/circle';
 	import Lock from '@lucide/svelte/icons/lock';
@@ -19,6 +27,10 @@
 	import User from '@lucide/svelte/icons/user';
 	import X from '@lucide/svelte/icons/x';
 	import Info from '@lucide/svelte/icons/info';
+	import Upload from '@lucide/svelte/icons/upload';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 
 	let { data }: PageProps = $props();
 
@@ -63,6 +75,16 @@
 		selectedQuest?.questKey ? getQuestTemplate(selectedQuest.questKey) : null
 	);
 
+	const selectedQuestBlocking = $derived(
+		selectedQuest ? getBlockingInfo(selectedQuest, actions) : { blocked: false, blockerNames: [] }
+	);
+
+	const allSubActionsDone = $derived(
+		selectedQuest?.subActions?.length
+			? selectedQuest.subActions.every((s) => s.completed)
+			: true
+	);
+
 	let prevPhaseCompletion = $state<Record<string, boolean>>({});
 
 	$effect(() => {
@@ -83,14 +105,26 @@
 		prevPhaseCompletion = currentCompletion;
 	});
 
-	function isBlocked(action: ActionType): boolean {
-		if (!action.blockedByActionId) return false;
-		const blocker = actions.find((a) => a.id === action.blockedByActionId);
-		return !!blocker && blocker.status !== 'Terminé';
+	$effect(() => {
+		const questParam = $page.url.searchParams.get('quest');
+		if (questParam && !selectedQuestId) {
+			const match = actions.find((a) => a.questKey === questParam);
+			if (match) {
+				const blocking = getBlockingInfo(match, actions);
+				if (!blocking.blocked) {
+					selectedQuestId = match.id;
+				}
+			}
+		}
+	});
+
+	function getQuestBlockingInfo(action: ActionType) {
+		return getBlockingInfo(action, actions);
 	}
 
 	function selectQuest(action: ActionType) {
-		if (isBlocked(action)) return;
+		const { blocked } = getQuestBlockingInfo(action);
+		if (blocked) return;
 		selectedQuestId = action.id;
 	}
 
@@ -161,6 +195,11 @@
 		return dueDate < new Date().toISOString().slice(0, 10);
 	}
 
+	function resolveCtaTarget(target: string | null | undefined): string {
+		if (!target) return '#';
+		return target.replace('[id]', formation?.id ?? '');
+	}
+
 	const PHASE_COLORS: Record<string, string> = {
 		conception: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
 		deploiement: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
@@ -182,7 +221,6 @@
 			{@const progress = phaseProgress[group.phase]}
 			{@const isCollapsed = collapsedPhases[group.phase] ?? false}
 			<div class="border-b last:border-b-0">
-				<!-- Phase header -->
 				<button
 					type="button"
 					onclick={() => togglePhase(group.phase)}
@@ -210,74 +248,92 @@
 				{#if !isCollapsed}
 					<div transition:slide={{ duration: 200 }} class="flex flex-col gap-0.5 px-1.5 pb-1.5">
 						{#each group.actions as action}
-							{@const blocked = isBlocked(action)}
+							{@const blockInfo = getQuestBlockingInfo(action)}
 							{@const isActive = selectedQuestId === action.id}
-							<button
-								type="button"
-								onclick={() => selectQuest(action)}
-								disabled={blocked}
-								class={cn(
-									'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors',
-									isActive && 'bg-primary/10 ring-1 ring-primary/30',
-									!isActive && !blocked && 'hover:bg-muted/50',
-									blocked && 'cursor-not-allowed opacity-50'
-								)}
-							>
-								<div class="shrink-0">
-									{#if blocked}
-										<Lock class="size-4 text-muted-foreground/50" />
-									{:else if action.status === 'Terminé'}
-										<div class="flex size-5 items-center justify-center rounded-full bg-primary/10">
-											<Check class="size-3 text-primary" />
-										</div>
-									{:else if action.status === 'En cours'}
-										<div class="flex size-5 items-center justify-center rounded-full bg-blue-500/10">
-											<Clock class="size-3 text-blue-500" />
-										</div>
-									{:else}
-										<div class="size-5 rounded-full border-2 border-muted-foreground/30"></div>
-									{/if}
-								</div>
+							{#if blockInfo.blocked}
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<button
+											type="button"
+											disabled
+											class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left cursor-not-allowed opacity-50"
+										>
+											<div class="shrink-0">
+												<Lock class="size-4 text-muted-foreground/50" />
+											</div>
+											<div class="min-w-0 flex-1">
+												<span class="block truncate text-sm">{action.title}</span>
+											</div>
+										</button>
+									</Tooltip.Trigger>
+									<Tooltip.Content>
+										<p class="text-xs">Bloqué par : {blockInfo.blockerNames.join(', ')}</p>
+									</Tooltip.Content>
+								</Tooltip.Root>
+							{:else}
+								<button
+									type="button"
+									onclick={() => selectQuest(action)}
+									class={cn(
+										'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors',
+										isActive && 'bg-primary/10 ring-1 ring-primary/30',
+										!isActive && 'hover:bg-muted/50'
+									)}
+								>
+									<div class="shrink-0">
+										{#if action.status === 'Terminé'}
+											<div class="flex size-5 items-center justify-center rounded-full bg-primary/10">
+												<Check class="size-3 text-primary" />
+											</div>
+										{:else if action.status === 'En cours'}
+											<div class="flex size-5 items-center justify-center rounded-full bg-blue-500/10">
+												<Clock class="size-3 text-blue-500" />
+											</div>
+										{:else}
+											<div class="size-5 rounded-full border-2 border-muted-foreground/30"></div>
+										{/if}
+									</div>
 
-								<div class="min-w-0 flex-1">
-									<span
-										class={cn(
-											'block truncate text-sm',
-											action.status === 'Terminé' && 'text-muted-foreground line-through'
-										)}
-									>
-										{action.title}
-									</span>
-								</div>
-
-								<div class="flex shrink-0 items-center gap-1">
-									{#if action.dueDate && action.status !== 'Terminé'}
+									<div class="min-w-0 flex-1">
 										<span
 											class={cn(
-												'text-[10px] tabular-nums',
-												isOverdue(action.dueDate)
-													? 'text-destructive'
-													: 'text-muted-foreground'
+												'block truncate text-sm',
+												action.status === 'Terminé' && 'text-muted-foreground line-through'
 											)}
 										>
-											{formatDate(action.dueDate)}
+											{action.title}
 										</span>
-									{/if}
-									{#if action.assignee}
-										{#if action.assignee.avatarUrl}
-											<img
-												src={action.assignee.avatarUrl}
-												alt=""
-												class="size-5 rounded-full"
-											/>
-										{:else}
-											<div class="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
-												{(action.assignee.firstName?.[0] ?? '') + (action.assignee.lastName?.[0] ?? '')}
-											</div>
+									</div>
+
+									<div class="flex shrink-0 items-center gap-1">
+										{#if action.dueDate && action.status !== 'Terminé'}
+											<span
+												class={cn(
+													'text-[10px] tabular-nums',
+													isOverdue(action.dueDate)
+														? 'text-destructive'
+														: 'text-muted-foreground'
+												)}
+											>
+												{formatDate(action.dueDate)}
+											</span>
 										{/if}
-									{/if}
-								</div>
-							</button>
+										{#if action.assignee}
+											{#if action.assignee.avatarUrl}
+												<img
+													src={action.assignee.avatarUrl}
+													alt=""
+													class="size-5 rounded-full"
+												/>
+											{:else}
+												<div class="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
+													{(action.assignee.firstName?.[0] ?? '') + (action.assignee.lastName?.[0] ?? '')}
+												</div>
+											{/if}
+										{/if}
+									</div>
+								</button>
+							{/if}
 						{/each}
 					</div>
 				{/if}
@@ -329,6 +385,14 @@
 						<p class="text-sm text-muted-foreground">{selectedQuest.description}</p>
 					{/if}
 				</div>
+
+				<!-- Qualiopi critical badge -->
+				{#if selectedQuestTemplate?.criticalForQualiopi}
+					<div class="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+						<AlertTriangle class="size-3.5 shrink-0" />
+						Indicateur Qualiopi — Non-conformité majeure si absent
+					</div>
+				{/if}
 
 				<!-- Guidance -->
 				{#if selectedQuestTemplate?.guidance && !selectedQuest.guidanceDismissed}
@@ -392,9 +456,9 @@
 							Sous-tâches ({selectedQuest.subActions.filter((s) => s.completed).length}/{selectedQuest.subActions.length})
 						</span>
 						{#each selectedQuest.subActions as sub}
-							<label
+							<div
 								class={cn(
-									'flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-muted/50',
+									'flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/50',
 									sub.completed && 'opacity-60'
 								)}
 							>
@@ -402,44 +466,91 @@
 									type="checkbox"
 									checked={sub.completed}
 									onchange={() => handleToggleSubAction(sub.id, !sub.completed)}
-									class="size-4 shrink-0 rounded border-muted-foreground/30 accent-primary"
+									disabled={selectedQuest.status === 'Terminé'}
+									class="size-4 shrink-0 cursor-pointer rounded border-muted-foreground/30 accent-primary"
 								/>
-								<span
-									class={cn(
-										'text-sm',
-										sub.completed && 'text-muted-foreground line-through'
-									)}
-								>
-									{sub.title}
-								</span>
-							</label>
+								<div class="min-w-0 flex-1">
+									<span
+										class={cn(
+											'text-sm',
+											sub.completed && 'text-muted-foreground line-through'
+										)}
+									>
+										{sub.title}
+									</span>
+									{#if sub.description}
+										<p class="mt-0.5 text-xs text-muted-foreground">{sub.description}</p>
+									{/if}
+								</div>
+								{#if !sub.completed}
+									{#if sub.ctaType === 'navigate' && sub.ctaTarget}
+										<Button
+											size="sm"
+											variant="outline"
+											href={resolveCtaTarget(sub.ctaTarget)}
+											class="shrink-0 gap-1.5 text-xs"
+										>
+											{sub.ctaLabel ?? 'Ouvrir'}
+											<ArrowRight class="size-3" />
+										</Button>
+									{:else if sub.ctaType === 'upload'}
+										<Button
+											size="sm"
+											variant="outline"
+											class="shrink-0 gap-1.5 text-xs"
+											onclick={() => toast.info('Dépôt de documents bientôt disponible')}
+										>
+											<Upload class="size-3" />
+											{sub.ctaLabel ?? 'Déposer'}
+										</Button>
+									{:else if sub.ctaType === 'external'}
+										<Button
+											size="sm"
+											variant="outline"
+											class="shrink-0 gap-1.5 text-xs"
+											onclick={() => toast.info('Lien externe bientôt disponible')}
+										>
+											<ExternalLink class="size-3" />
+											{sub.ctaLabel ?? 'Ouvrir'}
+										</Button>
+									{/if}
+								{/if}
+							</div>
 						{/each}
 					</div>
 				{/if}
 
 				<!-- Action buttons -->
-				{#if selectedQuest.status === 'Pas commencé' && !isBlocked(selectedQuest)}
-					<button
-						type="button"
+				{#if selectedQuest.status === 'Pas commencé' && !selectedQuestBlocking.blocked}
+					<Button
+						variant="outline"
 						onclick={() => handleStartQuest(selectedQuest!.id)}
-						class="inline-flex w-fit items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+						class="w-fit gap-2"
 					>
 						<Clock class="size-4" />
 						Commencer
-					</button>
+					</Button>
 				{:else if selectedQuest.status === 'En cours'}
-					<button
-						type="button"
-						onclick={() => handleCompleteQuest(selectedQuest!.id)}
-						class="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-					>
-						<Check class="size-4" />
-						Marquer comme terminé
-					</button>
+					<div class="flex flex-col gap-2">
+						<Button
+							variant="default"
+							disabled={!allSubActionsDone}
+							onclick={() => handleCompleteQuest(selectedQuest!.id)}
+							class="w-fit gap-2"
+						>
+							<Check class="size-4" />
+							Marquer comme terminé
+						</Button>
+						{#if !allSubActionsDone}
+							<p class="text-xs text-muted-foreground">
+								Complétez toutes les sous-tâches pour terminer cette action
+								({selectedQuest.subActions?.filter((s) => s.completed).length ?? 0}/{selectedQuest.subActions?.length ?? 0})
+							</p>
+						{/if}
+					</div>
 				{/if}
 			</div>
 		{:else}
-			<!-- Empty state -->
 			<div class="flex flex-1 items-center justify-center p-6">
 				<div class="text-center">
 					<div class="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted">

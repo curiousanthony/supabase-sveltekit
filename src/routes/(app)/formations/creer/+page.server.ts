@@ -254,6 +254,8 @@ export const actions: Actions = {
 			form.data.dateFin
 		);
 
+		const questKeyToId = new Map<string, string>();
+
 		for (const quest of quests) {
 			const [action] = await db
 				.insert(formationActions)
@@ -270,15 +272,37 @@ export const actions: Actions = {
 				})
 				.returning({ id: formationActions.id });
 
-			if (action && quest.subActions.length > 0) {
-				await db.insert(questSubActions).values(
-					quest.subActions.map((sa, i) => ({
-						formationActionId: action.id,
-						title: sa.title,
-						orderIndex: i,
-						completed: false
-					}))
-				);
+			if (action) {
+				questKeyToId.set(quest.key, action.id);
+
+				if (quest.subActions.length > 0) {
+					await db.insert(questSubActions).values(
+						quest.subActions.map((sa, i) => ({
+							formationActionId: action.id,
+							title: sa.title,
+							description: sa.description ?? null,
+							orderIndex: i,
+							completed: false,
+							ctaType: sa.ctaType ?? null,
+							ctaLabel: sa.ctaLabel ?? null,
+							ctaTarget: sa.ctaTarget ?? null,
+							documentRequired: sa.documentRequired ?? false
+						}))
+					);
+				}
+			}
+		}
+
+		for (const quest of quests) {
+			if (quest.dependencies.length === 0) continue;
+			const actionId = questKeyToId.get(quest.key);
+			if (!actionId) continue;
+			const blockerId = questKeyToId.get(quest.dependencies[quest.dependencies.length - 1]);
+			if (blockerId) {
+				await db
+					.update(formationActions)
+					.set({ blockedByActionId: blockerId })
+					.where(eq(formationActions.id, actionId));
 			}
 		}
 

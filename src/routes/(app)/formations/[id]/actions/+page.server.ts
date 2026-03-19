@@ -3,7 +3,7 @@ import { formationActions, questSubActions, formations } from '$lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
-import { shouldAutoAdvanceStatus } from '$lib/formation-quests';
+import { shouldAutoAdvanceStatus, getQuestTemplate } from '$lib/formation-quests';
 import type { Actions } from './$types';
 
 async function verifyActionOwnership(actionId: string, workspaceId: string) {
@@ -32,6 +32,37 @@ export const actions: Actions = {
 
 		const action = await verifyActionOwnership(actionId, workspaceId);
 		if (!action) return fail(403, { message: 'Accès refusé' });
+
+		const currentAction = await db.query.formationActions.findFirst({
+			where: eq(formationActions.id, actionId),
+			columns: { questKey: true, formationId: true }
+		});
+
+		if (currentAction?.questKey && (newStatus === 'En cours' || newStatus === 'Terminé')) {
+			const template = getQuestTemplate(currentAction.questKey);
+			if (template && template.dependencies.length > 0) {
+				const siblingActions = await db.query.formationActions.findMany({
+					where: eq(formationActions.formationId, currentAction.formationId),
+					columns: { questKey: true, status: true, title: true }
+				});
+				for (const depKey of template.dependencies) {
+					const dep = siblingActions.find((a) => a.questKey === depKey);
+					if (dep && dep.status !== 'Terminé') {
+						return fail(400, { message: `Prérequis non terminé : ${dep.title}` });
+					}
+				}
+			}
+		}
+
+		if (newStatus === 'Terminé') {
+			const subs = await db.query.questSubActions.findMany({
+				where: eq(questSubActions.formationActionId, actionId),
+				columns: { completed: true }
+			});
+			if (subs.length > 0 && !subs.every((s) => s.completed)) {
+				return fail(400, { message: 'Toutes les sous-tâches doivent être complétées' });
+			}
+		}
 
 		const updateData: Record<string, unknown> = { status: newStatus };
 		if (newStatus === 'Terminé') {

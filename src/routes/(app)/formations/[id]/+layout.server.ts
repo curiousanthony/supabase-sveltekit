@@ -51,7 +51,18 @@ export const load = (async ({ params }) => {
 				orderBy: (a, { asc }) => [asc(a.orderIndex)],
 				with: {
 					subActions: {
-						columns: { id: true, title: true, completed: true, completedAt: true, orderIndex: true },
+						columns: {
+							id: true,
+							title: true,
+							description: true,
+							completed: true,
+							completedAt: true,
+							orderIndex: true,
+							ctaType: true,
+							ctaLabel: true,
+							ctaTarget: true,
+							documentRequired: true
+						},
 						orderBy: (s, { asc }) => [asc(s.orderIndex)]
 					},
 					assignee: {
