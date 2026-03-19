@@ -15,6 +15,8 @@
 	import Badge from './ui/badge/badge.svelte';
 	import BackButton from './custom/backButton.svelte';
 	import ProgressRing from '$lib/components/custom/progress-ring.svelte';
+	import HistorySheet from './formations/history-sheet.svelte';
+	import { formationHistorySheetOpen } from '$lib/stores/formation-history-sheet';
 	import { toast } from 'svelte-sonner';
 	import { tick } from 'svelte';
 	import { deserialize } from '$app/forms';
@@ -49,6 +51,17 @@
 	let deleteDialogOpen = $state(false);
 	let deleteConfirmValue = $state('');
 	let isDeleting = $state(false);
+	let historyOpen = $state(false);
+
+	$effect(() => {
+		const unsub = formationHistorySheetOpen.subscribe((v) => {
+			if (v) {
+				historyOpen = true;
+				formationHistorySheetOpen.set(false);
+			}
+		});
+		return unsub;
+	});
 
 	async function startEdit() {
 		nameEditValue = formationDisplayName;
@@ -286,7 +299,9 @@
 						variant="outline"
 						size="icon"
 						aria-label="Voir l'historique des modifications"
-						onclick={() => toast.info('Historique bientôt disponible')}
+						onclick={() => {
+							historyOpen = true;
+						}}
 						class="size-9 min-h-9 min-w-9 p-2"
 					>
 						<History class="size-4" />
@@ -391,6 +406,7 @@
 			</AlertDialog.Footer>
 		</AlertDialog.Content>
 	</AlertDialog.Root>
+	<HistorySheet bind:open={historyOpen} auditLog={formationAction?.auditLog ?? []} />
 {/if}
 
 {#snippet actionIcon(action: { icon: string })}

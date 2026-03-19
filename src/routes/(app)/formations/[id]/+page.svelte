@@ -12,6 +12,13 @@
 		PHASE_LABELS,
 		type QuestPhase
 	} from '$lib/formation-quests';
+	import {
+		formatRelativeTimeFr,
+		getAuditEventDescription,
+		getAuditEventIcon,
+		type AuditLogEntry
+	} from '$lib/formations/audit-activity';
+	import { openFormationHistorySheet } from '$lib/stores/formation-history-sheet';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import CheckCircle from '@lucide/svelte/icons/check-circle';
 	import Clock from '@lucide/svelte/icons/clock';
@@ -22,11 +29,15 @@
 	import FileText from '@lucide/svelte/icons/file-text';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import Layout from '@lucide/svelte/icons/layout';
+	import History from '@lucide/svelte/icons/history';
 
 	let { data }: PageProps = $props();
 
 	const formation = $derived(data?.formation);
 	const formationId = $derived(formation?.id ?? '');
+
+	const auditLog = $derived((data?.auditLog ?? []) as AuditLogEntry[]);
+	const recentActivity = $derived(auditLog.slice(0, 5));
 
 	const actions = $derived(formation?.actions ?? []);
 	const nextQuest = $derived(getNextQuest(actions));
@@ -51,31 +62,29 @@
 	const apprenantsPreview = $derived(apprenants.slice(0, 3));
 
 	const seances = $derived(formation?.seances ?? []);
+	const seancesTotal = $derived(seances.length);
 	let now = $state(new Date().toISOString());
 	$effect(() => {
-		const interval = setInterval(() => { now = new Date().toISOString(); }, 60_000);
+		const interval = setInterval(() => {
+			now = new Date().toISOString();
+		}, 60_000);
 		return () => clearInterval(interval);
 	});
 	const upcomingSeances = $derived(
-		seances
-			.filter((s) => s.startAt >= now)
-			.slice(0, 3)
+		seances.filter((s) => s.startAt >= now).slice(0, 3)
 	);
 
 	const montant = $derived(
 		formation?.montantAccorde ? Number(formation.montantAccorde) : null
 	);
-	const tjm = $derived(
-		formation?.tjmFormateur ? Number(formation.tjmFormateur) : null
+	const totalFormateurCost = $derived(
+		(formation?.formationFormateurs ?? []).reduce((sum, ff) => {
+			const tjm = ff.tjm != null ? Number(ff.tjm) : 0;
+			const days = ff.numberOfDays != null ? Number(ff.numberOfDays) : 0;
+			return sum + tjm * days;
+		}, 0)
 	);
-	const duree = $derived(formation?.duree ?? 0);
-	const jours = $derived(duree > 0 ? duree / 7 : 0);
-	const totalFormateurCost = $derived(tjm && jours > 0 ? tjm * jours : null);
-	const marge = $derived(
-		montant != null && totalFormateurCost != null
-			? montant - totalFormateurCost
-			: null
-	);
+	const marge = $derived(montant != null ? montant - totalFormateurCost : null);
 
 	function formatTime(isoDate: string) {
 		return new Date(isoDate).toLocaleTimeString('fr-FR', {
@@ -275,7 +284,7 @@
 					</Button>
 				{/if}
 			</Card.Header>
-			<Card.Content>
+			<Card.Content class="space-y-4">
 				{#if apprenants.length === 0}
 					<p class="text-sm text-muted-foreground">Aucun apprenant inscrit.</p>
 				{:else}
@@ -294,11 +303,19 @@
 						{/each}
 					</ul>
 					{#if apprenants.length > 3}
-						<p class="mt-2 text-xs text-muted-foreground">
+						<p class="text-xs text-muted-foreground">
 							+{apprenants.length - 3} autre{apprenants.length - 3 > 1 ? 's' : ''}
 						</p>
 					{/if}
 				{/if}
+				<Button
+					variant="outline"
+					size="sm"
+					class="w-full cursor-pointer"
+					onclick={() => goTo('apprenants')}
+				>
+					+ Ajouter un apprenant
+				</Button>
 			</Card.Content>
 		</Card.Root>
 	</div>
@@ -311,6 +328,9 @@
 				<Card.Title class="flex items-center gap-2">
 					<Calendar class="size-4" />
 					Prochaines séances
+					{#if seancesTotal > 0}
+						<Badge variant="secondary" class="text-xs">{seancesTotal}</Badge>
+					{/if}
 				</Card.Title>
 				{#if upcomingSeances.length > 0}
 					<Button
@@ -323,7 +343,7 @@
 					</Button>
 				{/if}
 			</Card.Header>
-			<Card.Content>
+			<Card.Content class="space-y-4">
 				{#if upcomingSeances.length === 0}
 					<p class="text-sm text-muted-foreground">Aucune séance planifiée.</p>
 				{:else}
@@ -363,6 +383,14 @@
 						{/each}
 					</ul>
 				{/if}
+				<Button
+					variant="outline"
+					size="sm"
+					class="w-full cursor-pointer"
+					onclick={() => goTo('seances')}
+				>
+					+ Ajouter une séance
+				</Button>
 			</Card.Content>
 		</Card.Root>
 
@@ -399,10 +427,11 @@
 					</div>
 				</div>
 				<div>
-					<p class="text-xs text-muted-foreground">TJM Formateur</p>
+					<p class="text-xs text-muted-foreground">Coût formateurs</p>
 					<p class="mt-1 text-lg font-semibold tabular-nums">
-						{tjm != null ? tjm.toLocaleString('fr-FR') + ' €' : '—'}
+						{totalFormateurCost.toLocaleString('fr-FR')} €
 					</p>
+					<p class="text-xs text-muted-foreground">Somme des TJM × nombre de jours par formateur</p>
 				</div>
 				<div>
 					<p class="text-xs text-muted-foreground">Marge</p>
@@ -413,13 +442,56 @@
 					>
 						{marge != null ? marge.toLocaleString('fr-FR') + ' €' : '—'}
 					</p>
-					{#if marge != null && tjm != null && duree > 0}
-						<p class="text-xs text-muted-foreground">
-							(montant − TJM × {jours.toFixed(1)} jours)
-						</p>
+					{#if marge != null && montant != null}
+						<p class="text-xs text-muted-foreground">(montant accordé − coût formateurs)</p>
 					{/if}
 				</div>
 			</Card.Content>
 		</Card.Root>
 	</div>
+
+	<!-- Dernière activité -->
+	<Card.Root>
+		<Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
+			<Card.Title class="flex items-center gap-2">
+				<History class="size-4" />
+				Dernière activité
+			</Card.Title>
+			<Button
+				variant="outline"
+				size="sm"
+				class="cursor-pointer"
+				onclick={() => openFormationHistorySheet()}
+			>
+				Voir l'historique
+			</Button>
+		</Card.Header>
+		<Card.Content>
+			{#if recentActivity.length === 0}
+				<p class="text-sm text-muted-foreground">Aucune activité récente.</p>
+			{:else}
+				<ul class="space-y-3">
+					{#each recentActivity as event (event.id)}
+						{@const Icon = getAuditEventIcon(event.actionType)}
+						<li class="flex gap-3">
+							<span
+								class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted/40 text-muted-foreground"
+								aria-hidden="true"
+							>
+								<Icon class="size-4" />
+							</span>
+							<div class="min-w-0 flex-1 space-y-0.5">
+								<p class="text-sm text-foreground">
+									{getAuditEventDescription(event)}
+								</p>
+								<p class="text-xs text-muted-foreground">
+									{formatRelativeTimeFr(event.createdAt)}
+								</p>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</Card.Content>
+	</Card.Root>
 </div>

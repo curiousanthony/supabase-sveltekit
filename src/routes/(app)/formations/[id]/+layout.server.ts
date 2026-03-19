@@ -1,8 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { db } from '$lib/db';
-import { formations } from '$lib/db/schema';
+import { formations, formationInvoices } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getQuestProgress } from '$lib/formation-quests';
+import { getFormationHistory } from '$lib/services/audit-log';
 import type { LayoutServerLoad } from './$types';
 
 const STATUT_COLORS: Record<string, string> = {
@@ -29,7 +30,7 @@ export const load = (async ({ params }) => {
 				columns: { id: true, titre: true, dureeHeures: true, modalite: true }
 			},
 			modules: {
-				columns: { id: true, name: true, durationHours: true, orderIndex: true },
+				columns: { id: true, name: true, durationHours: true, objectifs: true, orderIndex: true },
 				orderBy: (m, { asc }) => [asc(m.orderIndex)]
 			},
 			actions: {
@@ -71,6 +72,16 @@ export const load = (async ({ params }) => {
 				}
 			},
 			formationFormateurs: {
+				columns: {
+					id: true,
+					formationId: true,
+					formateurId: true,
+					tjm: true,
+					numberOfDays: true,
+					deplacementCost: true,
+					hebergementCost: true,
+					createdAt: true
+				},
 				with: {
 					formateur: {
 						columns: { id: true },
@@ -154,6 +165,13 @@ export const load = (async ({ params }) => {
 		statut: formation.statut
 	};
 
+	let auditLog: Awaited<ReturnType<typeof getFormationHistory>> = [];
+	try {
+		auditLog = await getFormationHistory(formationId, 50);
+	} catch {
+		// Non-blocking
+	}
+
 	const header = {
 		pageName: formation.name ?? 'Formation',
 		idInWorkspace: formation.idInWorkspace,
@@ -170,7 +188,8 @@ export const load = (async ({ params }) => {
 				type: 'formationButtonGroup' as const,
 				formationId: formation.id,
 				formationData,
-				questProgress
+				questProgress,
+				auditLog
 			}
 		],
 		backButtonLabel: 'Formations',
@@ -195,12 +214,25 @@ export const load = (async ({ params }) => {
 			return emargements.some((e) => e.signedAt == null);
 		}) ?? false;
 
+	const invoices = await db.query.formationInvoices.findMany({
+		where: eq(formationInvoices.formationId, formationId),
+		columns: { id: true, status: true, dueDate: true }
+	});
+	const overdueInvoices = invoices.some(
+		(inv) =>
+			inv.status !== 'Payée' &&
+			inv.dueDate != null &&
+			inv.dueDate < today
+	);
+
 	return {
 		formation,
 		pageName: formation.name ?? 'Formation',
 		header,
 		overdueQuests,
 		missingSignatures,
-		questProgress: questProgressData
+		overdueInvoices,
+		questProgress: questProgressData,
+		auditLog
 	};
 }) satisfies LayoutServerLoad;
