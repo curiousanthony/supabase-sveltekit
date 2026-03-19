@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 export const formationSchema = z.object({
 	name: z.string().min(1, 'Le nom de la formation est requis'),
-	clientId: z.string().min(1, 'Le client est requis'),
+	clientId: z.string().optional().default(''),
+	companyId: z.string().optional().default(''),
 	duree: z.number().min(1, 'La durée doit être supérieure à 0').default(7),
 	modalite: z.enum(['Distanciel', 'Présentiel', 'Hybride', 'E-Learning']).default('Présentiel'),
 	type: z.enum(['Intra', 'Inter', 'CPF']).optional(),

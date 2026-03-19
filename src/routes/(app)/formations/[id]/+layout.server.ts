@@ -24,6 +24,7 @@ export const load = (async ({ params }) => {
 			thematique: { columns: { id: true, name: true } },
 			sousthematique: { columns: { id: true, name: true } },
 			client: { columns: { id: true, legalName: true } },
+			company: { columns: { id: true, name: true } },
 			programmeSource: {
 				columns: { id: true, titre: true, dureeHeures: true, modalite: true }
 			},
@@ -135,7 +136,7 @@ export const load = (async ({ params }) => {
 		duree: formation.duree,
 		dateDebut: formation.dateDebut,
 		dateFin: formation.dateFin,
-		clientName: formation.client?.legalName ?? null,
+		clientName: formation.company?.name ?? formation.client?.legalName ?? null,
 		formateurName,
 		statut: formation.statut
 	};

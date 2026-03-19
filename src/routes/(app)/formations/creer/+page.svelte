@@ -222,10 +222,10 @@
 		}
 	}
 
-	// Client Combobox State
+	// Company Combobox State (replaces legacy client combobox)
 	let openClientPopover = $state(false);
 	let clientSearchValue = $state('');
-	const selectedClient = $derived(data.clients.find(c => c.id === $formData.clientId));
+	const selectedCompany = $derived((data.companies ?? []).find((c: { id: string }) => c.id === ($formData as any).companyId));
 
 	$effect(() => {
 		if (!openClientPopover) clientSearchValue = '';
@@ -331,10 +331,10 @@ openTopicPopover = false;
 											<input type="hidden" name="customTopic" bind:value={$formData.customTopic} />
 										</div>
 
-										<!-- Searchable Client Selector -->
+										<!-- Searchable Company Selector -->
 										<div class="space-y-3">
-											<label for="clientId" class="text-sm font-bold flex items-center gap-2">
-												Client <span class="text-destructive">*</span>
+											<label for="companyId" class="text-sm font-bold flex items-center gap-2">
+												Client (entreprise)
 											</label>
 											
 											<Popover.Root bind:open={openClientPopover}>
@@ -344,31 +344,31 @@ openTopicPopover = false;
 													aria-expanded={openClientPopover}
 													class="inline-flex h-12 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-background px-4 py-2 text-left text-sm font-normal shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0"
 												>
-													<span class="truncate">{selectedClient ? selectedClient.legalName : "Choisir un client..."}</span>
+													<span class="truncate">{selectedCompany ? selectedCompany.name : "Rechercher une entreprise..."}</span>
 													<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
 												</Popover.Trigger>
 												<Popover.Content class="w-[--bits-popover-anchor-width] p-0" align="start">
 													<Command.Root>
-														<Command.Input placeholder="Rechercher un client..." class="h-10" bind:value={clientSearchValue} />
+														<Command.Input placeholder="Rechercher une entreprise..." class="h-10" bind:value={clientSearchValue} />
 														<Command.List>
-															<Command.Empty>Aucun client trouvé.</Command.Empty>
+															<Command.Empty>Aucune entreprise trouvée.</Command.Empty>
 															<Command.Group>
-																{#each data.clients as client}
+																{#each data.companies ?? [] as company}
 																	<Command.Item
-																		value={client.legalName}
+																		value={company.name}
 																		class="cursor-pointer"
 																		onSelect={() => {
-																			$formData.clientId = client.id;
+																			($formData as any).companyId = company.id;
 																			openClientPopover = false;
 																		}}
 																	>
 																		<Check
 																			class={cn(
 																				"mr-2 h-4 w-4",
-																				($formData.clientId ?? '') !== client.id && "text-transparent"
+																				(($formData as any).companyId ?? '') !== company.id && "text-transparent"
 																			)}
 																		/>
-																		{client.legalName}
+																		{company.name}
 																	</Command.Item>
 																{/each}
 															</Command.Group>
@@ -376,10 +376,7 @@ openTopicPopover = false;
 													</Command.Root>
 												</Popover.Content>
 											</Popover.Root>
-											<input type="hidden" name="clientId" bind:value={$formData.clientId} />
-											{#if $errors.clientId}
-												<p class="text-sm font-medium text-destructive">{$errors.clientId}</p>
-											{/if}
+											<input type="hidden" name="companyId" value={($formData as any).companyId ?? ''} />
 										</div>
 									</div>
 

@@ -2,6 +2,7 @@ import { db } from '$lib/db';
 import {
 	formations,
 	clients,
+	companies,
 	modules,
 	formationActions,
 	formationFormateurs,
@@ -48,6 +49,12 @@ export const load = (async ({ locals, url }) => {
 		orderBy: [asc(clients.legalName)]
 	});
 
+	const companiesData = await db.query.companies.findMany({
+		where: eq(companies.workspaceId, workspaceId),
+		columns: { id: true, name: true },
+		orderBy: [asc(companies.name)]
+	});
+
 	const programmesData = await db.query.biblioProgrammes.findMany({
 		where: eq(biblioProgrammes.workspaceId, workspaceId),
 		columns: { id: true, titre: true, dureeHeures: true, modalite: true },
@@ -91,6 +98,7 @@ export const load = (async ({ locals, url }) => {
 	let defaults: Record<string, unknown> = {
 		name: 'Formation sans titre',
 		clientId: '',
+		companyId: '',
 		duree: 7,
 		modalite: 'Présentiel',
 		topicId: '',
@@ -145,6 +153,7 @@ export const load = (async ({ locals, url }) => {
 	return {
 		form,
 		clients: clientsData,
+		companies: companiesData,
 		prerequisites: mockPrerequisites,
 		targetPublics: mockTargetPublics,
 		topics: mockTopics,
@@ -182,6 +191,8 @@ export const actions: Actions = {
 			form.data.topicId && UUID_REGEX.test(form.data.topicId) ? form.data.topicId : null;
 		const clientId =
 			form.data.clientId && UUID_REGEX.test(form.data.clientId) ? form.data.clientId : null;
+		const companyId =
+			form.data.companyId && UUID_REGEX.test(form.data.companyId) ? form.data.companyId : null;
 		const programmeSourceId =
 			form.data.programmeSourceId && UUID_REGEX.test(form.data.programmeSourceId)
 				? form.data.programmeSourceId
@@ -207,6 +218,7 @@ export const actions: Actions = {
 					description: form.data.description?.trim() || null,
 					topicId,
 					clientId,
+					companyId,
 					duree: form.data.duree,
 					modalite: form.data.modalite,
 					type: form.data.type ?? null,

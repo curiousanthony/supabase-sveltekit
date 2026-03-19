@@ -1,9 +1,40 @@
 import { db } from '$lib/db';
-import { formations } from '$lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { formations, companies, thematiques, sousthematiques } from '$lib/db/schema';
+import { eq, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
-import type { Actions } from './$types';
+import type { PageServerLoad, Actions } from './$types';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const load = (async ({ locals }) => {
+	const workspaceId = await getUserWorkspace(locals);
+	if (!workspaceId) {
+		return { companies: [], thematiques: [], sousthematiques: [] };
+	}
+
+	const [companiesData, thematiquesData, sousthematiquesData] = await Promise.all([
+		db.query.companies.findMany({
+			where: eq(companies.workspaceId, workspaceId),
+			columns: { id: true, name: true },
+			orderBy: [asc(companies.name)]
+		}),
+		db.query.thematiques.findMany({
+			columns: { id: true, name: true },
+			orderBy: [asc(thematiques.name)]
+		}),
+		db.query.sousthematiques.findMany({
+			columns: { id: true, name: true, parentTopicId: true },
+			orderBy: [asc(sousthematiques.name)]
+		})
+	]);
+
+	return {
+		companies: companiesData,
+		thematiques: thematiquesData,
+		sousthematiques: sousthematiquesData
+	};
+}) satisfies PageServerLoad;
 
 export const actions: Actions = {
 	updateField: async ({ request, params, locals }) => {
@@ -30,6 +61,9 @@ export const actions: Actions = {
 			'dateFin',
 			'location',
 			'clientId',
+			'companyId',
+			'topicId',
+			'subtopicsIds',
 			'typeFinancement',
 			'montantAccorde',
 			'financementAccorde',
@@ -63,7 +97,9 @@ export const actions: Actions = {
 			processedValue = Number.isFinite(num) ? num : null;
 		}
 		if (['dateDebut', 'dateFin'].includes(field)) processedValue = value || null;
-		if (field === 'clientId') processedValue = value || null;
+		if (['clientId', 'companyId', 'topicId', 'subtopicsIds'].includes(field)) {
+			processedValue = value && UUID_REGEX.test(value) ? value : null;
+		}
 		if (value === '' || value === null) processedValue = null;
 
 		await db

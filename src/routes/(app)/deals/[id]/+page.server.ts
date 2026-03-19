@@ -296,6 +296,7 @@ export const actions: Actions = {
 						name: deal.name,
 						description: deal.description ?? undefined,
 						clientId: deal.clientId ?? undefined,
+						companyId: deal.companyId ?? undefined,
 						statut: 'À traiter',
 						modalite: (deal.modalities?.[0] as any) ?? 'Présentiel',
 						duree: deal.durationHours ?? 14,

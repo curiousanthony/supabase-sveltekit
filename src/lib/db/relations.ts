@@ -84,7 +84,8 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
 		references: [users.id]
 	}),
 	contactCompanies: many(contactCompanies),
-	dealCompanies: many(dealCompanies)
+	dealCompanies: many(dealCompanies),
+	formations: many(formations)
 }));
 
 export const contactCompaniesRelations = relations(contactCompanies, ({ one }) => ({
@@ -182,6 +183,10 @@ export const formationsRelations = relations(formations, ({ one, many }) => ({
 	client: one(clients, {
 		fields: [formations.clientId],
 		references: [clients.id]
+	}),
+	company: one(companies, {
+		fields: [formations.companyId],
+		references: [companies.id]
 	}),
 	sousthematique: one(sousthematiques, {
 		fields: [formations.subtopicsIds],

@@ -25,6 +25,7 @@ import { workspaces } from './workspaces';
 import { users } from './users';
 import { thematiques, sousthematiques } from './thematiques';
 import { clients } from './clients';
+import { companies } from './companies';
 import { biblioProgrammes } from './biblio-programmes';
 import { contacts } from './contacts';
 import { formateurs } from './formateurs';
@@ -49,6 +50,7 @@ export const formations = pgTable(
 		statut: statutsFormation().default('À traiter').notNull(),
 		typeFinancement: typesFinancement('type_financement'),
 		clientId: uuid('client_id'),
+		companyId: uuid('company_id'),
 		type: formationType('type'),
 		dateDebut: date('date_debut'),
 		dateFin: date('date_fin'),
@@ -89,6 +91,13 @@ export const formations = pgTable(
 			columns: [table.clientId],
 			foreignColumns: [clients.id],
 			name: 'formations_client_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('set null'),
+		foreignKey({
+			columns: [table.companyId],
+			foreignColumns: [companies.id],
+			name: 'formations_company_id_fkey'
 		})
 			.onUpdate('cascade')
 			.onDelete('set null'),
