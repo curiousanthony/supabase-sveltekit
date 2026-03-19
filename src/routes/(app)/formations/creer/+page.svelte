@@ -1,5 +1,4 @@
 <script lang="ts">
-	import * as Form from '$lib/components/ui/form';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import * as Select from '$lib/components/ui/select';
@@ -24,12 +23,6 @@
 	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import X from '@lucide/svelte/icons/x';
-	import Sparkles from '@lucide/svelte/icons/sparkles';
-	import ClipboardList from '@lucide/svelte/icons/clipboard-list';
-	import BookOpen from '@lucide/svelte/icons/book-open';
-	import MessageCircle from '@lucide/svelte/icons/message-circle';
-	import FileSignature from '@lucide/svelte/icons/file-signature';
-	import Smartphone from '@lucide/svelte/icons/smartphone';
 	import { headerTitleSnippet, headerTitleText } from '$lib/stores/header-store';
 	import EditableTitle from '$lib/components/editable-title.svelte';
 	import QualiopiAdvise from '$lib/components/qualiopi-advise.svelte';
@@ -64,9 +57,10 @@
 
 	let currentStep = $state(1);
 	const steps = [
-		{ id: 1, title: 'Bases', description: 'Client et modalités' },
+		{ id: 1, title: 'Bases', description: 'Informations de base' },
 		{ id: 2, title: 'Programme', description: 'Modules et objectifs' },
-		{ id: 3, title: 'Qualiopi', description: 'Conformité et suivi' }
+		{ id: 3, title: 'Personnes', description: 'Formateurs et apprenants' },
+		{ id: 4, title: 'Financement', description: 'Type et montant' }
 	];
 
 	// Header Title Sync and Cleanup
@@ -129,25 +123,6 @@
 		}
 	});
 
-	// Step 3 state sync (Evaluation and Attendance)
-	let evaluationArray = $state([$formData.evaluationMode]);
-	$effect(() => {
-		const next = evaluationArray[0];
-		if (next && $formData.evaluationMode !== next) $formData.evaluationMode = next as any;
-		if ((!next || evaluationArray.length === 0) && $formData.evaluationMode && evaluationArray[0] !== $formData.evaluationMode) {
-			evaluationArray = [$formData.evaluationMode];
-		}
-	});
-
-	let suiviArray = $state([$formData.suiviAssiduite]);
-	$effect(() => {
-		const next = suiviArray[0];
-		if (next && $formData.suiviAssiduite !== next) $formData.suiviAssiduite = next as any;
-		if ((!next || suiviArray.length === 0) && $formData.suiviAssiduite && suiviArray[0] !== $formData.suiviAssiduite) {
-			suiviArray = [$formData.suiviAssiduite];
-		}
-	});
-
 	async function nextStep() {
 		let fieldsToValidate: string[] = [];
 		if (currentStep === 1) {
@@ -155,6 +130,7 @@
 		} else if (currentStep === 2) {
 			fieldsToValidate = ['modules'];
 		}
+		// Steps 3 (Personnes) and 4 (Financement) are optional — no validation
 
 		for (const field of fieldsToValidate) {
 			await validate(field as any);
@@ -389,7 +365,7 @@ openTopicPopover = false;
 																		<Check
 																			class={cn(
 																				"mr-2 h-4 w-4",
-																				$formData.clientId !== client.id && "text-transparent"
+																				($formData.clientId ?? '') !== client.id && "text-transparent"
 																			)}
 																		/>
 																		{client.legalName}
@@ -698,87 +674,79 @@ openTopicPopover = false;
 					</div>
 				{/if}
 
-				<!-- Step 3: Qualiopi Compliance -->
+				<!-- Step 3: Personnes -->
 				{#if currentStep === 3}
 					<div class="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
 						<header>
-							<h2 class="text-2xl font-bold tracking-tight">Finitions Qualiopi ✨</h2>
-							<p class="text-muted-foreground mt-1 text-base">Assurons-nous que tout est prêt pour la certification.</p>
+							<h2 class="text-2xl font-bold tracking-tight">Personnes 👥</h2>
+							<p class="text-muted-foreground mt-1 text-base">Formateurs et apprenants (optionnel).</p>
 						</header>
 
-						<div class="space-y-10">
-							<!-- Evaluation Mode -->
-							<div class="space-y-4">
-								<div class="flex items-center justify-between">
-									<div class="text-sm font-bold flex items-center gap-2">
-										Comment évaluez-vous les acquis ? <span class="text-destructive">*</span>
-									</div>
-									<Tooltip.Root>
-										<Tooltip.Trigger>
-											<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20 cursor-help">
-												Indicateur 11
-											</Badge>
-										</Tooltip.Trigger>
-										<Tooltip.Content>
-											<p class="max-w-xs">Indicateur 11 : Le mode d'évaluation doit permettre de vérifier l'acquisition des compétences visées. Il doit être adapté aux objectifs pédagogiques et permettre une traçabilité pour Qualiopi.</p>
-										</Tooltip.Content>
-									</Tooltip.Root>
-								</div>
-								
-								<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={evaluationArray} class="grid-cols-1 sm:grid-cols-2 gap-4">
-									<CardCheckbox value="QCM de fin de formation" title="QCM" subtitle="Vérification rapide des connaissances" icon={ClipboardList} />
-									<CardCheckbox value="Mise en situation pratique" title="Pratique" subtitle="Mise en œuvre réelle ou simulée" icon={Target} />
-									<CardCheckbox value="Étude de cas complexe" title="Étude de cas" subtitle="Analyse de situations concrètes" icon={BookOpen} />
-									<CardCheckbox value="Entretien avec le formateur" title="Entretien" subtitle="Dialogue direct de validation" icon={MessageCircle} />
-								</CardCheckboxGroup>
-							</div>
+						<div class="rounded-xl border bg-muted/30 p-6 text-center">
+							<p class="text-muted-foreground">
+								Vous pourrez ajouter des formateurs et des apprenants depuis la page de la formation.
+							</p>
+						</div>
+					</div>
+				{/if}
 
-							<!-- Attendance Tracking -->
-							<div class="space-y-4">
-								<div class="text-sm font-bold flex items-center gap-2">
-									Suivi de l'assiduité <span class="text-destructive">*</span>
-									<Tooltip.Root>
-										<Tooltip.Trigger>
-											<Badge variant="outline" class="text-[10px] uppercase font-bold text-primary border-primary/20 cursor-help ml-auto">
-												Indicateur 4
-											</Badge>
-										</Tooltip.Trigger>
-										<Tooltip.Content>
-											<p class="max-w-xs">Indicateur 4 : Le suivi de l'assiduité est obligatoire pour Qualiopi. Il permet de tracer la présence effective des stagiaires et de justifier la délivrance de la certification.</p>
-										</Tooltip.Content>
-									</Tooltip.Root>
-								</div>
-								<CardCheckboxGroup multiple={false} disallowEmpty={true} bind:value={suiviArray} class="grid-cols-1 sm:grid-cols-3 gap-4">
-									<CardCheckbox value="Feuille d'émargement signée par demi-journée" title="Papier" subtitle="Émargement classique" icon={FileSignature} />
-									<CardCheckbox value="Émargement numérique via l'application" title="Numérique" subtitle="Signature sur tablette ou mobile" icon={Smartphone} />
-									<CardCheckbox value="Logs de connexion (pour distanciel)" title="Logs" subtitle="Suivi automatique en ligne" icon={Monitor} />
-								</CardCheckboxGroup>
-							</div>
+				<!-- Step 4: Financement -->
+				{#if currentStep === 4}
+					<div class="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+						<header>
+							<h2 class="text-2xl font-bold tracking-tight">Financement 💰</h2>
+							<p class="text-muted-foreground mt-1 text-base">Type et montant (optionnel).</p>
+						</header>
 
-							<!-- Description synthétique -->
-							<!-- <div class="space-y-3">
-								<label for="description" class="text-sm font-bold">
-									Description synthétique (Optionnel)
+						<div class="space-y-6">
+							<div class="space-y-3">
+								<label for="typeFinancement" class="text-sm font-bold flex items-center gap-2">
+									Type de financement
 								</label>
-								<Textarea bind:value={$formData.description} placeholder="Une brève introduction pour vos catalogues ou devis..." class="min-h-[120px]" />
-							</div> -->
+								<Select.Root
+									type="single"
+									value={$formData.typeFinancement ?? ''}
+									onValueChange={(v) => {
+										$formData.typeFinancement = v && v !== '' ? (v as 'CPF' | 'OPCO' | 'Inter' | 'Intra') : undefined;
+									}}
+								>
+									<Select.Trigger id="typeFinancement" class="h-12 w-full">
+										{$formData.typeFinancement || 'Non renseigné'}
+									</Select.Trigger>
+									<Select.Content>
+										<Select.Item value="">Non renseigné</Select.Item>
+										<Select.Item value="CPF">CPF</Select.Item>
+										<Select.Item value="OPCO">OPCO</Select.Item>
+										<Select.Item value="Inter">Inter</Select.Item>
+										<Select.Item value="Intra">Intra</Select.Item>
+									</Select.Content>
+								</Select.Root>
+							</div>
 
-							<div class="space-y-4">
-								<QualiopiAdvise 
-									variant="info"
-									title="Conseil : Mode d'évaluation"
-									message="Choisissez un mode d'évaluation adapté à vos objectifs pédagogiques. Le QCM convient pour vérifier les connaissances théoriques, tandis que la mise en situation pratique permet d'évaluer les compétences opérationnelles."
+							<div class="space-y-3">
+								<label for="montantAccorde" class="text-sm font-bold flex items-center gap-2">
+									Montant accordé (€)
+								</label>
+								<Input
+									id="montantAccorde"
+									type="text"
+									inputmode="decimal"
+									placeholder="Ex: 1500"
+									class="h-12"
+									bind:value={$formData.montantAccorde}
 								/>
-								<QualiopiAdvise 
-									variant="info"
-									title="Conseil : Suivi de l'assiduité"
-									message="Pour le présentiel, privilégiez l'émargement papier ou numérique. Pour le distanciel, les logs de connexion sont automatiquement enregistrés. L'hybride nécessite un suivi combiné des deux modalités."
+							</div>
+
+							<div class="flex items-center gap-3">
+								<input
+									type="checkbox"
+									id="financementAccorde"
+									bind:checked={$formData.financementAccorde}
+									class="h-4 w-4 rounded border-input"
 								/>
-								<QualiopiAdvise 
-									variant="playful"
-									title="Astuce Qualiopi 💡"
-									message="Tous ces éléments sont essentiels pour votre certification. En les complétant correctement, vous vous assurez que votre formation répond aux exigences Qualiopi dès la conception."
-								/>
+								<label for="financementAccorde" class="text-sm font-medium cursor-pointer">
+									Financement accordé
+								</label>
 							</div>
 						</div>
 					</div>

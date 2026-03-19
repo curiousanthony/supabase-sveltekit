@@ -4,6 +4,9 @@ import {
 	clients,
 	modules,
 	formationActions,
+	formationFormateurs,
+	formationApprenants,
+	questSubActions,
 	biblioProgrammes,
 	biblioProgrammeModules
 } from '$lib/db/schema';
@@ -13,7 +16,7 @@ import { superValidate } from 'sveltekit-superforms/server';
 import { zod } from 'sveltekit-superforms/adapters';
 import { formationSchema } from './schema';
 import { getUserWorkspace } from '$lib/auth';
-import { DEFAULT_FORMATION_ACTIONS } from '$lib/formation-workflow';
+import { getQuestsForFormation, calculateDueDates } from '$lib/formation-quests';
 import type { PageServerLoad, Actions } from './$types';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -93,6 +96,11 @@ export const load = (async ({ locals, url }) => {
 		targetPublicIds: [],
 		prerequisiteIds: [],
 		customPrerequisites: [],
+		formateurIds: [],
+		apprenantContactIds: [],
+		typeFinancement: undefined,
+		montantAccorde: '',
+		financementAccorde: false,
 		modules: [
 			{
 				title: 'Formation sans titre',
@@ -201,7 +209,10 @@ export const actions: Actions = {
 					location: form.data.location?.trim() || null,
 					programmeSourceId,
 					idInWorkspace: nextIdInWorkspace,
-					statut: 'À traiter'
+					statut: 'À traiter',
+					typeFinancement: form.data.typeFinancement ?? null,
+					montantAccorde: form.data.montantAccorde?.trim() || null,
+					financementAccorde: form.data.financementAccorde ?? false
 				})
 				.returning({ id: formations.id });
 		});
@@ -218,15 +229,60 @@ export const actions: Actions = {
 			}))
 		);
 
-		await db.insert(formationActions).values(
-			DEFAULT_FORMATION_ACTIONS.map((a) => ({
-				formationId: inserted.id,
-				title: a.title,
-				etape: a.etape,
-				orderIndex: a.order,
-				status: 'Pas commencé' as const
-			}))
+		const quests = getQuestsForFormation(form.data.type ?? null, form.data.typeFinancement ?? null);
+		const dueDates = calculateDueDates(
+			quests,
+			form.data.dateDebut,
+			form.data.dateFin
 		);
+
+		for (const quest of quests) {
+			const [action] = await db
+				.insert(formationActions)
+				.values({
+					formationId: inserted.id,
+					title: quest.title,
+					description: quest.description,
+					phase: quest.phase,
+					questKey: quest.key,
+					status: 'Pas commencé',
+					assigneeId: user.id,
+					orderIndex: quest.orderIndex,
+					dueDate: dueDates.get(quest.key) ?? null
+				})
+				.returning({ id: formationActions.id });
+
+			if (action && quest.subActions.length > 0) {
+				await db.insert(questSubActions).values(
+					quest.subActions.map((sa, i) => ({
+						formationActionId: action.id,
+						title: sa.title,
+						orderIndex: i,
+						completed: false
+					}))
+				);
+			}
+		}
+
+		const formateurIds = form.data.formateurIds ?? [];
+		if (formateurIds.length > 0) {
+			await db.insert(formationFormateurs).values(
+				formateurIds.map((formateurId) => ({
+					formationId: inserted.id,
+					formateurId
+				}))
+			);
+		}
+
+		const apprenantContactIds = form.data.apprenantContactIds ?? [];
+		if (apprenantContactIds.length > 0) {
+			await db.insert(formationApprenants).values(
+				apprenantContactIds.map((contactId) => ({
+					formationId: inserted.id,
+					contactId
+				}))
+			);
+		}
 
 		throw redirect(303, `/formations/${inserted.id}`);
 	}

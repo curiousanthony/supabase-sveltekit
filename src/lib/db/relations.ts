@@ -15,6 +15,8 @@ import {
 	formations,
 	formationWorkflowSteps,
 	formationActions,
+	questSubActions,
+	formationAuditLog,
 	formationFormateurs,
 	formationApprenants,
 	modules,
@@ -196,6 +198,7 @@ export const formationsRelations = relations(formations, ({ one, many }) => ({
 	modules: many(modules),
 	workflowSteps: many(formationWorkflowSteps),
 	actions: many(formationActions),
+	auditLog: many(formationAuditLog),
 	formationFormateurs: many(formationFormateurs),
 	formationApprenants: many(formationApprenants),
 	seances: many(seances, { relationName: 'formation_seances' }),
@@ -265,7 +268,7 @@ export const emargementsRelations = relations(emargements, ({ one }) => ({
 	})
 }));
 
-export const formationActionsRelations = relations(formationActions, ({ one }) => ({
+export const formationActionsRelations = relations(formationActions, ({ one, many }) => ({
 	formation: one(formations, {
 		fields: [formationActions.formationId],
 		references: [formations.id]
@@ -274,9 +277,37 @@ export const formationActionsRelations = relations(formationActions, ({ one }) =
 		fields: [formationActions.completedBy],
 		references: [users.id]
 	}),
+	assignee: one(users, {
+		fields: [formationActions.assigneeId],
+		references: [users.id],
+		relationName: 'action_assignee'
+	}),
 	blockedByAction: one(formationActions, {
 		fields: [formationActions.blockedByActionId],
 		references: [formationActions.id]
+	}),
+	subActions: many(questSubActions)
+}));
+
+export const questSubActionsRelations = relations(questSubActions, ({ one }) => ({
+	formationAction: one(formationActions, {
+		fields: [questSubActions.formationActionId],
+		references: [formationActions.id]
+	}),
+	completedByUser: one(users, {
+		fields: [questSubActions.completedBy],
+		references: [users.id]
+	})
+}));
+
+export const formationAuditLogRelations = relations(formationAuditLog, ({ one }) => ({
+	formation: one(formations, {
+		fields: [formationAuditLog.formationId],
+		references: [formations.id]
+	}),
+	user: one(users, {
+		fields: [formationAuditLog.userId],
+		references: [users.id]
 	})
 }));
 

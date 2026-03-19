@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import { db } from '$lib/db';
 import { formations } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { getQuestProgress } from '$lib/formation-quests';
 import type { LayoutServerLoad } from './$types';
 
 const STATUT_COLORS: Record<string, string> = {
@@ -37,12 +38,25 @@ export const load = (async ({ params }) => {
 					description: true,
 					status: true,
 					etape: true,
+					phase: true,
+					questKey: true,
+					assigneeId: true,
+					guidanceDismissed: true,
 					dueDate: true,
 					completedAt: true,
 					blockedByActionId: true,
 					orderIndex: true
 				},
-				orderBy: (a, { asc }) => [asc(a.orderIndex)]
+				orderBy: (a, { asc }) => [asc(a.orderIndex)],
+				with: {
+					subActions: {
+						columns: { id: true, title: true, completed: true, completedAt: true, orderIndex: true },
+						orderBy: (s, { asc }) => [asc(s.orderIndex)]
+					},
+					assignee: {
+						columns: { id: true, firstName: true, lastName: true, avatarUrl: true }
+					}
+				}
 			},
 			formationFormateurs: {
 				with: {
@@ -91,6 +105,9 @@ export const load = (async ({ params }) => {
 						columns: { id: true, contactId: true, signedAt: true }
 					}
 				}
+			},
+			dealsFromFormation: {
+				columns: { id: true, name: true }
 			}
 		}
 	});
@@ -101,9 +118,32 @@ export const load = (async ({ params }) => {
 
 	const statutBadgeClass = STATUT_COLORS[formation.statut] ?? '[&_svg]:text-neutral-400';
 
+	const questProgressData = getQuestProgress(formation.actions ?? []);
+	const questProgress = questProgressData.overall.percent;
+	const formateurName =
+		formation.formationFormateurs?.[0]?.formateur?.user != null
+			? [formation.formationFormateurs[0].formateur.user.firstName, formation.formationFormateurs[0].formateur.user.lastName]
+					.filter(Boolean)
+					.join(' ') || formation.formationFormateurs[0].formateur.user.email || null
+			: null;
+
+	const formationData = {
+		name: formation.name ?? 'Formation',
+		idInWorkspace: formation.idInWorkspace,
+		type: formation.type,
+		modalite: formation.modalite,
+		duree: formation.duree,
+		dateDebut: formation.dateDebut,
+		dateFin: formation.dateFin,
+		clientName: formation.client?.legalName ?? null,
+		formateurName,
+		statut: formation.statut
+	};
+
 	const header = {
 		pageName: formation.name ?? 'Formation',
 		idInWorkspace: formation.idInWorkspace,
+		idPrefix: 'FOR-' as const,
 		actions: [
 			{
 				type: 'badge' as const,
@@ -114,7 +154,9 @@ export const load = (async ({ params }) => {
 			},
 			{
 				type: 'formationButtonGroup' as const,
-				formationId: formation.id
+				formationId: formation.id,
+				formationData,
+				questProgress
 			}
 		],
 		backButtonLabel: 'Formations',
@@ -122,5 +164,29 @@ export const load = (async ({ params }) => {
 		backButton: true
 	};
 
-	return { formation, pageName: formation.name ?? 'Formation', header };
+	const today = new Date().toISOString().slice(0, 10);
+	const overdueQuests =
+		(formation.actions ?? []).some(
+			(a) =>
+				a.dueDate != null &&
+				a.dueDate < today &&
+				a.status !== 'Terminé'
+		) ?? false;
+
+	const missingSignatures =
+		(formation.seances ?? []).some((seance) => {
+			const seanceEnd = seance.endAt ? new Date(seance.endAt).toISOString() : null;
+			if (!seanceEnd || seanceEnd > new Date().toISOString()) return false;
+			const emargements = seance.emargements ?? [];
+			return emargements.some((e) => e.signedAt == null);
+		}) ?? false;
+
+	return {
+		formation,
+		pageName: formation.name ?? 'Formation',
+		header,
+		overdueQuests,
+		missingSignatures,
+		questProgress: questProgressData
+	};
 }) satisfies LayoutServerLoad;

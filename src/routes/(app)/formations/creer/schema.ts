@@ -16,6 +16,12 @@ export const formationSchema = z.object({
 	location: z.string().optional(),
 	programmeSourceId: z.string().optional(),
 
+	formateurIds: z.array(z.string().uuid()).optional().default([]),
+	apprenantContactIds: z.array(z.string().uuid()).optional().default([]),
+	typeFinancement: z.enum(['CPF', 'OPCO', 'Inter', 'Intra']).optional(),
+	montantAccorde: z.string().optional(),
+	financementAccorde: z.boolean().optional().default(false),
+
 	modules: z
 		.array(
 			z.object({

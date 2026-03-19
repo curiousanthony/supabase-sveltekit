@@ -122,3 +122,4 @@ export const typeQuestionnaire = pgEnum('type_questionnaire', [
 	'Quiz / Exercice',
 	'Audit des besoins'
 ]);
+export const questPhase = pgEnum('quest_phase', ['conception', 'deploiement', 'evaluation']);
