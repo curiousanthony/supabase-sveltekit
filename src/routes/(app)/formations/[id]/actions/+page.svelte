@@ -87,6 +87,13 @@
 		selectedQuest?.status === 'Pas commencé' || selectedQuest?.status === 'Terminé'
 	);
 
+	const nextActionableQuest = $derived.by(() => {
+		if (!selectedQuest || selectedQuest.status !== 'Terminé') return null;
+		return actions.find(
+			(a) => a.id !== selectedQuest.id && a.status !== 'Terminé' && !getBlockingInfo(a, actions).blocked
+		) ?? null;
+	});
+
 	let prevPhaseCompletion = $state<Record<string, boolean>>({});
 
 	$effect(() => {
@@ -578,14 +585,26 @@
 					{/if}
 				</div>
 			{:else if selectedQuest.status === 'Terminé'}
-				<Button
-					variant="outline"
-					onclick={() => handleReopenQuest(selectedQuest!.id)}
-					class="w-fit gap-2"
-				>
-					<RotateCcw class="size-4" />
-					Rouvrir cette action
-				</Button>
+				<div class="flex flex-wrap items-center gap-2">
+					{#if nextActionableQuest}
+						<Button
+							variant="default"
+							onclick={() => { selectedQuestId = nextActionableQuest!.id; }}
+							class="w-fit gap-2"
+						>
+							Action suivante
+							<ArrowRight class="size-4" />
+						</Button>
+					{/if}
+					<Button
+						variant="outline"
+						onclick={() => handleReopenQuest(selectedQuest!.id)}
+						class="w-fit gap-2"
+					>
+						<RotateCcw class="size-4" />
+						Rouvrir
+					</Button>
+				</div>
 			{/if}
 			</div>
 		{:else}
