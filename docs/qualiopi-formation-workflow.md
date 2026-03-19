@@ -820,14 +820,14 @@ is_critical: si l'absence constitue un risque de non-conformité majeure
 
 ### Statistiques
 
-- **Total quêtes** : 27
+- **Total quêtes** : 30 (Q01–Q25 + Q06-CPF, Q08b, Q09b, Q09c, Q16b)
 - **Phase Conception** : 13 quêtes
 - **Phase Déploiement** : 6 quêtes
-- **Phase Évaluation** : 10 quêtes (dont 2 différées à +1-3 mois et +3-6 mois)
-- **Quêtes critiques (risque non-conformité majeure)** : 12
+- **Phase Évaluation** : 11 quêtes (dont 2 différées à +1-3 mois et +3-6 mois)
+- **Quêtes critiques (risque non-conformité majeure)** : 13 (Q02, Q03, Q05, Q09, Q11, Q13, Q16, Q16b, Q17, Q18, Q21, Q24, Q25)
 - **Quêtes spécifiques OPCO** : 3 (Q06, Q07, Q20)
 - **Quêtes spécifiques CPF** : 2 (Q06-CPF, Q20)
-- **Quêtes applicables à TOUTES les formations** : 22
+- **Quêtes applicables à TOUTES les formations** : 26
 
 ---
 

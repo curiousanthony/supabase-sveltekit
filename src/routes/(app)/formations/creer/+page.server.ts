@@ -8,9 +8,11 @@ import {
 	formationApprenants,
 	questSubActions,
 	biblioProgrammes,
-	biblioProgrammeModules
+	biblioProgrammeModules,
+	formateurs,
+	contacts
 } from '$lib/db/schema';
-import { eq, asc, desc, sql } from 'drizzle-orm';
+import { eq, asc, desc, sql, and, inArray } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms/server';
 import { zod } from 'sveltekit-superforms/adapters';
@@ -119,17 +121,21 @@ export const load = (async ({ locals, url }) => {
 				(sum, pm) => sum + (pm.module.dureeHeures ? Number(pm.module.dureeHeures) : 0),
 				0
 			);
+			const mappedModules = prog.programmeModules.length > 0
+				? prog.programmeModules.map((pm) => ({
+					title: pm.module.titre,
+					durationHours: pm.module.dureeHeures ? Number(pm.module.dureeHeures) : 1,
+					objectifs: pm.module.objectifsPedagogiques ?? ''
+				}))
+				: [{ title: prog.titre ?? 'Module 1', durationHours: 1, objectifs: '' }];
+
 			defaults = {
 				...defaults,
 				name: prog.titre,
 				programmeSourceId: prog.id,
 				duree: totalHours || 7,
 				modalite: prog.modalite ?? 'Présentiel',
-				modules: prog.programmeModules.map((pm) => ({
-					title: pm.module.titre,
-					durationHours: pm.module.dureeHeures ? Number(pm.module.dureeHeures) : 1,
-					objectifs: pm.module.objectifsPedagogiques ?? ''
-				}))
+				modules: mappedModules
 			};
 		}
 	}
@@ -264,24 +270,40 @@ export const actions: Actions = {
 			}
 		}
 
-		const formateurIds = form.data.formateurIds ?? [];
+		const formateurIds = (form.data.formateurIds ?? []).filter((id) => UUID_REGEX.test(id));
 		if (formateurIds.length > 0) {
-			await db.insert(formationFormateurs).values(
-				formateurIds.map((formateurId) => ({
-					formationId: inserted.id,
-					formateurId
-				}))
-			);
+			const validFormateurs = await db
+				.select({ id: formateurs.id })
+				.from(formateurs)
+				.where(and(inArray(formateurs.id, formateurIds), eq(formateurs.workspaceId, workspaceId)));
+			const validFormateurIds = new Set(validFormateurs.map((f) => f.id));
+			const ownedIds = formateurIds.filter((id) => validFormateurIds.has(id));
+			if (ownedIds.length > 0) {
+				await db.insert(formationFormateurs).values(
+					ownedIds.map((formateurId) => ({
+						formationId: inserted.id,
+						formateurId
+					}))
+				);
+			}
 		}
 
-		const apprenantContactIds = form.data.apprenantContactIds ?? [];
+		const apprenantContactIds = (form.data.apprenantContactIds ?? []).filter((id) => UUID_REGEX.test(id));
 		if (apprenantContactIds.length > 0) {
-			await db.insert(formationApprenants).values(
-				apprenantContactIds.map((contactId) => ({
-					formationId: inserted.id,
-					contactId
-				}))
-			);
+			const validContacts = await db
+				.select({ id: contacts.id })
+				.from(contacts)
+				.where(and(inArray(contacts.id, apprenantContactIds), eq(contacts.workspaceId, workspaceId)));
+			const validContactIds = new Set(validContacts.map((c) => c.id));
+			const ownedIds = apprenantContactIds.filter((id) => validContactIds.has(id));
+			if (ownedIds.length > 0) {
+				await db.insert(formationApprenants).values(
+					ownedIds.map((contactId) => ({
+						formationId: inserted.id,
+						contactId
+					}))
+				);
+			}
 		}
 
 		throw redirect(303, `/formations/${inserted.id}`);

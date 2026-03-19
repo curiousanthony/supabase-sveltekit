@@ -75,6 +75,7 @@
 								)}
 								aria-hidden="true"
 							></span>
+							<span class="sr-only">Notification</span>
 						{/if}
 					</a>
 				{:else}
@@ -96,6 +97,7 @@
 								)}
 								aria-hidden="true"
 							></span>
+							<span class="sr-only">Notification</span>
 						{/if}
 					</button>
 				{/if}

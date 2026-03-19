@@ -556,8 +556,10 @@ export function shouldAutoAdvanceStatus(
 	const isComplete = (key: string) =>
 		actions.some((a) => a.questKey === key && a.status === 'Terminé');
 
-	const allPhaseComplete = (phase: QuestPhase) =>
-		actions.filter((a) => a.phase === phase).every((a) => a.status === 'Terminé');
+	const allPhaseComplete = (phase: QuestPhase) => {
+		const phaseActions = actions.filter((a) => a.phase === phase);
+		return phaseActions.length > 0 && phaseActions.every((a) => a.status === 'Terminé');
+	};
 
 	if (
 		currentStatus === 'À traiter' &&

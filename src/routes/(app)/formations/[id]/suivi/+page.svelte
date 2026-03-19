@@ -95,12 +95,25 @@
 	}
 
 	async function callAction(actionName: string, body: FormData) {
-		const response = await fetch(`?/${actionName}`, { method: 'POST', body });
-		const result = deserialize(await response.text());
-		if (result.type === 'success') {
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+		try {
+			const response = await fetch(`?/${actionName}`, { method: 'POST', body });
+			if (!response.ok) {
+				toast.error(`Erreur serveur (${response.status})`);
+				return;
+			}
+			const result = deserialize(await response.text());
+			if (result.type === 'success') {
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+			} else if (result.type === 'error') {
+				toast.error(result.error?.message ?? 'Erreur inattendue');
+			} else if (result.type === 'redirect') {
+				toast.error('Redirection inattendue');
+			}
+		} catch (err) {
+			console.error('callAction error:', err);
+			toast.error(err instanceof Error ? err.message : 'Erreur réseau');
 		}
 	}
 

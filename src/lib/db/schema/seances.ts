@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, foreignKey, timestamp, uuid, text, check } from 'drizzle-orm/pg-core';
+import { pgTable, foreignKey, timestamp, uuid, text, check, unique } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { formations, modules } from './formations';
 import { formateurs } from './formateurs';
@@ -73,6 +73,7 @@ export const emargements = pgTable(
 			name: 'emargements_contact_id_fkey'
 		})
 			.onUpdate('cascade')
-			.onDelete('cascade')
+			.onDelete('cascade'),
+		unique('unique_emargement_seance_contact').on(table.seanceId, table.contactId)
 	]
 );

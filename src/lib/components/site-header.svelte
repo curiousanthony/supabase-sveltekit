@@ -80,11 +80,16 @@
 		statut?: string | null;
 	}) {
 		const fmt = (v: unknown) => (v != null ? String(v) : '—');
-		const formatDate = (d: string | null | undefined) =>
-			d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+		const formatDate = (d: string | null | undefined) => {
+			if (!d) return '—';
+			const date = new Date(d);
+			if (isNaN(date.getTime())) return '—';
+			return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+		};
+		const prefix = header?.idPrefix ?? 'FOR-';
 		return [
 			`Formation : ${fmt(data.name)}`,
-			`Réf : FOR-${fmt(data.idInWorkspace)}`,
+			`Réf : ${prefix}${fmt(data.idInWorkspace)}`,
 			`Type : ${fmt(data.type)} | Modalité : ${fmt(data.modalite)}`,
 			`Durée : ${fmt(data.duree)}h`,
 			`Dates : ${formatDate(data.dateDebut)} – ${formatDate(data.dateFin)}`,
@@ -252,7 +257,11 @@
 							<DropdownMenu.Group>
 								<DropdownMenu.Item
 									variant="destructive"
-									onclick={() => action.onDelete?.()}
+									onclick={() => {
+										if (window.confirm('Supprimer cette formation ?')) {
+											action.onDelete?.();
+										}
+									}}
 								>
 									<Trash class="size-4" />
 									Supprimer la formation

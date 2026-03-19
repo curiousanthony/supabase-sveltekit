@@ -36,6 +36,10 @@ Add columns to support the quest system without making the table obsolete:
 | `guidance_dismissed` | `boolean` | `false` | Whether the user dismissed the help text |
 | `applicable_to` | `jsonb` | `NULL` | Which formation types/funding this quest applies to (null = all) |
 
+**Indexes:** `assignee_id`, `quest_key`, composite `(formation_id, phase)`.
+**Constraints:** `UNIQUE (formation_id, quest_key)` to prevent duplicate quests per formation. `CHECK` that `quest_key IS NOT NULL WHEN phase IS NOT NULL`.
+**RLS:** Add appropriate Supabase RLS policies to protect user-sensitive fields (`assignee_id`, `guidance_dismissed`, `applicable_to`).
+
 ### 1c. New table: `quest_sub_actions`
 
 ```
@@ -56,16 +60,20 @@ quest_sub_actions
 ```
 formation_audit_log
 ├── id: uuid PK
-├── formation_id: uuid FK → formations (CASCADE)
+├── formation_id: uuid FK → formations (SET NULL on delete, nullable — preserves audit history)
 ├── user_id: uuid FK → users
 ├── action_type: text NOT NULL (field_update, quest_completed, phase_completed, status_changed...)
 ├── entity_type: text (formation, quest, sub_action, seance...)
 ├── entity_id: uuid
 ├── field_name: text
-├── old_value: text
-├── new_value: text
+├── old_value: jsonb (structured to preserve types and enable queries)
+├── new_value: jsonb (structured to preserve types and enable queries)
 └── created_at: timestamptz DEFAULT now()
 ```
+
+**Indexes:** `formation_id`, `created_at`, composite `(formation_id, created_at DESC)` for recent-activity queries.
+
+**Retention:** Consider a scheduled cleanup job (e.g., archive/delete entries older than a configurable period) and potential partitioning by `created_at` (monthly/quarterly) at scale.
 
 ### 1e. Files to change
 
@@ -405,13 +413,14 @@ Add 2 new steps to the existing wizard (currently handles basics + programme/mod
 
 ### 7b. On creation:
 
-The server action must:
-1. Create the formation (existing)
-2. Create modules (existing)
-3. Create `formation_formateurs` entries (new)
-4. Create `formation_apprenants` entries (new)
-5. **Replace** `DEFAULT_FORMATION_ACTIONS` with `createFormationQuests(...)` — creates quests + sub-actions based on formation type/funding
+The server action must wrap all steps inside `db.transaction(async (tx) => { ... })`:
+1. Create the formation via `tx.insert(formations)` (existing)
+2. Create modules via `tx.insert(modules)` (existing)
+3. Create `formation_formateurs` entries via `tx.insert(formationFormateurs)` (new)
+4. Create `formation_apprenants` entries via `tx.insert(formationApprenants)` (new)
+5. Call `createFormationQuests(tx, formation.id, ...)` — creates quests + sub-actions based on formation type/funding, running inside the same transaction
 6. Auto-assign all quests to the admin/secretary user, or formation creator as fallback
+7. If any step throws, the transaction rolls back and propagates the error
 
 ### 7c. Update: [`src/routes/(app)/formations/creer/schema.ts`](src/routes/(app)/formations/creer/schema.ts)
 
@@ -525,7 +534,82 @@ Execute in this sequence, each step building on the previous:
 
 ---
 
-## 13. Files Summary
+## 13. Error Handling & Loading States
+
+Each server action should define concrete behavior:
+
+- **UI loading states:** disable buttons + show spinner or skeleton per-action while request is in-flight.
+- **Error handling:** show `toast.error` with localized messages (e.g., "Impossible de mettre a jour le statut") on failure.
+- **Rollback strategies:** wrap multi-step mutations (e.g., `createFormationQuests`) in DB transactions; on partial failure, let the transaction roll back.
+- **Optimistic updates:** for `toggleSubAction`, apply the toggle optimistically with automatic rollback on conflict.
+- **Validation error display:** Zod errors shown inline beside form fields with a fallback toast for unexpected validation failures.
+
+---
+
+## 14. Data Migration Strategy
+
+When adding the `questPhase` enum and quest-related tables, existing formation rows must be handled:
+
+- Decide whether existing formations are migrated to the quest system or marked legacy.
+- Define heuristics to map current `formation_actions`/status to quests and which phases should be pre-completed.
+- Decide on dual-mode (old actions alongside quests) or full migration.
+- Require a separate data migration script (distinct from schema migrations) that inspects formations, creates quests, marks pre-completed quests, writes `formationAuditLog` entries, includes a rollback plan, and a test plan (sample datasets, verification queries, dry-run mode).
+
+---
+
+## 15. Status Auto-Advancement Details
+
+Implement via two paths:
+1. **Event-driven:** invoke `advanceStatusForFormation(...)` from the quest completion handler.
+2. **Time-based:** a daily cron job checks date-based rules (e.g., `dateDebut` reached).
+
+Add a `status_override` boolean on `Formation`; when a user manually updates status, set it to `true` and have `advanceStatusForFormation` bail out (or only suggest changes).
+
+Enforce transitions via a central state machine module (`allowedTransitions`, `canTransition(current, target)`) used in both auto and manual paths.
+
+Prevent races by performing status changes inside a DB transaction with `SELECT ... FOR UPDATE` on the Formation row.
+
+---
+
+## 16. Dependency Graph Safety
+
+Inside `createFormationQuests`:
+- Expand ambiguous "All Evaluation quests" dependencies for `cloture_archivage` into the explicit key list.
+- Detect and throw on circular dependencies (DFS cycle check via `validateDependencyGraph`).
+- Handle conditional dependencies (e.g., `demande_financement`): mark dependent quests as optional/inapplicable when the condition doesn't apply, providing fallback logic so downstream quests are not blocked.
+
+---
+
+## 17. Accessibility
+
+- **Sounds:** check `prefers-reduced-motion` before playing animations; provide visual alternatives (CSS classes like `visual-feedback-micro/medium/macro`) when sound is disabled.
+- **Sound toggle:** keyboard-focusable and ARIA-labeled (WCAG audio control requirements).
+- **Sound persistence:** wire the preference into the user preferences backend (save/read via user preferences table when authenticated) with localStorage as client fallback.
+
+---
+
+## 18. Inline Edit Authorization
+
+For the inline-editable formation name and Fiche fields:
+- The `updateField` server action must enforce a role x field permission matrix (which roles can edit which fields and when; e.g., prevent edits after certain formation statuses).
+- Every change must be written to `formation_audit_log` with actor, timestamp, old/new values.
+- Validate input against the creation wizard Zod schema (e.g., non-empty name, dateDebut < dateFin, business rules).
+- Ensure returned/displayed values are properly escaped (SvelteKit automatic escaping) to prevent XSS.
+
+---
+
+## 19. URL Routing & Navigation (Mobile)
+
+- Desktop: selection uses query param `/formations/[id]/suivi?quest=[questKey]`.
+- Mobile: uses path param `/formations/[id]/suivi/[questKey]`.
+- Mobile "back" UI pushes/pops browser history so the hardware back button works.
+- Deep links/bookmarks must load the selected quest.
+- Tab bar: ArrowLeft/ArrowRight to move, Home/End to jump, auto-scroll active into view.
+- Touch gestures: swipe left/right to navigate quests.
+
+---
+
+## 20. Files Summary
 
 ### New files (16)
 - `src/lib/formation-quests.ts`

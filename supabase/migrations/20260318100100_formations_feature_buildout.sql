@@ -89,5 +89,12 @@ CREATE TABLE IF NOT EXISTS "emargements" (
   "seance_id" uuid NOT NULL REFERENCES "seances"("id") ON UPDATE CASCADE ON DELETE CASCADE,
   "contact_id" uuid NOT NULL REFERENCES "contacts"("id") ON UPDATE CASCADE ON DELETE CASCADE,
   "signed_at" timestamptz,
-  "created_at" timestamptz DEFAULT now() NOT NULL
+  "created_at" timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT "unique_emargement_seance_contact" UNIQUE ("seance_id", "contact_id")
 );
+
+CREATE INDEX IF NOT EXISTS "idx_emargements_seance_id"
+  ON "emargements" ("seance_id");
+
+CREATE INDEX IF NOT EXISTS "idx_emargements_contact_id"
+  ON "emargements" ("contact_id");

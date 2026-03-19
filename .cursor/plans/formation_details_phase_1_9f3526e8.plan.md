@@ -121,16 +121,16 @@ New `src/lib/sounds.ts` using Web Audio API (no audio files). Three tiers: micro
 
 ## Enhanced Creation Wizard
 
-Modify `[formations/creer/](<src/routes/(app)`/formations/creer/>) to 4 steps: Basics, Programme, People (formateur + apprenants), Financement. On creation, call `createFormationQuests()` to generate quests + sub-actions, auto-assign to admin/secretary.
+Modify `[formations/creer/](<src/routes/(app)/formations/creer/>)` to 4 steps: Basics, Programme, People (formateur + apprenants), Financement. On creation, call `createFormationQuests()` to generate quests + sub-actions, auto-assign to admin/secretary.
 
 ## List Page Updates
 
 - `[formationCard.svelte](src/lib/components/custom/formationCard.svelte)`: FOR- prefix, notification dot, mini progress bar
-- `[formations/+page.server.ts](<src/routes/(app)`/formations/+page.server.ts>): include quest completion stats in query
+- `[formations/+page.server.ts](<src/routes/(app)/formations/+page.server.ts>)`: include quest completion stats in query
 
 ## New Files (19)
 
-`src/lib/formation-quests.ts`, `src/lib/sounds.ts`, 12 new components in `src/lib/components/formations/` and `src/lib/components/custom/`, 2 new routes (`fiche/`, `apprenants/`, `finances/`), 1 migration
+`src/lib/formation-quests.ts`, `src/lib/sounds.ts`, 12 new components in `src/lib/components/formations/` and `src/lib/components/custom/`, 3 new routes (`fiche/`, `apprenants/`, `finances/`), 1 migration
 
 ## Modified Files (16)
 

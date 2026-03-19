@@ -11,8 +11,13 @@ export const actions: Actions = {
 		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
 
 		const formData = await request.formData();
-		const field = formData.get('field') as string;
-		const value = formData.get('value') as string;
+		const rawField = formData.get('field');
+		const rawValue = formData.get('value');
+		if (!rawField || typeof rawField !== 'string') {
+			return fail(400, { message: 'Champ requis' });
+		}
+		const field = rawField;
+		const value = rawValue != null && typeof rawValue === 'string' ? rawValue : null;
 
 		const allowedFields = [
 			'name',
@@ -44,7 +49,14 @@ export const actions: Actions = {
 		}
 
 		let processedValue: string | number | boolean | null = value;
-		if (field === 'duree') processedValue = value ? parseInt(value, 10) : null;
+		if (field === 'duree') {
+			if (value) {
+				const n = parseInt(value, 10);
+				processedValue = Number.isFinite(n) ? n : null;
+			} else {
+				processedValue = null;
+			}
+		}
 		if (field === 'financementAccorde') processedValue = value === 'true';
 		if (field === 'montantAccorde' || field === 'tjmFormateur') {
 			const num = value ? parseFloat(value) : NaN;
@@ -52,7 +64,7 @@ export const actions: Actions = {
 		}
 		if (['dateDebut', 'dateFin'].includes(field)) processedValue = value || null;
 		if (field === 'clientId') processedValue = value || null;
-		if (value === '') processedValue = null;
+		if (value === '' || value === null) processedValue = null;
 
 		await db
 			.update(formations)

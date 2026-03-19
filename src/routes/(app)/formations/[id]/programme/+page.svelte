@@ -126,10 +126,10 @@
 
 	{#if modules.length > 0 && !programme}
 		<div class="flex justify-end">
-			<Button variant="outline" size="sm" class="cursor-pointer" href="/bibliotheque/programmes">
+			<!-- TODO: wire to a save action that persists modules as a reusable programme -->
+			<Button variant="outline" size="sm" class="cursor-pointer" disabled>
 				<Library class="size-4 mr-1.5" />
-				Sauvegarder comme programme
-				<ArrowRight class="size-4 ml-1.5" />
+				Sauvegarder comme programme (bientôt)
 			</Button>
 		</div>
 	{/if}

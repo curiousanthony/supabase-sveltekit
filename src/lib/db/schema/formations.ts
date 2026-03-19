@@ -293,7 +293,7 @@ export const formationAuditLog = pgTable(
 	'formation_audit_log',
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		formationId: uuid('formation_id').notNull(),
+		formationId: uuid('formation_id'),
 		userId: uuid('user_id'),
 		actionType: text('action_type').notNull(),
 		entityType: text('entity_type'),
@@ -312,7 +312,7 @@ export const formationAuditLog = pgTable(
 			name: 'formation_audit_log_formation_id_fkey'
 		})
 			.onUpdate('cascade')
-			.onDelete('cascade'),
+			.onDelete('set null'),
 		foreignKey({
 			columns: [table.userId],
 			foreignColumns: [users.id],

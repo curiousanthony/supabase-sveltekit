@@ -256,7 +256,10 @@
 							onblur={() => handleBlur('description', formation?.description ?? null)}
 							onkeydown={(e) => {
 								if (e.key === 'Escape') editingField = null;
-								if (e.key === 'Enter' && !e.shiftKey) handleBlur('description', formation?.description ?? null);
+								if (e.key === 'Enter' && !e.shiftKey) {
+									e.preventDefault();
+									handleBlur('description', formation?.description ?? null);
+								}
 							}}
 							rows="3"
 							class="rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"

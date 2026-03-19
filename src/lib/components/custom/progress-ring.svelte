@@ -10,9 +10,10 @@
 
 	let { percent, size = 28, strokeWidth = 3, class: className }: Props = $props();
 
+	const clampedPercent = $derived(Math.min(100, Math.max(0, percent)));
 	const radius = $derived((size - strokeWidth) / 2);
 	const circumference = $derived(2 * Math.PI * radius);
-	const strokeDashoffset = $derived(circumference * (1 - Math.min(100, Math.max(0, percent)) / 100));
+	const strokeDashoffset = $derived(circumference * (1 - clampedPercent / 100));
 	const showText = $derived(size >= 40);
 </script>
 
@@ -20,7 +21,11 @@
 	width={size}
 	height={size}
 	class={cn("shrink-0 -rotate-90", className)}
-	aria-hidden="true"
+	role="progressbar"
+	aria-valuenow={clampedPercent}
+	aria-valuemin={0}
+	aria-valuemax={100}
+	aria-label="Progression"
 >
 	<!-- Track -->
 	<circle
@@ -51,9 +56,10 @@
 			y={size / 2}
 			text-anchor="middle"
 			dominant-baseline="central"
+			transform="rotate(90 {size / 2} {size / 2})"
 			class="fill-foreground text-xs font-medium"
 		>
-			{Math.round(percent)}%
+			{Math.round(clampedPercent)}%
 		</text>
 	{/if}
 </svg>

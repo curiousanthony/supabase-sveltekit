@@ -7,11 +7,11 @@
 	let { data }: PageProps = $props();
 
 	const formation = $derived(data?.formation);
-	const tjm = $derived(formation?.tjmFormateur ? Number(formation.tjmFormateur) : null);
-	const montant = $derived(formation?.montantAccorde ? Number(formation.montantAccorde) : null);
+	const tjm = $derived(formation?.tjmFormateur != null ? Number(formation.tjmFormateur) : null);
+	const montant = $derived(formation?.montantAccorde != null ? Number(formation.montantAccorde) : null);
 	const duree = $derived(formation?.duree ?? 0);
-	const totalFormateurCost = $derived(tjm && duree ? tjm * (duree / 7) : null);
-	const margin = $derived(montant && totalFormateurCost ? montant - totalFormateurCost : null);
+	const totalFormateurCost = $derived(tjm != null && duree != null ? tjm * (duree / 7) : null);
+	const margin = $derived(montant != null && totalFormateurCost != null ? montant - totalFormateurCost : null);
 </script>
 
 <div class="space-y-4">
@@ -27,7 +27,7 @@
 				<div class="rounded-lg border p-4">
 					<p class="text-sm text-muted-foreground">Montant accordé</p>
 					<p class="mt-1 text-2xl font-semibold tabular-nums">
-						{montant ? montant.toLocaleString('fr-FR') + ' €' : '—'}
+						{montant != null ? montant.toLocaleString('fr-FR') + ' €' : '—'}
 					</p>
 					{#if formation?.financementAccorde}
 						<Badge variant="default" class="mt-1 text-xs">Accordé</Badge>
@@ -38,9 +38,9 @@
 				<div class="rounded-lg border p-4">
 					<p class="text-sm text-muted-foreground">TJM Formateur</p>
 					<p class="mt-1 text-2xl font-semibold tabular-nums">
-						{tjm ? tjm.toLocaleString('fr-FR') + ' €' : '—'}
+						{tjm != null ? tjm.toLocaleString('fr-FR') + ' €' : '—'}
 					</p>
-					{#if totalFormateurCost}
+					{#if totalFormateurCost != null}
 						<p class="mt-1 text-xs text-muted-foreground">
 							Coût total : {totalFormateurCost.toLocaleString('fr-FR')} €
 						</p>

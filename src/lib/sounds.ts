@@ -7,15 +7,19 @@ const STORAGE_KEY = "sounds-enabled";
 
 let audioContext: AudioContext | null = null;
 
-function getAudioContext(): AudioContext {
+function getAudioContext(): AudioContext | null {
+	if (typeof globalThis.AudioContext === "undefined") return null;
 	if (!audioContext) {
 		audioContext = new AudioContext();
+	}
+	if (audioContext.state === "suspended") {
+		audioContext.resume().catch(() => {});
 	}
 	return audioContext;
 }
 
 function getSoundsEnabled(): boolean {
-	if (typeof window === "undefined") return true;
+	if (typeof window === "undefined") return false;
 	try {
 		const stored = localStorage.getItem(STORAGE_KEY);
 		return stored === null ? true : stored === "true";
@@ -45,6 +49,7 @@ export function playMicroSound(): void {
 	if (!getSoundsEnabled()) return;
 
 	const ctx = getAudioContext();
+	if (!ctx) return;
 	const now = ctx.currentTime;
 
 	const osc = ctx.createOscillator();
@@ -70,6 +75,7 @@ export function playMediumSound(): void {
 	if (!getSoundsEnabled()) return;
 
 	const ctx = getAudioContext();
+	if (!ctx) return;
 	const now = ctx.currentTime;
 
 	const playNote = (freq: number, start: number, duration: number, vol: number) => {
@@ -100,6 +106,7 @@ export function playMacroSound(): void {
 	if (!getSoundsEnabled()) return;
 
 	const ctx = getAudioContext();
+	if (!ctx) return;
 	const now = ctx.currentTime;
 
 	// Ascending arpeggio: C5, E5, G5, C6

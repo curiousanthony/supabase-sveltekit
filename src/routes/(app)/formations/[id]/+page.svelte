@@ -51,7 +51,11 @@
 	const apprenantsPreview = $derived(apprenants.slice(0, 3));
 
 	const seances = $derived(formation?.seances ?? []);
-	const now = $derived(new Date().toISOString());
+	let now = $state(new Date().toISOString());
+	$effect(() => {
+		const interval = setInterval(() => { now = new Date().toISOString(); }, 60_000);
+		return () => clearInterval(interval);
+	});
 	const upcomingSeances = $derived(
 		seances
 			.filter((s) => s.startAt >= now)
@@ -101,6 +105,7 @@
 	function getInitials(name: string) {
 		return name
 			.split(' ')
+			.filter(Boolean)
 			.map((p) => p[0])
 			.join('')
 			.slice(0, 2)

@@ -42,4 +42,10 @@
 	.animate-notification-pulse {
 		animation: notification-pulse 1.5s ease-in-out infinite;
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.animate-notification-pulse {
+			animation: none;
+		}
+	}
 </style>

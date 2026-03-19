@@ -29,8 +29,23 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
-ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'À traiter' BEFORE 'En cours';
-ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'Signature convention' BEFORE 'En cours';
-ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'Financement' BEFORE 'En cours';
-ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'Planification' BEFORE 'En cours';
-ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'Archivée' AFTER 'Terminée';
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    WHERE t.typname = 'statuts_formation' AND e.enumlabel = 'En cours'
+  ) THEN
+    EXECUTE $$ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'À traiter' BEFORE 'En cours'$$;
+    EXECUTE $$ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'Signature convention' BEFORE 'En cours'$$;
+    EXECUTE $$ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'Financement' BEFORE 'En cours'$$;
+    EXECUTE $$ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'Planification' BEFORE 'En cours'$$;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    WHERE t.typname = 'statuts_formation' AND e.enumlabel = 'Terminée'
+  ) THEN
+    EXECUTE $$ALTER TYPE "statuts_formation" ADD VALUE IF NOT EXISTS 'Archivée' AFTER 'Terminée'$$;
+  END IF;
+END $$;

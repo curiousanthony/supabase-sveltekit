@@ -222,8 +222,11 @@
 						class={cn(
 							'rounded-full px-2 py-0.5 text-xs font-medium',
 							(status === 'À traiter' || status === 'Signature convention') && 'bg-muted text-muted-foreground',
+							status === 'Financement' && 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
+							status === 'Planification' && 'bg-purple-500/20 text-purple-700 dark:text-purple-400',
 							status === 'En cours' && 'bg-blue-500/20 text-blue-700 dark:text-blue-400',
-								status === 'Terminée' && 'bg-green-500/20 text-green-700 dark:text-green-400'
+							status === 'Terminée' && 'bg-green-500/20 text-green-700 dark:text-green-400',
+							status === 'Archivée' && 'bg-red-500/20 text-red-700 dark:text-red-400'
 							)}
 						>
 							{columnFormations.length}

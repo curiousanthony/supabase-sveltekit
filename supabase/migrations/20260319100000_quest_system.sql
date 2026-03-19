@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS "quest_sub_actions" (
 
 CREATE TABLE IF NOT EXISTS "formation_audit_log" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-  "formation_id" uuid NOT NULL REFERENCES "formations"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+  "formation_id" uuid REFERENCES "formations"("id") ON UPDATE CASCADE ON DELETE SET NULL,
   "user_id" uuid REFERENCES "auth"."users"("id"),
   "action_type" text NOT NULL,
   "entity_type" text,
