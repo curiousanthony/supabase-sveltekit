@@ -101,6 +101,8 @@ export const load = (async ({ params }) => {
 					startAt: true,
 					endAt: true,
 					location: true,
+					room: true,
+					modalityOverride: true,
 					moduleId: true,
 					formateurId: true
 				},
