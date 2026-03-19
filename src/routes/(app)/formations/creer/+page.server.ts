@@ -257,7 +257,8 @@ export const actions: Actions = {
 		const questKeyToId = new Map<string, string>();
 
 		for (const quest of quests) {
-			const [action] = await db
+			const isFirstQuest = quest.dependencies.length === 0 && quest.orderIndex === 1;
+		const [action] = await db
 				.insert(formationActions)
 				.values({
 					formationId: inserted.id,
@@ -265,7 +266,7 @@ export const actions: Actions = {
 					description: quest.description,
 					phase: quest.phase,
 					questKey: quest.key,
-					status: 'Pas commencé',
+					status: isFirstQuest ? 'En cours' : 'Pas commencé',
 					assigneeId: user.id,
 					orderIndex: quest.orderIndex,
 					dueDate: dueDates.get(quest.key) ?? null

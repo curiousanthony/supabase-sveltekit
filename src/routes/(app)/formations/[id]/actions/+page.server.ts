@@ -120,6 +120,17 @@ export const actions: Actions = {
 		const ownerCheck = await verifyActionOwnership(subAction.formationActionId, workspaceId);
 		if (!ownerCheck) return fail(403, { message: 'Accès refusé' });
 
+		const parentAction = await db.query.formationActions.findFirst({
+			where: eq(formationActions.id, subAction.formationActionId),
+			columns: { status: true }
+		});
+		if (parentAction?.status === 'Pas commencé') {
+			return fail(400, { message: 'Vous devez d\'abord commencer cette action' });
+		}
+		if (parentAction?.status === 'Terminé') {
+			return fail(400, { message: 'Rouvrez l\'action avant de modifier les sous-tâches' });
+		}
+
 		await db.update(questSubActions).set({
 			completed,
 			completedAt: completed ? new Date().toISOString() : null,

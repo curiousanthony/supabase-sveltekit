@@ -86,6 +86,10 @@
 			: true
 	);
 
+	const subActionsLocked = $derived(
+		selectedQuest?.status === 'Pas commencé' || selectedQuest?.status === 'Terminé'
+	);
+
 	let prevPhaseCompletion = $state<Record<string, boolean>>({});
 
 	$effect(() => {
@@ -458,74 +462,84 @@
 					{/if}
 				</div>
 
-				<!-- Sub-actions checklist -->
-				{#if selectedQuest.subActions && selectedQuest.subActions.length > 0}
-					<div class="flex flex-col gap-1">
-						<span class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-							Sous-tâches ({selectedQuest.subActions.filter((s) => s.completed).length}/{selectedQuest.subActions.length})
-						</span>
-						{#each selectedQuest.subActions as sub}
-							<div
+			<!-- Sub-actions checklist -->
+			{#if selectedQuest.subActions && selectedQuest.subActions.length > 0}
+				<div class="flex flex-col gap-1">
+					<span class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+						Sous-tâches ({selectedQuest.subActions.filter((s) => s.completed).length}/{selectedQuest.subActions.length})
+					</span>
+					{#if selectedQuest.status === 'Pas commencé'}
+						<p class="mb-1 text-xs text-muted-foreground italic">
+							Cliquez sur « Commencer » pour débloquer les sous-tâches
+						</p>
+					{/if}
+					{#each selectedQuest.subActions as sub}
+						<div
+							class={cn(
+								'flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors',
+								!subActionsLocked && 'hover:bg-muted/50',
+								sub.completed && 'opacity-60',
+								subActionsLocked && !sub.completed && 'opacity-50'
+							)}
+						>
+							<input
+								type="checkbox"
+								checked={sub.completed}
+								onchange={() => handleToggleSubAction(sub.id, !sub.completed)}
+								disabled={subActionsLocked}
 								class={cn(
-									'flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/50',
-									sub.completed && 'opacity-60'
+									'size-4 shrink-0 rounded border-muted-foreground/30 accent-primary',
+									subActionsLocked ? 'cursor-not-allowed' : 'cursor-pointer'
 								)}
-							>
-								<input
-									type="checkbox"
-									checked={sub.completed}
-									onchange={() => handleToggleSubAction(sub.id, !sub.completed)}
-									disabled={selectedQuest.status === 'Terminé'}
-									class="size-4 shrink-0 cursor-pointer rounded border-muted-foreground/30 accent-primary"
-								/>
-								<div class="min-w-0 flex-1">
-									<span
-										class={cn(
-											'text-sm',
-											sub.completed && 'text-muted-foreground line-through'
-										)}
-									>
-										{sub.title}
-									</span>
-									{#if sub.description}
-										<p class="mt-0.5 text-xs text-muted-foreground">{sub.description}</p>
-									{/if}
-								</div>
-								{#if !sub.completed}
-									{#if sub.ctaType === 'navigate' && sub.ctaTarget}
-										<Button
-											size="sm"
-											variant="outline"
-											href={resolveCtaTarget(sub.ctaTarget)}
-											class="shrink-0 gap-1.5 text-xs"
-										>
-											{sub.ctaLabel ?? 'Ouvrir'}
-											<ArrowRight class="size-3" />
-										</Button>
-									{:else if sub.ctaType === 'upload'}
-										<Button
-											size="sm"
-											variant="outline"
-											class="shrink-0 gap-1.5 text-xs"
-											onclick={() => toast.info('Dépôt de documents bientôt disponible')}
-										>
-											<Upload class="size-3" />
-											{sub.ctaLabel ?? 'Déposer'}
-										</Button>
-									{:else if sub.ctaType === 'external'}
-										<Button
-											size="sm"
-											variant="outline"
-											class="shrink-0 gap-1.5 text-xs"
-											onclick={() => toast.info('Lien externe bientôt disponible')}
-										>
-											<ExternalLink class="size-3" />
-											{sub.ctaLabel ?? 'Ouvrir'}
-										</Button>
-									{/if}
+							/>
+							<div class="min-w-0 flex-1">
+								<span
+									class={cn(
+										'text-sm',
+										sub.completed && 'text-muted-foreground line-through'
+									)}
+								>
+									{sub.title}
+								</span>
+								{#if sub.description}
+									<p class="mt-0.5 text-xs text-muted-foreground">{sub.description}</p>
 								{/if}
 							</div>
-						{/each}
+							{#if !sub.completed && !subActionsLocked}
+								{#if sub.ctaType === 'navigate' && sub.ctaTarget}
+									<Button
+										size="sm"
+										variant="outline"
+										href={resolveCtaTarget(sub.ctaTarget)}
+										class="shrink-0 gap-1.5 text-xs"
+									>
+										{sub.ctaLabel ?? 'Ouvrir'}
+										<ArrowRight class="size-3" />
+									</Button>
+								{:else if sub.ctaType === 'upload'}
+									<Button
+										size="sm"
+										variant="outline"
+										class="shrink-0 gap-1.5 text-xs"
+										onclick={() => toast.info('Dépôt de documents bientôt disponible')}
+									>
+										<Upload class="size-3" />
+										{sub.ctaLabel ?? 'Déposer'}
+									</Button>
+								{:else if sub.ctaType === 'external'}
+									<Button
+										size="sm"
+										variant="outline"
+										class="shrink-0 gap-1.5 text-xs"
+										onclick={() => toast.info('Lien externe bientôt disponible')}
+									>
+										<ExternalLink class="size-3" />
+										{sub.ctaLabel ?? 'Ouvrir'}
+									</Button>
+								{/if}
+							{/if}
+						</div>
+					{/each}
 					</div>
 				{/if}
 
