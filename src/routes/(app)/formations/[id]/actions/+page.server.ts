@@ -35,10 +35,12 @@ export const actions: Actions = {
 
 		const currentAction = await db.query.formationActions.findFirst({
 			where: eq(formationActions.id, actionId),
-			columns: { questKey: true, formationId: true }
+			columns: { questKey: true, formationId: true, status: true }
 		});
 
-		if (currentAction?.questKey && (newStatus === 'En cours' || newStatus === 'Terminé')) {
+		const isReopening = currentAction?.status === 'Terminé' && newStatus === 'En cours';
+
+		if (currentAction?.questKey && (newStatus === 'En cours' || newStatus === 'Terminé') && !isReopening) {
 			const template = getQuestTemplate(currentAction.questKey);
 			if (template && template.dependencies.length > 0) {
 				const siblingActions = await db.query.formationActions.findMany({

@@ -31,6 +31,7 @@
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
+	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 
 	let { data }: PageProps = $props();
 
@@ -177,6 +178,14 @@
 		formData.append('actionId', actionId);
 		formData.append('newStatus', 'En cours');
 		await callAction('updateQuestStatus', formData);
+	}
+
+	async function handleReopenQuest(actionId: string) {
+		const formData = new FormData();
+		formData.append('actionId', actionId);
+		formData.append('newStatus', 'En cours');
+		await callAction('updateQuestStatus', formData);
+		toast.info('Action rouverte');
 	}
 
 	async function handleDismissGuidance(actionId: string) {
@@ -520,35 +529,44 @@
 					</div>
 				{/if}
 
-				<!-- Action buttons -->
-				{#if selectedQuest.status === 'Pas commencé' && !selectedQuestBlocking.blocked}
+			<!-- Action buttons -->
+			{#if selectedQuest.status === 'Pas commencé' && !selectedQuestBlocking.blocked}
+				<Button
+					variant="outline"
+					onclick={() => handleStartQuest(selectedQuest!.id)}
+					class="w-fit gap-2"
+				>
+					<Clock class="size-4" />
+					Commencer
+				</Button>
+			{:else if selectedQuest.status === 'En cours'}
+				<div class="flex flex-col gap-2">
 					<Button
-						variant="outline"
-						onclick={() => handleStartQuest(selectedQuest!.id)}
+						variant="default"
+						disabled={!allSubActionsDone}
+						onclick={() => handleCompleteQuest(selectedQuest!.id)}
 						class="w-fit gap-2"
 					>
-						<Clock class="size-4" />
-						Commencer
+						<Check class="size-4" />
+						Marquer comme terminé
 					</Button>
-				{:else if selectedQuest.status === 'En cours'}
-					<div class="flex flex-col gap-2">
-						<Button
-							variant="default"
-							disabled={!allSubActionsDone}
-							onclick={() => handleCompleteQuest(selectedQuest!.id)}
-							class="w-fit gap-2"
-						>
-							<Check class="size-4" />
-							Marquer comme terminé
-						</Button>
-						{#if !allSubActionsDone}
-							<p class="text-xs text-muted-foreground">
-								Complétez toutes les sous-tâches pour terminer cette action
-								({selectedQuest.subActions?.filter((s) => s.completed).length ?? 0}/{selectedQuest.subActions?.length ?? 0})
-							</p>
-						{/if}
-					</div>
-				{/if}
+					{#if !allSubActionsDone}
+						<p class="text-xs text-muted-foreground">
+							Complétez toutes les sous-tâches pour terminer cette action
+							({selectedQuest.subActions?.filter((s) => s.completed).length ?? 0}/{selectedQuest.subActions?.length ?? 0})
+						</p>
+					{/if}
+				</div>
+			{:else if selectedQuest.status === 'Terminé'}
+				<Button
+					variant="outline"
+					onclick={() => handleReopenQuest(selectedQuest!.id)}
+					class="w-fit gap-2"
+				>
+					<RotateCcw class="size-4" />
+					Rouvrir cette action
+				</Button>
+			{/if}
 			</div>
 		{:else}
 			<div class="flex flex-1 items-center justify-center p-6">
