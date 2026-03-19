@@ -29,7 +29,7 @@
 	]);
 </script>
 
-<div class="flex w-full flex-col gap-4">
+<div class="flex min-h-0 w-full flex-1 flex-col gap-4">
 	<NavTabs {tabs} ariaLabel="Formation sections" />
 	{@render children()}
 </div>

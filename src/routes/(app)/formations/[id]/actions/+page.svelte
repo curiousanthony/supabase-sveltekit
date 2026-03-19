@@ -24,13 +24,10 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Calendar from '@lucide/svelte/icons/calendar';
-	import User from '@lucide/svelte/icons/user';
-	import X from '@lucide/svelte/icons/x';
 	import Info from '@lucide/svelte/icons/info';
 	import Upload from '@lucide/svelte/icons/upload';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
-	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 
 	let { data }: PageProps = $props();
@@ -98,12 +95,17 @@
 		);
 
 		const prev = untrack(() => prevPhaseCompletion);
+		const isInitialRun = Object.keys(prev).length === 0;
 
 		for (const phase of phases) {
 			if (currentCompletion[phase] && !prev[phase]) {
-				levelUpPhase = PHASE_LABELS[phase];
-				showLevelUp = true;
-				playMacroSound();
+				collapsedPhases = { ...collapsedPhases, [phase]: true };
+
+				if (!isInitialRun) {
+					levelUpPhase = PHASE_LABELS[phase];
+					showLevelUp = true;
+					playMacroSound();
+				}
 			}
 		}
 
@@ -111,15 +113,22 @@
 	});
 
 	$effect(() => {
+		if (selectedQuestId) return;
+
 		const questParam = $page.url.searchParams.get('quest');
-		if (questParam && !selectedQuestId) {
+		if (questParam) {
 			const match = actions.find((a) => a.questKey === questParam);
-			if (match) {
-				const blocking = getBlockingInfo(match, actions);
-				if (!blocking.blocked) {
-					selectedQuestId = match.id;
-				}
+			if (match && !getBlockingInfo(match, actions).blocked) {
+				selectedQuestId = match.id;
+				return;
 			}
+		}
+
+		const firstActionable = actions.find(
+			(a) => a.status !== 'Terminé' && !getBlockingInfo(a, actions).blocked
+		);
+		if (firstActionable) {
+			selectedQuestId = firstActionable.id;
 		}
 	});
 
@@ -192,12 +201,6 @@
 		toast.info('Action rouverte');
 	}
 
-	async function handleDismissGuidance(actionId: string) {
-		const formData = new FormData();
-		formData.append('actionId', actionId);
-		await callAction('dismissGuidance', formData);
-	}
-
 	function formatDate(dateStr: string | null | undefined): string {
 		if (!dateStr) return '';
 		return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
@@ -222,7 +225,7 @@
 
 <LevelUpToast phaseName={levelUpPhase ?? ''} show={showLevelUp} onClose={() => (showLevelUp = false)} />
 
-<div class="flex h-full gap-0 md:gap-4">
+<div class="flex min-h-0 flex-1 gap-0 md:gap-4">
 	<!-- Left panel: Quest list -->
 	<div
 		class={cn(
@@ -238,7 +241,7 @@
 					type="button"
 					onclick={() => togglePhase(group.phase)}
 					class={cn(
-						'flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-muted/50',
+						'flex w-full cursor-pointer items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-muted/50',
 						progress?.allDone && 'bg-muted/30'
 					)}
 				>
@@ -284,14 +287,14 @@
 									</Tooltip.Content>
 								</Tooltip.Root>
 							{:else}
-								<button
-									type="button"
-									onclick={() => selectQuest(action)}
-									class={cn(
-										'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors',
-										isActive && 'bg-primary/10 ring-1 ring-primary/30',
-										!isActive && 'hover:bg-muted/50'
-									)}
+							<button
+								type="button"
+								onclick={() => selectQuest(action)}
+								class={cn(
+									'flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors',
+									isActive && 'bg-primary/10 ring-1 ring-primary/30',
+									!isActive && 'hover:bg-muted/50'
+								)}
 								>
 									<div class="shrink-0">
 										{#if action.status === 'Terminé'}
@@ -379,10 +382,24 @@
 			</button>
 
 			<div class="flex flex-col gap-5 p-4 md:p-6">
-				<!-- Title + phase badge -->
+				<!-- Title + phase badge + guidance info -->
 				<div class="flex flex-col gap-2">
 					<div class="flex items-start justify-between gap-3">
-						<h2 class="text-lg font-semibold leading-tight">{selectedQuest.title}</h2>
+						<div class="flex items-center gap-2">
+							<h2 class="text-lg font-semibold leading-tight">{selectedQuest.title}</h2>
+							{#if selectedQuestTemplate?.guidance}
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<button type="button" class="shrink-0 rounded-full p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground" aria-label="Guide Qualiopi">
+											<Info class="size-4" />
+										</button>
+									</Tooltip.Trigger>
+									<Tooltip.Content class="max-w-xs">
+										<p class="text-xs">{selectedQuestTemplate.guidance}</p>
+									</Tooltip.Content>
+								</Tooltip.Root>
+							{/if}
+						</div>
 						{#if selectedQuest.phase}
 							<span
 								class={cn(
@@ -399,45 +416,27 @@
 					{/if}
 				</div>
 
-				<!-- Qualiopi critical badge -->
-				{#if selectedQuestTemplate?.criticalForQualiopi}
-					<div class="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
-						<AlertTriangle class="size-3.5 shrink-0" />
-						Indicateur Qualiopi — Non-conformité majeure si absent
-					</div>
-				{/if}
-
-				<!-- Guidance -->
-				{#if selectedQuestTemplate?.guidance && !selectedQuest.guidanceDismissed}
-					<div class="flex gap-3 rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3 dark:border-blue-800 dark:bg-blue-950/20">
-						<Info class="mt-0.5 size-4 shrink-0 text-blue-500" />
-						<div class="flex-1">
-							<p class="text-sm text-blue-900 dark:text-blue-200">
-								{selectedQuestTemplate.guidance}
-							</p>
-						</div>
-						<button
-							type="button"
-							onclick={() => handleDismissGuidance(selectedQuest!.id)}
-							class="shrink-0 rounded p-0.5 text-blue-400 transition-colors hover:text-blue-600"
-							aria-label="Masquer"
-						>
-							<X class="size-3.5" />
-						</button>
-					</div>
-				{/if}
-
 				<!-- Meta: assignee & due date -->
-				<div class="flex flex-wrap gap-4 text-sm">
+				<div class="flex flex-wrap items-center gap-4 text-sm">
 					{#if selectedQuest.assignee}
-						<div class="flex items-center gap-1.5 text-muted-foreground">
-							<User class="size-3.5" />
-							<span>
-								{[selectedQuest.assignee.firstName, selectedQuest.assignee.lastName]
-									.filter(Boolean)
-									.join(' ') || 'Assigné'}
-							</span>
-						</div>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#if selectedQuest.assignee.avatarUrl}
+									<img
+										src={selectedQuest.assignee.avatarUrl}
+										alt={[selectedQuest.assignee.firstName, selectedQuest.assignee.lastName].filter(Boolean).join(' ')}
+										class="size-6 rounded-full"
+									/>
+								{:else}
+									<div class="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
+										{(selectedQuest.assignee.firstName?.[0] ?? '') + (selectedQuest.assignee.lastName?.[0] ?? '')}
+									</div>
+								{/if}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p class="text-xs">{[selectedQuest.assignee.firstName, selectedQuest.assignee.lastName].filter(Boolean).join(' ') || 'Assigné'}</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
 					{/if}
 					{#if selectedQuest.dueDate}
 						<div
@@ -484,6 +483,7 @@
 						>
 							<input
 								type="checkbox"
+								id="sub-{sub.id}"
 								checked={sub.completed}
 								onchange={() => handleToggleSubAction(sub.id, !sub.completed)}
 								disabled={subActionsLocked}
@@ -492,7 +492,13 @@
 									subActionsLocked ? 'cursor-not-allowed' : 'cursor-pointer'
 								)}
 							/>
-							<div class="min-w-0 flex-1">
+							<label
+								for={subActionsLocked ? undefined : `sub-${sub.id}`}
+								class={cn(
+									'min-w-0 flex-1',
+									!subActionsLocked && 'cursor-pointer'
+								)}
+							>
 								<span
 									class={cn(
 										'text-sm',
@@ -504,7 +510,7 @@
 								{#if sub.description}
 									<p class="mt-0.5 text-xs text-muted-foreground">{sub.description}</p>
 								{/if}
-							</div>
+							</label>
 							{#if !sub.completed && !subActionsLocked}
 								{#if sub.ctaType === 'navigate' && sub.ctaTarget}
 									<Button
