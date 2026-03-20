@@ -1,9 +1,10 @@
 import { db } from '$lib/db';
-import { formationActions, questSubActions, formations } from '$lib/db/schema';
+import { formationActions, questSubActions, questDocuments, questComments, formations } from '$lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { shouldAutoAdvanceStatus, getQuestTemplate } from '$lib/formation-quests';
+import { uploadQuestDocument, deleteQuestDocument, getQuestDocumentUrl, validateFileType } from '$lib/services/document-service';
 import type { Actions } from './$types';
 
 async function verifyActionOwnership(actionId: string, workspaceId: string) {
@@ -204,6 +205,171 @@ export const actions: Actions = {
 		await db.update(formationActions).set({
 			guidanceDismissed: true
 		}).where(eq(formationActions.id, actionId));
+
+		return { success: true };
+	},
+
+	uploadDocument: async ({ request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const formData = await request.formData();
+		const subActionId = formData.get('subActionId');
+		const file = formData.get('file');
+		if (!subActionId || typeof subActionId !== 'string') {
+			return fail(400, { message: 'Données manquantes' });
+		}
+		if (!file || !(file instanceof File) || file.size === 0) {
+			return fail(400, { message: 'Fichier manquant' });
+		}
+
+		const subAction = await db.query.questSubActions.findFirst({
+			where: eq(questSubActions.id, subActionId),
+			columns: { id: true, formationActionId: true, documentRequired: true, acceptedFileTypes: true, completed: true }
+		});
+		if (!subAction) return fail(404, { message: 'Sous-action introuvable' });
+
+		const ownerCheck = await verifyActionOwnership(subAction.formationActionId, workspaceId);
+		if (!ownerCheck) return fail(403, { message: 'Accès refusé' });
+
+		if (!validateFileType(file, subAction.acceptedFileTypes)) {
+			return fail(400, { message: 'Type de fichier non accepté' });
+		}
+
+		const { storagePath } = await uploadQuestDocument(file, subActionId);
+
+		await db.insert(questDocuments).values({
+			subActionId,
+			fileName: file.name,
+			fileType: file.type,
+			fileSize: file.size,
+			storagePath,
+			uploadedBy: user.id
+		}).onConflictDoUpdate({
+			target: questDocuments.subActionId,
+			set: {
+				fileName: file.name,
+				fileType: file.type,
+				fileSize: file.size,
+				storagePath,
+				uploadedBy: user.id,
+				uploadedAt: new Date().toISOString()
+			}
+		});
+
+		if (subAction.documentRequired && !subAction.completed) {
+			await db.update(questSubActions).set({
+				completed: true,
+				completedAt: new Date().toISOString(),
+				completedBy: user.id
+			}).where(eq(questSubActions.id, subActionId));
+		}
+
+		return { success: true };
+	},
+
+	deleteDocument: async ({ request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const formData = await request.formData();
+		const documentId = formData.get('documentId');
+		if (!documentId || typeof documentId !== 'string') {
+			return fail(400, { message: 'Données manquantes' });
+		}
+
+		const doc = await db.query.questDocuments.findFirst({
+			where: eq(questDocuments.id, documentId),
+			columns: { id: true, subActionId: true, storagePath: true }
+		});
+		if (!doc) return fail(404, { message: 'Document introuvable' });
+
+		const subAction = await db.query.questSubActions.findFirst({
+			where: eq(questSubActions.id, doc.subActionId),
+			columns: { id: true, formationActionId: true, documentRequired: true }
+		});
+		if (!subAction) return fail(404, { message: 'Sous-action introuvable' });
+
+		const ownerCheck = await verifyActionOwnership(subAction.formationActionId, workspaceId);
+		if (!ownerCheck) return fail(403, { message: 'Accès refusé' });
+
+		try {
+			await deleteQuestDocument(doc.storagePath);
+		} catch {
+			// Storage file may already be gone — continue with DB cleanup
+		}
+
+		await db.delete(questDocuments).where(eq(questDocuments.id, documentId));
+
+		if (subAction.documentRequired) {
+			await db.update(questSubActions).set({
+				completed: false,
+				completedAt: null,
+				completedBy: null
+			}).where(eq(questSubActions.id, doc.subActionId));
+		}
+
+		return { success: true };
+	},
+
+	downloadDocument: async ({ request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session } = await locals.safeGetSession();
+		if (!session) return fail(401, { message: 'Non autorisé' });
+
+		const formData = await request.formData();
+		const documentId = formData.get('documentId');
+		if (!documentId || typeof documentId !== 'string') {
+			return fail(400, { message: 'Données manquantes' });
+		}
+
+		const doc = await db.query.questDocuments.findFirst({
+			where: eq(questDocuments.id, documentId),
+			columns: { id: true, subActionId: true, storagePath: true }
+		});
+		if (!doc) return fail(404, { message: 'Document introuvable' });
+
+		const subAction = await db.query.questSubActions.findFirst({
+			where: eq(questSubActions.id, doc.subActionId),
+			columns: { formationActionId: true }
+		});
+		if (!subAction) return fail(404, { message: 'Sous-action introuvable' });
+
+		const ownerCheck = await verifyActionOwnership(subAction.formationActionId, workspaceId);
+		if (!ownerCheck) return fail(403, { message: 'Accès refusé' });
+
+		const url = await getQuestDocumentUrl(doc.storagePath);
+		return { success: true, url };
+	},
+
+	addComment: async ({ request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const formData = await request.formData();
+		const actionId = formData.get('actionId');
+		const content = formData.get('content');
+		if (!actionId || typeof actionId !== 'string' || !content || typeof content !== 'string') {
+			return fail(400, { message: 'Données manquantes' });
+		}
+		const trimmed = content.trim();
+		if (!trimmed) return fail(400, { message: 'Le commentaire ne peut pas être vide' });
+
+		const action = await verifyActionOwnership(actionId, workspaceId);
+		if (!action) return fail(403, { message: 'Accès refusé' });
+
+		await db.insert(questComments).values({
+			formationActionId: actionId,
+			userId: user.id,
+			content: trimmed
+		});
 
 		return { success: true };
 	}

@@ -15,6 +15,7 @@
 	} from '$lib/formation-quests';
 	import { playMicroSound, playMediumSound, playMacroSound } from '$lib/sounds';
 	import LevelUpToast from '$lib/components/formations/level-up-toast.svelte';
+	import FileUpload from '$lib/components/custom/file-upload.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import Check from '@lucide/svelte/icons/check';
@@ -29,6 +30,8 @@
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+	import MessageSquare from '@lucide/svelte/icons/message-square';
+	import Send from '@lucide/svelte/icons/send';
 
 	let { data }: PageProps = $props();
 
@@ -221,6 +224,71 @@
 	function resolveCtaTarget(target: string | null | undefined): string {
 		if (!target) return '#';
 		return target.replace('[id]', formation?.id ?? '');
+	}
+
+	let commentText = $state('');
+	let commentSubmitting = $state(false);
+
+	function subNeedsUpload(sub: ActionType['subActions'][number]) {
+		return sub.documentRequired || (sub.acceptedFileTypes && sub.acceptedFileTypes.length > 0);
+	}
+
+	function subIsLockedByDocument(sub: ActionType['subActions'][number]) {
+		return sub.documentRequired && !sub.document && !sub.completed;
+	}
+
+	async function handleUploadDocument(subActionId: string, file: File) {
+		const formData = new FormData();
+		formData.append('subActionId', subActionId);
+		formData.append('file', file);
+		await callAction('uploadDocument', formData);
+	}
+
+	async function handleDeleteDocument(documentId: string) {
+		const formData = new FormData();
+		formData.append('documentId', documentId);
+		await callAction('deleteDocument', formData);
+	}
+
+	async function handleDownloadDocument(documentId: string) {
+		const formData = new FormData();
+		formData.append('documentId', documentId);
+		try {
+			const response = await fetch('?/downloadDocument', { method: 'POST', body: formData });
+			const result = deserialize(await response.text());
+			if (result.type === 'success' && result.data?.url) {
+				window.open(result.data.url as string, '_blank');
+			} else {
+				toast.error('Impossible de télécharger le document');
+			}
+		} catch {
+			toast.error('Erreur réseau');
+		}
+	}
+
+	async function handleAddComment() {
+		if (!selectedQuest || !commentText.trim()) return;
+		commentSubmitting = true;
+		const formData = new FormData();
+		formData.append('actionId', selectedQuest.id);
+		formData.append('content', commentText.trim());
+		await callAction('addComment', formData);
+		commentText = '';
+		commentSubmitting = false;
+	}
+
+	function formatRelativeTime(dateStr: string): string {
+		const now = Date.now();
+		const then = new Date(dateStr).getTime();
+		const diff = now - then;
+		const minutes = Math.floor(diff / 60000);
+		if (minutes < 1) return "à l'instant";
+		if (minutes < 60) return `il y a ${minutes}min`;
+		const hours = Math.floor(minutes / 60);
+		if (hours < 24) return `il y a ${hours}h`;
+		const days = Math.floor(hours / 24);
+		if (days < 7) return `il y a ${days}j`;
+		return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 	}
 
 	const PHASE_COLORS: Record<string, string> = {
@@ -479,11 +547,12 @@
 							Cliquez sur « Commencer » pour débloquer les sous-tâches
 						</p>
 					{/if}
-					{#each selectedQuest.subActions as sub}
+				{#each selectedQuest.subActions as sub}
+					{@const docLocked = subIsLockedByDocument(sub)}
+					<div class="rounded-md transition-colors {!subActionsLocked ? 'hover:bg-muted/50' : ''}">
 						<div
 							class={cn(
-								'flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors',
-								!subActionsLocked && 'hover:bg-muted/50',
+								'flex items-center gap-3 px-3 py-2.5',
 								sub.completed && 'opacity-60',
 								subActionsLocked && !sub.completed && 'opacity-50'
 							)}
@@ -493,17 +562,17 @@
 								id="sub-{sub.id}"
 								checked={sub.completed}
 								onchange={() => handleToggleSubAction(sub.id, !sub.completed)}
-								disabled={subActionsLocked}
+								disabled={subActionsLocked || docLocked}
 								class={cn(
 									'size-4 shrink-0 rounded border-muted-foreground/30 accent-primary',
-									subActionsLocked ? 'cursor-not-allowed' : 'cursor-pointer'
+									subActionsLocked || docLocked ? 'cursor-not-allowed' : 'cursor-pointer'
 								)}
 							/>
 							<label
-								for={subActionsLocked ? undefined : `sub-${sub.id}`}
+								for={subActionsLocked || docLocked ? undefined : `sub-${sub.id}`}
 								class={cn(
 									'min-w-0 flex-1',
-									!subActionsLocked && 'cursor-pointer'
+									!subActionsLocked && !docLocked && 'cursor-pointer'
 								)}
 							>
 								<span
@@ -517,6 +586,11 @@
 								{#if sub.description}
 									<p class="mt-0.5 text-xs text-muted-foreground">{sub.description}</p>
 								{/if}
+								{#if docLocked}
+									<p class="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+										Déposez le document pour valider cette sous-tâche
+									</p>
+								{/if}
 							</label>
 							{#if !sub.completed && !subActionsLocked}
 								{#if sub.ctaType === 'navigate' && sub.ctaTarget}
@@ -528,16 +602,6 @@
 									>
 										{sub.ctaLabel ?? 'Ouvrir'}
 										<ArrowRight class="size-3" />
-									</Button>
-								{:else if sub.ctaType === 'upload'}
-									<Button
-										size="sm"
-										variant="outline"
-										class="shrink-0 gap-1.5 text-xs"
-										onclick={() => toast.info('Dépôt de documents bientôt disponible')}
-									>
-										<Upload class="size-3" />
-										{sub.ctaLabel ?? 'Déposer'}
 									</Button>
 								{:else if sub.ctaType === 'external'}
 									<Button
@@ -552,12 +616,89 @@
 								{/if}
 							{/if}
 						</div>
-					{/each}
+						{#if subNeedsUpload(sub) && !subActionsLocked}
+							<div class="px-3 pb-2.5 pl-10">
+								<FileUpload
+									accept={sub.acceptedFileTypes ?? null}
+									value={sub.document ?? null}
+									onUpload={(file) => handleUploadDocument(sub.id, file)}
+									onDelete={sub.document ? () => handleDeleteDocument(sub.document!.id) : undefined}
+									onDownload={sub.document ? () => handleDownloadDocument(sub.document!.id) : undefined}
+									disabled={selectedQuest?.status === 'Terminé'}
+								/>
+							</div>
+						{/if}
+					</div>
+				{/each}
 					</div>
 				{/if}
 
-			<!-- Action buttons -->
-			{#if selectedQuest.status === 'Pas commencé' && !selectedQuestBlocking.blocked}
+		<!-- Comments / Notes -->
+		{#if selectedQuest}
+			{@const comments = selectedQuest.comments ?? []}
+			<div class="flex flex-col gap-3">
+				<div class="flex items-center gap-2">
+					<MessageSquare class="size-4 text-muted-foreground" />
+					<span class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+						Notes ({comments.length})
+					</span>
+				</div>
+
+				{#if comments.length > 0}
+					<div class="flex flex-col gap-2">
+						{#each comments as comment}
+							<div class="flex gap-2.5 rounded-md bg-muted/40 px-3 py-2.5">
+								{#if comment.user?.avatarUrl}
+									<img
+										src={comment.user.avatarUrl}
+										alt=""
+										class="mt-0.5 size-6 shrink-0 rounded-full"
+									/>
+								{:else}
+									<div class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
+										{(comment.user?.firstName?.[0] ?? '') + (comment.user?.lastName?.[0] ?? '')}
+									</div>
+								{/if}
+								<div class="min-w-0 flex-1">
+									<div class="flex items-baseline gap-2">
+										<span class="text-sm font-medium">
+											{[comment.user?.firstName, comment.user?.lastName].filter(Boolean).join(' ') || 'Utilisateur'}
+										</span>
+										<span class="text-[11px] text-muted-foreground">
+											{formatRelativeTime(comment.createdAt)}
+										</span>
+									</div>
+									<p class="mt-0.5 text-sm text-foreground/90 whitespace-pre-wrap">{comment.content}</p>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+
+				<div class="flex gap-2">
+					<input
+						type="text"
+						bind:value={commentText}
+						placeholder="Ajouter une note…"
+						class="flex-1 rounded-md border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+						onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
+						disabled={commentSubmitting}
+					/>
+					<Button
+						size="sm"
+						variant="outline"
+						onclick={handleAddComment}
+						disabled={commentSubmitting || !commentText.trim()}
+						class="shrink-0 gap-1.5"
+					>
+						<Send class="size-3.5" />
+					</Button>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Action buttons -->
+		{#if selectedQuest.status === 'Pas commencé' && !selectedQuestBlocking.blocked}
 				<Button
 					variant="outline"
 					onclick={() => handleStartQuest(selectedQuest!.id)}

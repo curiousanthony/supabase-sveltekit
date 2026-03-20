@@ -10,6 +10,7 @@ export interface SubActionTemplate {
 	ctaLabel?: string;
 	ctaTarget?: string;
 	documentRequired?: boolean;
+	acceptedFileTypes?: string[];
 }
 
 export interface QuestTemplate {
@@ -141,7 +142,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Obtenir la validation du devis',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer le devis signé',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			}
 		],
 		dependencies: ['programme_modules'],
@@ -165,7 +167,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Obtenir la signature',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer la convention signée',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			}
 		],
 		dependencies: ['devis'],
@@ -186,7 +189,9 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 			{
 				title: "Déposer sur la plateforme OPCO",
 				ctaType: 'external',
-				ctaLabel: 'Ouvrir la plateforme OPCO'
+				ctaLabel: 'Ouvrir la plateforme OPCO',
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			},
 			{ title: "Suivre l'état de la demande" }
 		],
@@ -210,7 +215,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: "Archiver l'accord",
 				ctaType: 'upload',
 				ctaLabel: "Déposer l'accord OPCO",
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			}
 		],
 		dependencies: ['demande_financement'],
@@ -254,7 +260,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: "Joindre le livret d'accueil",
 				ctaType: 'upload',
 				ctaLabel: "Déposer le livret d'accueil",
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			},
 			{
 				title: 'Envoyer à tous les apprenants',
@@ -281,7 +288,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Préparer le règlement intérieur',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer le règlement',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			},
 			{ title: 'Transmettre aux stagiaires' }
 		],
@@ -352,7 +360,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Vérifier les qualifications',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer le CV',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
 			},
 			{ title: 'Formaliser le contrat (si sous-traitant)' }
 		],
@@ -376,7 +385,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Collecter la copie signée',
 				ctaType: 'upload',
 				ctaLabel: "Déposer l'ordre signé",
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			}
 		],
 		dependencies: ['convention'],
@@ -397,19 +407,22 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Vérifier le CV à jour',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer le CV',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
 			},
 			{
 				title: 'Vérifier les diplômes',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer les diplômes',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
 			},
 			{
 				title: 'Vérifier NDA / URSSAF / SIRET',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer les justificatifs',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
 			},
 			{ title: 'Relancer pour les documents manquants' }
 		],
@@ -506,7 +519,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Consigner les résultats',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer les résultats',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			},
 			{ title: 'Adapter le contenu si nécessaire' }
 		],
@@ -535,7 +549,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Documenter les justificatifs',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer les justificatifs',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
 			}
 		],
 		dependencies: ['emargement'],
@@ -558,7 +573,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Documenter les adaptations',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer les notes d\'adaptation',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			}
 		],
 		dependencies: ['evaluations_formatives'],
@@ -606,7 +622,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Consigner les résultats individuels',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer les résultats',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			},
 			{ title: 'Comparer avec le test de positionnement' }
 		],
@@ -631,12 +648,13 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				ctaTarget: '/formations/[id]/seances'
 			},
 			{ title: 'Générer les certificats' },
-			{
-				title: 'Envoyer aux apprenants et au financeur',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les certificats',
-				documentRequired: true
-			}
+		{
+			title: 'Envoyer aux apprenants et au financeur',
+			ctaType: 'upload',
+			ctaLabel: 'Déposer les certificats',
+			documentRequired: false,
+			acceptedFileTypes: ['application/pdf']
+		}
 		],
 		dependencies: ['emargement'],
 		applicableTo: null,
@@ -659,12 +677,13 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				ctaLabel: 'Voir les apprenants',
 				ctaTarget: '/formations/[id]/apprenants'
 			},
-			{
-				title: 'Archiver les copies',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les attestations',
-				documentRequired: true
-			}
+		{
+			title: 'Archiver les copies',
+			ctaType: 'upload',
+			ctaLabel: 'Déposer les attestations',
+			documentRequired: false,
+			acceptedFileTypes: ['application/pdf']
+		}
 		],
 		dependencies: ['certificat_realisation', 'evaluation_acquis_fin'],
 		applicableTo: null,
@@ -680,7 +699,11 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Générez la facture avec les informations de la convention. Pour les financements OPCO en subrogation, adressez-la directement à l'OPCO. Pour le CPF, saisissez-la dans EDOF.",
 		subActions: [
-			{ title: 'Générer la facture' },
+			{
+				title: 'Générer la facture',
+				documentRequired: false,
+				acceptedFileTypes: ['application/pdf']
+			},
 			{ title: "Envoyer au client ou à l'OPCO" },
 			{
 				title: 'Suivre le paiement',
@@ -707,7 +730,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Compiler le dossier justificatif',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer les justificatifs',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			},
 			{ title: "Envoyer à l'OPCO / déclarer sur EDOF" },
 			{ title: 'Suivre la validation' }
@@ -756,7 +780,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Documenter les résultats',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer les résultats',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			}
 		],
 		dependencies: ['satisfaction_froid'],
@@ -779,7 +804,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: "Documenter les points d'amélioration",
 				ctaType: 'upload',
 				ctaLabel: 'Déposer le bilan',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			}
 		],
 		dependencies: ['satisfaction_chaud'],
@@ -802,7 +828,8 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 				title: 'Documenter le plan d\'actions correctives',
 				ctaType: 'upload',
 				ctaLabel: 'Déposer la fiche d\'amélioration',
-				documentRequired: true
+				documentRequired: true,
+				acceptedFileTypes: ['application/pdf']
 			},
 			{
 				title: 'Mettre à jour le programme si nécessaire',
