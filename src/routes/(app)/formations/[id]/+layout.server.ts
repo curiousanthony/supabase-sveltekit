@@ -29,7 +29,7 @@ export const load = (async ({ params }) => {
 				columns: { id: true, titre: true, dureeHeures: true, modalite: true }
 			},
 			modules: {
-				columns: { id: true, name: true, durationHours: true, orderIndex: true },
+				columns: { id: true, name: true, durationHours: true, objectifs: true, orderIndex: true },
 				orderBy: (m, { asc }) => [asc(m.orderIndex)]
 			},
 			actions: {
@@ -101,8 +101,10 @@ export const load = (async ({ params }) => {
 					startAt: true,
 					endAt: true,
 					location: true,
+					room: true,
 					moduleId: true,
-					formateurId: true
+					formateurId: true,
+					modalityOverride: true
 				},
 				orderBy: (s, { asc }) => [asc(s.startAt)],
 				with: {
@@ -114,7 +116,7 @@ export const load = (async ({ params }) => {
 						}
 					},
 					emargements: {
-						columns: { id: true, contactId: true, signedAt: true }
+						columns: { id: true, contactId: true, signedAt: true, signatureToken: true }
 					}
 				}
 			},
