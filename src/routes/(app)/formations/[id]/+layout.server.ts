@@ -131,6 +131,9 @@ export const load = (async ({ params }) => {
 					}
 				}
 			},
+		invoices: {
+			columns: { id: true, status: true, dueDate: true }
+		},
 		dealsFromFormation: {
 			columns: { id: true, name: true }
 		},
@@ -218,13 +221,34 @@ export const load = (async ({ params }) => {
 				a.status !== 'Terminé'
 		) ?? false;
 
+	const nowIso = new Date().toISOString();
+
 	const missingSignatures =
 		(formation.seances ?? []).some((seance) => {
 			const seanceEnd = seance.endAt ? new Date(seance.endAt).toISOString() : null;
-			if (!seanceEnd || seanceEnd > new Date().toISOString()) return false;
+			if (!seanceEnd || seanceEnd > nowIso) return false;
 			const emargements = seance.emargements ?? [];
 			return emargements.some((e) => e.signedAt == null);
 		}) ?? false;
+
+	const missingFormateurDocs =
+		(formation.actions ?? []).some(
+			(a) =>
+				a.questKey === 'documents_formateur' &&
+				a.status !== 'Terminé' &&
+				(a.subActions ?? []).some((sa) => !sa.completed)
+		) ?? false;
+
+	const unsignedEmargements =
+		(formation.seances ?? []).some((seance) => {
+			if (!seance.endAt || new Date(seance.endAt).toISOString() > nowIso) return false;
+			return (seance.emargements ?? []).some((e) => e.signedAt == null);
+		}) ?? false;
+
+	const overdueInvoices =
+		(formation.invoices ?? []).some(
+			(inv) => inv.status !== 'Payée' && inv.dueDate != null && inv.dueDate < today
+		) ?? false;
 
 	return {
 		formation,
@@ -232,6 +256,9 @@ export const load = (async ({ params }) => {
 		header,
 		overdueQuests,
 		missingSignatures,
+		missingFormateurDocs,
+		unsignedEmargements,
+		overdueInvoices,
 		questProgress: questProgressData
 	};
 }) satisfies LayoutServerLoad;

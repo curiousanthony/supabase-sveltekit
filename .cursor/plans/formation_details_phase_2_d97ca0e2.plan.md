@@ -25,16 +25,16 @@ todos:
     status: completed
   - id: finances-tab
     content: 'Replace Finances stub with 3-section layout. Revenue: inline-editable montant/financement fields. Costs: fixed categories (formateur auto-calc, salle/materiel editable, deplacement auto-calc from formateurs), subtotals, margin. Invoices: CRUD list with dialog (number, date, amount, recipient, status, due date, PDF upload, notes). Notification dot for overdue invoices. Server actions: updateCostItem, createInvoice, updateInvoice, deleteInvoice.'
-    status: in_progress
+    status: completed
   - id: quest-docs-comments
     content: 'Enable document uploads in quest workspace per sub-action. Update formation-quests.ts sub-action definitions with documentRequired + acceptedFileTypes for key quests (convention, ordre_mission, documents_formateur, etc.). Upload zone in workspace: FileUpload component, required docs block sub-action completion. Quest comments section below sub-actions: text input + append-only timestamped list with author. Server actions: uploadDocument, deleteDocument, addComment.'
-    status: in_progress
+    status: completed
   - id: history-panel
     content: 'Create src/lib/services/audit-log.ts with logAuditEvent() helper. Wire into ALL server actions across ALL tabs. Create history-sheet.svelte (shadcn Sheet from right). Timeline: icon per event type, actor avatar + name, relative timestamp, description. Wire History button in site-header.svelte. Extend +layout.server.ts to load audit log entries.'
-    status: in_progress
+    status: completed
   - id: apercu-notifications
     content: "Add mini-action buttons to Apercu dashboard cards ('+ Ajouter une seance', '+ Ajouter un apprenant'). Update summary cards with real attendance rates, cost totals, session counts. Add 3 new notification dots: Formateurs (missing docs), Apprenants (unsigned emargements), Finances (overdue invoices). Compute in +layout.server.ts, pass to +layout.svelte."
-    status: pending
+    status: completed
 isProject: false
 ---
 

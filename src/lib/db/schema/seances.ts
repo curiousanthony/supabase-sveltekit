@@ -1,5 +1,15 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, foreignKey, timestamp, uuid, text, check, unique } from 'drizzle-orm/pg-core';
+import {
+	pgTable,
+	foreignKey,
+	timestamp,
+	uuid,
+	text,
+	check,
+	unique,
+	index
+} from 'drizzle-orm/pg-core';
+import { modalites } from './enums';
 import { users } from './users';
 import { formations, modules } from './formations';
 import { formateurs } from './formateurs';
@@ -19,7 +29,9 @@ export const seances = pgTable(
 		startAt: timestamp('start_at', { withTimezone: true, mode: 'string' }).notNull(),
 		endAt: timestamp('end_at', { withTimezone: true, mode: 'string' }).notNull(),
 		location: text(),
-		formateurId: uuid('formateur_id')
+		room: text(),
+		formateurId: uuid('formateur_id'),
+		modalityOverride: modalites('modality_override')
 	},
 	(table) => [
 		foreignKey({
@@ -55,6 +67,10 @@ export const emargements = pgTable(
 		seanceId: uuid('seance_id').notNull(),
 		contactId: uuid('contact_id').notNull(),
 		signedAt: timestamp('signed_at', { withTimezone: true, mode: 'string' }),
+		signatureImageUrl: text('signature_image_url'),
+		signatureToken: uuid('signature_token').defaultRandom().notNull(),
+		signerIp: text('signer_ip'),
+		signerUserAgent: text('signer_user_agent'),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
 			.notNull()
@@ -74,6 +90,8 @@ export const emargements = pgTable(
 		})
 			.onUpdate('cascade')
 			.onDelete('cascade'),
-		unique('unique_emargement_seance_contact').on(table.seanceId, table.contactId)
+		unique('unique_emargement_seance_contact').on(table.seanceId, table.contactId),
+		unique('unique_emargement_signature_token').on(table.signatureToken),
+		index('emargements_signature_token_idx').on(table.signatureToken)
 	]
 );

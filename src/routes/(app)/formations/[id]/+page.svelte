@@ -22,6 +22,7 @@
 	import FileText from '@lucide/svelte/icons/file-text';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import Layout from '@lucide/svelte/icons/layout';
+	import Plus from '@lucide/svelte/icons/plus';
 
 	let { data }: PageProps = $props();
 
@@ -62,15 +63,49 @@
 			.slice(0, 3)
 	);
 
+	const totalSeances = $derived(seances.length);
+	const upcomingCount = $derived(seances.filter((s) => s.startAt >= now).length);
+	const nextSessionDate = $derived(
+		upcomingSeances.length > 0 ? upcomingSeances[0].startAt : null
+	);
+
+	const attendanceRate = $derived.by(() => {
+		const pastSeances = seances.filter(
+			(s) => s.endAt < now && (s.emargements?.length ?? 0) > 0
+		);
+		if (pastSeances.length === 0) return null;
+		let totalEm = 0;
+		let signedEm = 0;
+		for (const s of pastSeances) {
+			for (const e of s.emargements ?? []) {
+				totalEm++;
+				if (e.signedAt) signedEm++;
+			}
+		}
+		return totalEm > 0 ? Math.round((signedEm / totalEm) * 100) : null;
+	});
+
 	const montant = $derived(
 		formation?.montantAccorde ? Number(formation.montantAccorde) : null
 	);
-	const tjm = $derived(
-		formation?.tjmFormateur ? Number(formation.tjmFormateur) : null
-	);
-	const duree = $derived(formation?.duree ?? 0);
-	const jours = $derived(duree > 0 ? duree / 7 : 0);
-	const totalFormateurCost = $derived(tjm && jours > 0 ? tjm * jours : null);
+
+	const totalFormateurCost = $derived.by(() => {
+		const ffs = formation?.formationFormateurs ?? [];
+		if (ffs.length === 0) return null;
+		let total = 0;
+		let hasAny = false;
+		for (const ff of ffs) {
+			const tjm = ff.tjm ? Number(ff.tjm) : 0;
+			const days = ff.numberOfDays ? Number(ff.numberOfDays) : 0;
+			const deplacement = ff.deplacementCost ? Number(ff.deplacementCost) : 0;
+			const hebergement = ff.hebergementCost ? Number(ff.hebergementCost) : 0;
+			const cost = tjm * days + deplacement + hebergement;
+			if (cost > 0) hasAny = true;
+			total += cost;
+		}
+		return hasAny ? total : null;
+	});
+
 	const marge = $derived(
 		montant != null && totalFormateurCost != null
 			? montant - totalFormateurCost
@@ -298,7 +333,19 @@
 							+{apprenants.length - 3} autre{apprenants.length - 3 > 1 ? 's' : ''}
 						</p>
 					{/if}
+				{#if attendanceRate != null}
+					<p class="mt-3 text-xs text-muted-foreground">
+						Taux de présence : <span class="font-medium text-foreground">{attendanceRate}%</span>
+					</p>
 				{/if}
+				{/if}
+				<a
+					href="/formations/{formationId}/apprenants"
+					class="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+				>
+					<Plus class="size-3.5" />
+					Ajouter un apprenant
+				</a>
 			</Card.Content>
 		</Card.Root>
 	</div>
@@ -310,9 +357,12 @@
 			<Card.Header class="flex flex-row items-center justify-between">
 				<Card.Title class="flex items-center gap-2">
 					<Calendar class="size-4" />
-					Prochaines séances
+					Séances
+					{#if totalSeances > 0}
+						<Badge variant="secondary" class="text-xs">{upcomingCount}/{totalSeances}</Badge>
+					{/if}
 				</Card.Title>
-				{#if upcomingSeances.length > 0}
+				{#if totalSeances > 0}
 					<Button
 						variant="link"
 						size="sm"
@@ -324,8 +374,13 @@
 				{/if}
 			</Card.Header>
 			<Card.Content>
+				{#if totalSeances > 0 && nextSessionDate}
+					<p class="mb-3 text-xs text-muted-foreground">
+						Prochaine séance : <span class="font-medium text-foreground">{formatDate(nextSessionDate)}</span>
+					</p>
+				{/if}
 				{#if upcomingSeances.length === 0}
-					<p class="text-sm text-muted-foreground">Aucune séance planifiée.</p>
+					<p class="text-sm text-muted-foreground">Aucune séance à venir.</p>
 				{:else}
 					<ul class="space-y-4">
 						{#each upcomingSeances as seance}
@@ -363,6 +418,13 @@
 						{/each}
 					</ul>
 				{/if}
+				<a
+					href="/formations/{formationId}/seances"
+					class="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+				>
+					<Plus class="size-3.5" />
+					Ajouter une séance
+				</a>
 			</Card.Content>
 		</Card.Root>
 
@@ -373,14 +435,12 @@
 					<Wallet class="size-4" />
 					Résumé financier
 				</Card.Title>
-				<Button
-					variant="link"
-					size="sm"
-					class="h-auto p-0 font-medium cursor-pointer"
-					onclick={() => goTo('finances')}
+				<a
+					href="/formations/{formationId}/finances"
+					class="text-sm font-medium text-primary underline-offset-4 hover:underline"
 				>
 					Voir les finances
-				</Button>
+				</a>
 			</Card.Header>
 			<Card.Content class="space-y-4">
 				<div>
@@ -399,10 +459,10 @@
 					</div>
 				</div>
 				<div>
-					<p class="text-xs text-muted-foreground">TJM Formateur</p>
-					<p class="mt-1 text-lg font-semibold tabular-nums">
-						{tjm != null ? tjm.toLocaleString('fr-FR') + ' €' : '—'}
-					</p>
+					<p class="text-xs text-muted-foreground">Coûts formateurs</p>
+				<p class="mt-1 text-lg font-semibold tabular-nums">
+					{totalFormateurCost != null ? totalFormateurCost.toLocaleString('fr-FR') + ' €' : '—'}
+				</p>
 				</div>
 				<div>
 					<p class="text-xs text-muted-foreground">Marge</p>
@@ -413,9 +473,9 @@
 					>
 						{marge != null ? marge.toLocaleString('fr-FR') + ' €' : '—'}
 					</p>
-					{#if marge != null && tjm != null && duree > 0}
+					{#if marge != null}
 						<p class="text-xs text-muted-foreground">
-							(montant − TJM × {jours.toFixed(1)} jours)
+							(montant − coûts formateurs)
 						</p>
 					{/if}
 				</div>

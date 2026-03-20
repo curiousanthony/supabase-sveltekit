@@ -342,21 +342,24 @@
 							{@const blockInfo = getQuestBlockingInfo(action)}
 							{@const isActive = selectedQuestId === action.id}
 							{#if blockInfo.blocked}
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<button
-											type="button"
-											disabled
-											class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left cursor-not-allowed opacity-50"
-										>
-											<div class="shrink-0">
-												<Lock class="size-4 text-muted-foreground/50" />
-											</div>
-											<div class="min-w-0 flex-1">
-												<span class="block truncate text-sm">{action.title}</span>
-											</div>
-										</button>
-									</Tooltip.Trigger>
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									{#snippet child({ props })}
+									<button
+										{...props}
+										type="button"
+										disabled
+										class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left cursor-not-allowed opacity-50"
+									>
+										<div class="shrink-0">
+											<Lock class="size-4 text-muted-foreground/50" />
+										</div>
+										<div class="min-w-0 flex-1">
+											<span class="block truncate text-sm">{action.title}</span>
+										</div>
+									</button>
+									{/snippet}
+								</Tooltip.Trigger>
 									<Tooltip.Content>
 										<p class="text-xs">Bloqué par : {blockInfo.blockerNames.join(', ')}</p>
 									</Tooltip.Content>
@@ -463,12 +466,14 @@
 						<div class="flex items-center gap-2">
 							<h2 class="text-lg font-semibold leading-tight">{selectedQuest.title}</h2>
 							{#if selectedQuestTemplate?.guidance}
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<button type="button" class="shrink-0 rounded-full p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground" aria-label="Guide Qualiopi">
-											<Info class="size-4" />
-										</button>
-									</Tooltip.Trigger>
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									{#snippet child({ props })}
+									<button {...props} type="button" class="shrink-0 rounded-full p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground" aria-label="Guide Qualiopi">
+										<Info class="size-4" />
+									</button>
+									{/snippet}
+								</Tooltip.Trigger>
 									<Tooltip.Content class="max-w-xs">
 										<p class="text-xs">{selectedQuestTemplate.guidance}</p>
 									</Tooltip.Content>

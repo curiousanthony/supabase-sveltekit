@@ -16,6 +16,9 @@
 	const basePath = $derived(`/formations/${formationId}`);
 	const overdueQuests = $derived(data?.overdueQuests ?? false);
 	const missingSignatures = $derived(data?.missingSignatures ?? false);
+	const missingFormateurDocs = $derived(data?.missingFormateurDocs ?? false);
+	const unsignedEmargements = $derived(data?.unsignedEmargements ?? false);
+	const overdueInvoices = $derived(data?.overdueInvoices ?? false);
 
 	const tabs = $derived([
 		{ href: basePath, label: 'Aperçu', icon: LayoutGrid },
@@ -23,9 +26,9 @@
 		{ href: basePath + '/actions', label: 'Actions', icon: Target, dot: overdueQuests || undefined },
 		{ href: basePath + '/programme', label: 'Programme', icon: BookOpen },
 		{ href: basePath + '/seances', label: 'Séances', icon: Calendar, dot: missingSignatures || undefined },
-		{ href: basePath + '/formateurs', label: 'Formateurs', icon: GraduationCap },
-		{ href: basePath + '/apprenants', label: 'Apprenants', icon: Users },
-		{ href: basePath + '/finances', label: 'Finances', icon: Wallet }
+		{ href: basePath + '/formateurs', label: 'Formateurs', icon: GraduationCap, dot: missingFormateurDocs || undefined },
+		{ href: basePath + '/apprenants', label: 'Apprenants', icon: Users, dot: unsignedEmargements || undefined },
+		{ href: basePath + '/finances', label: 'Finances', icon: Wallet, dot: overdueInvoices || undefined }
 	]);
 </script>
 
