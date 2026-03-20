@@ -27,7 +27,31 @@ export const contactRole = pgEnum('contact_role', [
 	'Associé',
 	'Autre'
 ]);
-export const statutsFormation = pgEnum('statuts_formation', ['En attente', 'En cours', 'Terminée']);
+export const statutsFormation = pgEnum('statuts_formation', [
+	'À traiter',
+	'Signature convention',
+	'Financement',
+	'Planification',
+	'En cours',
+	'Terminée',
+	'Archivée'
+]);
+export const formationType = pgEnum('formation_type', ['Intra', 'Inter', 'CPF']);
+export const actionStatus = pgEnum('action_status', ['Pas commencé', 'En cours', 'Terminé']);
+export const actionEtape = pgEnum('action_etape', [
+	'Récapitulatif',
+	'Convention et programme',
+	'Audit des besoins',
+	'Convocations',
+	'Test de positionnement',
+	'Certificat de réalisation',
+	'Questionnaires de satisfaction',
+	'Émargement',
+	'Ordre de mission',
+	'Formateur',
+	'Facturation',
+	'Récap final'
+]);
 export const typeClient = pgEnum('type_client', ['Entreprise', 'Particulier']);
 export const typesFinancement = pgEnum('types_financement', ['CPF', 'OPCO', 'Inter', 'Intra']);
 export const dealStage = pgEnum('deal_stage', [
@@ -98,3 +122,4 @@ export const typeQuestionnaire = pgEnum('type_questionnaire', [
 	'Quiz / Exercice',
 	'Audit des besoins'
 ]);
+export const questPhase = pgEnum('quest_phase', ['conception', 'deploiement', 'evaluation']);

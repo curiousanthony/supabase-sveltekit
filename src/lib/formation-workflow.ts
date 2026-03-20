@@ -4,71 +4,65 @@ export interface WorkflowStepDef {
 	key: WorkflowStepKey;
 	label: string;
 	shortLabel: string;
-	/** Tab to open when "Faire" is clicked, or action id for Documents. */
-	actionTab?: 'Informations' | 'Documents' | 'Formateurs' | 'Séances' | 'Paramètres';
-	/** For Documents tab: document type to generate (convention, programme, etc.). */
-	documentAction?: 'convention' | 'programme' | 'convocation' | 'mission_order' | 'end_certificate';
+	/** Tab to open when "Faire" is clicked. */
+	actionTab?: 'Aperçu' | 'Suivi' | 'Formateurs' | 'Séances' | 'Programme';
 }
 
 export const WORKFLOW_STEPS: WorkflowStepDef[] = [
 	{
 		key: 'info_verification',
-		label: 'Vérifications des informations',
+		label: 'Vérifier les informations',
 		shortLabel: 'Infos & apprenants',
-		actionTab: 'Informations'
+		actionTab: 'Aperçu'
 	},
 	{
 		key: 'convention_program',
-		label: 'Convention et programme',
+		label: 'Générer la convention',
 		shortLabel: 'Convention & programme',
-		actionTab: 'Documents',
-		documentAction: 'convention'
+		actionTab: 'Programme'
 	},
 	{
 		key: 'needs_analysis',
-		label: 'Analyse des besoins',
-		shortLabel: 'Analyse des besoins',
-		actionTab: 'Informations'
+		label: 'Envoyer le questionnaire de besoins',
+		shortLabel: 'Audit des besoins',
+		actionTab: 'Suivi'
 	},
 	{
 		key: 'convocation',
-		label: 'Convocation',
+		label: 'Envoyer les convocations',
 		shortLabel: 'Convocations',
-		actionTab: 'Documents',
-		documentAction: 'convocation'
+		actionTab: 'Suivi'
 	},
 	{
 		key: 'mission_order',
-		label: 'Ordre de mission',
+		label: "Créer l'ordre de mission",
 		shortLabel: 'Ordre de mission',
-		actionTab: 'Documents',
-		documentAction: 'mission_order'
+		actionTab: 'Formateurs'
 	},
 	{
 		key: 'end_certificate',
-		label: 'Attestation de fin de mission',
+		label: 'Générer les attestations',
 		shortLabel: 'Attestations',
-		actionTab: 'Documents',
-		documentAction: 'end_certificate'
+		actionTab: 'Suivi'
 	},
 	{
 		key: 'satisfaction_questionnaires',
-		label: 'Questionnaires de satisfaction',
+		label: 'Envoyer les questionnaires de satisfaction',
 		shortLabel: 'Questionnaires',
-		actionTab: 'Paramètres'
+		actionTab: 'Suivi'
 	},
 	{
 		key: 'instructor_documents',
-		label: 'Documents formateur',
+		label: 'Collecter les documents formateur',
 		shortLabel: 'Docs formateur',
 		actionTab: 'Formateurs'
 	},
-	{ key: 'billing', label: 'Facturation', shortLabel: 'Facturation', actionTab: 'Paramètres' },
+	{ key: 'billing', label: 'Émettre la facturation', shortLabel: 'Facturation', actionTab: 'Suivi' },
 	{
 		key: 'complete_file',
-		label: 'Dossier complet',
-		shortLabel: 'Dossier complet',
-		actionTab: 'Documents'
+		label: 'Clôturer le dossier',
+		shortLabel: 'Clôture',
+		actionTab: 'Suivi'
 	}
 ];
 
@@ -76,7 +70,23 @@ export function getStepDef(key: WorkflowStepKey): WorkflowStepDef | undefined {
 	return WORKFLOW_STEPS.find((s) => s.key === key);
 }
 
-/** Qualiopi: key fields for criteria 2 & 3. Works with or without evaluationMode/suiviAssiduite on schema. */
+/** Default actions created when a new formation is initialized. */
+export const DEFAULT_FORMATION_ACTIONS = [
+	{ title: 'Vérifier les informations de la formation', etape: 'Récapitulatif' as const, order: 0 },
+	{ title: 'Vérifier le programme associé', etape: 'Convention et programme' as const, order: 1 },
+	{ title: 'Assigner un formateur', etape: 'Formateur' as const, order: 2 },
+	{ title: 'Planifier les séances', etape: 'Convocations' as const, order: 3 },
+	{ title: 'Envoyer le questionnaire de besoins', etape: 'Audit des besoins' as const, order: 4 },
+	{ title: 'Envoyer les convocations', etape: 'Convocations' as const, order: 5 },
+	{ title: 'Collecter les documents formateur', etape: 'Formateur' as const, order: 6 },
+	{ title: 'Émettre la facturation', etape: 'Facturation' as const, order: 7 },
+	{ title: 'Vérifier les émargements', etape: 'Émargement' as const, order: 8 },
+	{ title: 'Envoyer les questionnaires de satisfaction', etape: 'Questionnaires de satisfaction' as const, order: 9 },
+	{ title: 'Générer le certificat de réalisation', etape: 'Certificat de réalisation' as const, order: 10 },
+	{ title: 'Clôturer le dossier', etape: 'Récap final' as const, order: 11 }
+];
+
+/** Qualiopi: key fields for criteria 2 & 3. */
 export function isFormationQualiopiComplete(
 	f: Record<string, unknown> & {
 		name?: string | null;

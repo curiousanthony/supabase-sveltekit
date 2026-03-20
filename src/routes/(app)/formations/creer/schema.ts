@@ -1,18 +1,28 @@
 import { z } from 'zod';
 
 export const formationSchema = z.object({
-	// Step 1: Informations de base
 	name: z.string().min(1, 'Le nom de la formation est requis'),
-	clientId: z.string().min(1, 'Le client est requis'),
+	clientId: z.string().optional().default(''),
+	companyId: z.string().optional().default(''),
 	duree: z.number().min(1, 'La durée doit être supérieure à 0').default(7),
 	modalite: z.enum(['Distanciel', 'Présentiel', 'Hybride', 'E-Learning']).default('Présentiel'),
+	type: z.enum(['Intra', 'Inter', 'CPF']).optional(),
 	topicId: z.string().optional(),
 	customTopic: z.string().optional(),
 	targetPublicIds: z.array(z.string()).default([]),
 	prerequisiteIds: z.array(z.string()).default([]),
 	customPrerequisites: z.array(z.string()).default([]),
+	dateDebut: z.string().optional(),
+	dateFin: z.string().optional(),
+	location: z.string().optional(),
+	programmeSourceId: z.string().optional(),
 
-	// Step 2: Modules
+	formateurIds: z.array(z.string().uuid()).optional().default([]),
+	apprenantContactIds: z.array(z.string().uuid()).optional().default([]),
+	typeFinancement: z.enum(['CPF', 'OPCO', 'Inter', 'Intra']).optional(),
+	montantAccorde: z.string().optional(),
+	financementAccorde: z.boolean().optional().default(false),
+
 	modules: z
 		.array(
 			z.object({
@@ -23,7 +33,6 @@ export const formationSchema = z.object({
 		)
 		.min(1, 'Au moins un module est requis'),
 
-	// Step 3: Conformité Qualiopi
 	description: z.string().optional(),
 	evaluationMode: z.string().min(1, "Le mode d'évaluation est requis pour Qualiopi"),
 	suiviAssiduite: z.string().min(1, "Le suivi de l'assiduité est requis pour Qualiopi")
