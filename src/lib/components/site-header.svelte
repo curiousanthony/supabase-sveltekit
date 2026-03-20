@@ -15,6 +15,7 @@
 	import Badge from './ui/badge/badge.svelte';
 	import BackButton from './custom/backButton.svelte';
 	import ProgressRing from '$lib/components/custom/progress-ring.svelte';
+	import HistorySheet from '$lib/components/formations/history-sheet.svelte';
 	import { toast } from 'svelte-sonner';
 	import { tick } from 'svelte';
 	import { deserialize } from '$app/forms';
@@ -49,6 +50,7 @@
 	let deleteDialogOpen = $state(false);
 	let deleteConfirmValue = $state('');
 	let isDeleting = $state(false);
+	let historySheetOpen = $state(false);
 
 	async function startEdit() {
 		nameEditValue = formationDisplayName;
@@ -282,15 +284,15 @@
 					>
 						<Link class="size-4" />
 					</Button>
-					<Button
-						variant="outline"
-						size="icon"
-						aria-label="Voir l'historique des modifications"
-						onclick={() => toast.info('Historique bientôt disponible')}
-						class="size-9 min-h-9 min-w-9 p-2"
-					>
-						<History class="size-4" />
-					</Button>
+				<Button
+					variant="outline"
+					size="icon"
+					aria-label="Voir l'historique des modifications"
+					onclick={() => (historySheetOpen = true)}
+					class="size-9 min-h-9 min-w-9 p-2"
+				>
+					<History class="size-4" />
+				</Button>
 					<DropdownMenu.Root>
 						<DropdownMenu.Trigger>
 							{#snippet child({ props })}
@@ -391,6 +393,10 @@
 			</AlertDialog.Footer>
 		</AlertDialog.Content>
 	</AlertDialog.Root>
+{/if}
+
+{#if hasFormationButtonGroup}
+	<HistorySheet bind:open={historySheetOpen} entries={formationAction?.historyEntries ?? []} />
 {/if}
 
 {#snippet actionIcon(action: { icon: string })}

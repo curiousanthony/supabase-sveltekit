@@ -61,12 +61,23 @@ export const load = (async ({ params }) => {
 							ctaType: true,
 							ctaLabel: true,
 							ctaTarget: true,
-							documentRequired: true
+							documentRequired: true,
+							acceptedFileTypes: true
 						},
-						orderBy: (s, { asc }) => [asc(s.orderIndex)]
+						orderBy: (s, { asc }) => [asc(s.orderIndex)],
+						with: {
+							document: {
+								columns: { id: true, fileName: true, fileType: true, fileSize: true, storagePath: true, uploadedAt: true }
+							}
+						}
 					},
 					assignee: {
 						columns: { id: true, firstName: true, lastName: true, avatarUrl: true }
+					},
+					comments: {
+						columns: { id: true, content: true, createdAt: true },
+						with: { user: { columns: { id: true, firstName: true, lastName: true, avatarUrl: true } } },
+						orderBy: (c, { asc }) => [asc(c.createdAt)]
 					}
 				}
 			},
@@ -120,9 +131,28 @@ export const load = (async ({ params }) => {
 					}
 				}
 			},
-			dealsFromFormation: {
-				columns: { id: true, name: true }
+		dealsFromFormation: {
+			columns: { id: true, name: true }
+		},
+		auditLog: {
+			columns: {
+				id: true,
+				actionType: true,
+				entityType: true,
+				entityId: true,
+				fieldName: true,
+				oldValue: true,
+				newValue: true,
+				createdAt: true
+			},
+			orderBy: (a, { desc }) => [desc(a.createdAt)],
+			limit: 50,
+			with: {
+				user: {
+					columns: { id: true, firstName: true, lastName: true, avatarUrl: true }
+				}
 			}
+		}
 		}
 	});
 
@@ -166,12 +196,13 @@ export const load = (async ({ params }) => {
 				variant: 'outline' as const,
 				className: statutBadgeClass + ' select-none'
 			},
-			{
-				type: 'formationButtonGroup' as const,
-				formationId: formation.id,
-				formationData,
-				questProgress
-			}
+		{
+			type: 'formationButtonGroup' as const,
+			formationId: formation.id,
+			formationData,
+			questProgress,
+			historyEntries: formation.auditLog ?? []
+		}
 		],
 		backButtonLabel: 'Formations',
 		backButtonHref: '/formations',
