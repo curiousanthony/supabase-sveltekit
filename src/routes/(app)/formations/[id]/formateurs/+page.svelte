@@ -77,7 +77,7 @@
 		return formationSeances.filter((s) => s.formateurId === formateurId);
 	}
 
-	function unassignedSeances(_formateurId: string) {
+	function unassignedSeances() {
 		return formationSeances.filter((s) => !s.formateurId);
 	}
 
@@ -429,7 +429,7 @@
 									</div>
 								{/if}
 
-								{#if unassignedSeances(f.id).length > 0}
+								{#if unassignedSeances().length > 0}
 									<form method="POST" action="?/assignFormateurToSession" use:enhance>
 										<input type="hidden" name="formateurId" value={f.id} />
 										<div class="flex items-center gap-2">
@@ -438,7 +438,7 @@
 													<span class="text-muted-foreground">Assigner à une séance...</span>
 												</Select.Trigger>
 												<Select.Content>
-													{#each unassignedSeances(f.id) as s (s.id)}
+													{#each unassignedSeances() as s (s.id)}
 														<Select.Item value={s.id} label="{formatDate(s.startAt)}{s.module?.name ? ` — ${s.module.name}` : ''}">
 															{formatDate(s.startAt)}
 															{#if s.module?.name}
