@@ -4,34 +4,34 @@ overview: 'Make all 8 Formation detail tabs fully operational: Seances (calendar
 todos:
   - id: data-model
     content: 'Migration + Drizzle schema: extend emargements (signature fields), seances (modality_override), quest_sub_actions (document_required, accepted_file_types), formation_formateurs (TJM, days, expenses). New tables: quest_documents, quest_comments, formation_invoices, formation_cost_items. Create Supabase Storage buckets (quest-documents, formation-invoices, emargement-signatures).'
-    status: pending
+    status: completed
   - id: document-infra
     content: Create src/lib/services/document-service.ts (upload/download/delete for quest docs, invoices, signatures). Create src/lib/components/custom/file-upload.svelte (drag-and-drop + picker, type validation, progress, preview). Create src/lib/components/custom/signature-pad.svelte (canvas-based, touch + mouse, PNG export).
-    status: pending
+    status: completed
   - id: seances-tab
     content: Replace Seances stub with dual view (Calendar + List toggle, localStorage memory). SessionCalendar (custom month grid, click date to create, auto-navigate to next session). SessionList (grouped by date, emargement bars). SessionDialog (date, times, module required, formateur, modality override, location/room for Presentiel). Create/Edit/Delete server actions. Emargement participant assignment step after session creation.
-    status: pending
+    status: completed
   - id: signature-pad-page
     content: 'New public route /emargement/[token]: standalone page (no login). Load emargement by token, show formation name + session date + learner name. SignaturePad canvas, store PNG in Supabase Storage + record IP + user agent + timestamp. Already-signed state. Server action for signature submission.'
-    status: pending
+    status: completed
   - id: apprenants-tab
     content: "Replace Apprenants stub with full CRUD. Combobox search existing contacts + 'Create new' option (full contact form dialog). Per-learner row: name, email, company, attendance rate, document status badges, test result badges. Mid-formation add dialog (select future sessions). Soft remove (keep past emargements). Server actions: addLearner, removeLearner, createContact."
-    status: pending
+    status: completed
   - id: programme-tab
     content: 'Replace Programme read-only with full module CRUD. Editable module cards (title, duration, objectifs). Drag-and-drop reorder (desktop) + up/down buttons (mobile). Add/remove modules. Sync banner when linked programme has local changes (Update source / Create new / Detach). Module deletion cascade dialog (delete or reassign linked sessions). Save as programme button. Server actions: addModule, updateModule, deleteModule, reorderModules, syncToSource, createNewProgramme, detachProgramme.'
-    status: pending
+    status: completed
   - id: formateurs-tab
     content: 'Enhance Formateurs tab. In-tab combobox search to add formateurs (with Mentore Marketplace teaser in results). Per-formateur cost card: TJM, days, total, optional deplacement/hebergement (Presentiel/Hybride only). Document verification badges per formateur (CV, diplomes, NDA, URSSAF from documents_formateur quest). Per-session assignment: dropdown to assign formateur to specific sessions, auto-add to formation. Server actions: updateFormateurCosts, assignFormateurToSession, removeFormateurFromSession.'
-    status: pending
+    status: completed
   - id: finances-tab
     content: 'Replace Finances stub with 3-section layout. Revenue: inline-editable montant/financement fields. Costs: fixed categories (formateur auto-calc, salle/materiel editable, deplacement auto-calc from formateurs), subtotals, margin. Invoices: CRUD list with dialog (number, date, amount, recipient, status, due date, PDF upload, notes). Notification dot for overdue invoices. Server actions: updateCostItem, createInvoice, updateInvoice, deleteInvoice.'
-    status: pending
+    status: in_progress
   - id: quest-docs-comments
     content: 'Enable document uploads in quest workspace per sub-action. Update formation-quests.ts sub-action definitions with documentRequired + acceptedFileTypes for key quests (convention, ordre_mission, documents_formateur, etc.). Upload zone in workspace: FileUpload component, required docs block sub-action completion. Quest comments section below sub-actions: text input + append-only timestamped list with author. Server actions: uploadDocument, deleteDocument, addComment.'
-    status: pending
+    status: in_progress
   - id: history-panel
     content: 'Create src/lib/services/audit-log.ts with logAuditEvent() helper. Wire into ALL server actions across ALL tabs. Create history-sheet.svelte (shadcn Sheet from right). Timeline: icon per event type, actor avatar + name, relative timestamp, description. Wire History button in site-header.svelte. Extend +layout.server.ts to load audit log entries.'
-    status: pending
+    status: in_progress
   - id: apercu-notifications
     content: "Add mini-action buttons to Apercu dashboard cards ('+ Ajouter une seance', '+ Ajouter un apprenant'). Update summary cards with real attendance rates, cost totals, session counts. Add 3 new notification dots: Formateurs (missing docs), Apprenants (unsigned emargements), Finances (overdue invoices). Compute in +layout.server.ts, pass to +layout.svelte."
     status: pending
