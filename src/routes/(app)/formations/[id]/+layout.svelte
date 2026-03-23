@@ -1,38 +1,45 @@
 <script lang="ts">
 	import type { LayoutProps } from './$types';
-	import NavTabs from '$lib/components/nav-tabs.svelte';
-	import LayoutGrid from '@lucide/svelte/icons/layout-grid';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import DocumentPanel from '$lib/components/formations/pulse/document-panel.svelte';
+	import HistoryPanel from '$lib/components/formations/pulse/history-panel.svelte';
 	import FileText from '@lucide/svelte/icons/file-text';
-	import Target from '@lucide/svelte/icons/target';
-	import BookOpen from '@lucide/svelte/icons/book-open';
-	import Calendar from '@lucide/svelte/icons/calendar';
-	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
-	import Users from '@lucide/svelte/icons/users';
-	import Wallet from '@lucide/svelte/icons/wallet';
+	import History from '@lucide/svelte/icons/history';
 
 	let { data, children }: LayoutProps = $props();
 
-	const formationId = $derived(data?.formation?.id ?? '');
-	const basePath = $derived(`/formations/${formationId}`);
-	const overdueQuests = $derived(data?.overdueQuests ?? false);
-	const missingSignatures = $derived(data?.missingSignatures ?? false);
-	const missingFormateurDocs = $derived(data?.missingFormateurDocs ?? false);
-	const unsignedEmargements = $derived(data?.unsignedEmargements ?? false);
-	const overdueInvoices = $derived(data?.overdueInvoices ?? false);
+	const formation = $derived(data?.formation);
+	const formationName = $derived(formation?.name ?? 'Formation');
+	const auditLogEntries = $derived(formation?.auditLog ?? []);
 
-	const tabs = $derived([
-		{ href: basePath, label: 'Aperçu', icon: LayoutGrid },
-		{ href: basePath + '/fiche', label: 'Fiche', icon: FileText },
-		{ href: basePath + '/actions', label: 'Actions', icon: Target, dot: overdueQuests || undefined },
-		{ href: basePath + '/programme', label: 'Programme', icon: BookOpen },
-		{ href: basePath + '/seances', label: 'Séances', icon: Calendar, dot: missingSignatures || undefined },
-		{ href: basePath + '/formateurs', label: 'Formateurs', icon: GraduationCap, dot: missingFormateurDocs || undefined },
-		{ href: basePath + '/apprenants', label: 'Apprenants', icon: Users, dot: unsignedEmargements || undefined },
-		{ href: basePath + '/finances', label: 'Finances', icon: Wallet, dot: overdueInvoices || undefined }
-	]);
+	let documentsOpen = $state(false);
+	let historyOpen = $state(false);
 </script>
 
 <div class="flex min-h-0 w-full flex-1 flex-col gap-4">
-	<NavTabs {tabs} ariaLabel="Formation sections" />
+	<div class="flex items-center justify-end gap-1">
+		<Button
+			variant="ghost"
+			size="sm"
+			class="gap-1.5 text-muted-foreground hover:text-foreground"
+			onclick={() => (documentsOpen = true)}
+		>
+			<FileText class="size-4" />
+			<span class="hidden sm:inline">Documents</span>
+		</Button>
+		<Button
+			variant="ghost"
+			size="sm"
+			class="gap-1.5 text-muted-foreground hover:text-foreground"
+			onclick={() => (historyOpen = true)}
+		>
+			<History class="size-4" />
+			<span class="hidden sm:inline">Historique</span>
+		</Button>
+	</div>
+
 	{@render children()}
+
+	<DocumentPanel bind:open={documentsOpen} {formationName} />
+	<HistoryPanel bind:open={historyOpen} {formationName} entries={auditLogEntries} />
 </div>

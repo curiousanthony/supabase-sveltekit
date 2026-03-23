@@ -1,90 +1,173 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
-	import { goto } from '$app/navigation';
+	import HealthBanner from '$lib/components/formations/pulse/health-banner.svelte';
+	import LifecycleIndicator from '$lib/components/formations/pulse/lifecycle-indicator.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { cn } from '$lib/utils';
 	import {
 		getQuestTemplate,
 		getNextQuest,
+		getQuestProgress,
 		PHASE_LABELS,
 		type QuestPhase
 	} from '$lib/formation-quests';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import CheckCircle from '@lucide/svelte/icons/check-circle';
 	import Clock from '@lucide/svelte/icons/clock';
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import Calendar from '@lucide/svelte/icons/calendar';
-	import Wallet from '@lucide/svelte/icons/wallet';
 	import Users from '@lucide/svelte/icons/users';
-	import FileText from '@lucide/svelte/icons/file-text';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import Layout from '@lucide/svelte/icons/layout';
-	import Plus from '@lucide/svelte/icons/plus';
+	import Upload from '@lucide/svelte/icons/upload';
+	import Send from '@lucide/svelte/icons/send';
+	import Hourglass from '@lucide/svelte/icons/hourglass';
 
 	let { data }: PageProps = $props();
 
 	const formation = $derived(data?.formation);
 	const formationId = $derived(formation?.id ?? '');
-
 	const actions = $derived(formation?.actions ?? []);
+
+	type ActionItem = (typeof actions)[number];
+
+	const questProgress = $derived(getQuestProgress(actions));
 	const nextQuest = $derived(getNextQuest(actions));
 	const questTemplate = $derived(
 		nextQuest?.questKey ? getQuestTemplate(nextQuest.questKey) : undefined
-	);
-	const nextQuestTitle = $derived(
-		(nextQuest as { title?: string } | undefined)?.title ?? questTemplate?.title ?? 'Action'
 	);
 	const allComplete = $derived(
 		actions.length > 0 && actions.every((a) => a.status === 'Terminé')
 	);
 
+	const today = new Date().toISOString().slice(0, 10);
+	const nowIso = new Date().toISOString();
+
+	const overdueActions = $derived(
+		actions.filter(
+			(a) => a.dueDate != null && a.dueDate < today && a.status !== 'Terminé'
+		)
+	);
+
+	const activeActions = $derived(
+		actions.filter((a) => a.status === 'En cours')
+	);
+
+	const readyActions = $derived.by(() => {
+		if (!nextQuest) return [];
+		const nextKey = nextQuest.questKey;
+		return actions.filter((a) => {
+			if (a.status !== 'Pas commencé') return false;
+			if (nextKey && a.questKey === nextKey) return true;
+			const tmpl = a.questKey ? getQuestTemplate(a.questKey) : null;
+			if (!tmpl || tmpl.dependencies.length === 0) return true;
+			return tmpl.dependencies.every((depKey: string) =>
+				actions.some((d) => d.questKey === depKey && d.status === 'Terminé')
+			);
+		});
+	});
+
+	const maintenantActions = $derived.by(() => {
+		const items: ActionItem[] = [];
+		const seen = new Set<string>();
+		const add = (a: ActionItem) => {
+			if (!seen.has(a.id)) { seen.add(a.id); items.push(a); }
+		};
+		for (const a of overdueActions) add(a);
+		for (const a of activeActions) add(a);
+		for (const a of readyActions) add(a);
+		return items.slice(0, 3);
+	});
+
+	const blockedActions = $derived(
+		actions.filter(
+			(a) =>
+				a.status === 'Pas commencé' &&
+				a.blockedByActionId != null &&
+				actions.some(
+					(b) => b.id === a.blockedByActionId && b.status !== 'Terminé'
+				)
+		)
+	);
+
+	const upcomingActions = $derived.by(() => {
+		const mainIds = new Set(maintenantActions.map((a) => a.id));
+		const blockedIds = new Set(blockedActions.map((a) => a.id));
+		return actions
+			.filter(
+				(a) =>
+					a.status !== 'Terminé' &&
+					!mainIds.has(a.id) &&
+					!blockedIds.has(a.id)
+			)
+			.slice(0, 4);
+	});
+
+	const completedActions = $derived(
+		actions.filter((a) => a.status === 'Terminé')
+	);
+
+	type BannerState = 'on-track' | 'action-required' | 'overdue' | 'blocked' | 'complete';
+
+	const bannerState = $derived.by<BannerState>(() => {
+		if (allComplete) return 'complete';
+		if (overdueActions.length > 0) return 'overdue';
+		if (maintenantActions.length > 0) return 'action-required';
+		if (blockedActions.length > 0) return 'blocked';
+		return 'on-track';
+	});
+
+	const bannerMessage = $derived.by(() => {
+		if (bannerState === 'complete') return 'Formation terminée — Dossier prêt pour l\'audit.';
+		if (bannerState === 'overdue') {
+			const count = overdueActions.length;
+			if (count === 1) return `1 action en retard — ${getActionTitle(overdueActions[0])}`;
+			return `${count} actions en retard — la plus urgente : ${getActionTitle(overdueActions[0])}`;
+		}
+		if (bannerState === 'action-required') {
+			if (maintenantActions.length === 1) return `1 action à traiter — ${getActionTitle(maintenantActions[0])}`;
+			return `${maintenantActions.length} actions à traiter — prochaine : ${getActionTitle(maintenantActions[0])}`;
+		}
+		if (bannerState === 'blocked') return `En attente — ${blockedActions.length} action(s) bloquée(s) par des prérequis.`;
+
+		const seancesList = formation?.seances ?? [];
+		const upcoming = seancesList.filter((s) => s.startAt >= nowIso);
+		if (upcoming.length > 0) {
+			return `Tout est à jour. Prochaine échéance : Séance le ${formatDate(upcoming[0].startAt)}.`;
+		}
+		return 'Tout est à jour. Aucune action requise.';
+	});
+
+	const bannerCtaLabel = $derived.by(() => {
+		if (bannerState === 'overdue') return 'Traiter maintenant';
+		if (bannerState === 'action-required') return 'Traiter';
+		return undefined;
+	});
+
+	// Participants
 	const apprenants = $derived(
 		(formation?.formationApprenants ?? []).map((fa) => ({
 			id: fa.contact.id,
 			fullName:
-				[fa.contact.firstName, fa.contact.lastName].filter(Boolean).join(' ') ||
-				'Sans nom'
+				[fa.contact.firstName, fa.contact.lastName].filter(Boolean).join(' ') || 'Sans nom'
 		}))
 	);
-	const apprenantsPreview = $derived(apprenants.slice(0, 3));
 
-	const seances = $derived(formation?.seances ?? []);
-	let now = $state(new Date().toISOString());
-	$effect(() => {
-		const interval = setInterval(() => { now = new Date().toISOString(); }, 60_000);
-		return () => clearInterval(interval);
-	});
-	const upcomingSeances = $derived(
-		seances
-			.filter((s) => s.startAt >= now)
-			.slice(0, 3)
+	const formateurs = $derived(
+		(formation?.formationFormateurs ?? []).map((ff) => ({
+			id: ff.formateur?.user?.id ?? ff.formateur?.id ?? '',
+			fullName:
+				[ff.formateur?.user?.firstName, ff.formateur?.user?.lastName]
+					.filter(Boolean)
+					.join(' ') || 'Formateur'
+		}))
 	);
 
-	const totalSeances = $derived(seances.length);
-	const upcomingCount = $derived(seances.filter((s) => s.startAt >= now).length);
-	const nextSessionDate = $derived(
-		upcomingSeances.length > 0 ? upcomingSeances[0].startAt : null
-	);
-
-	const attendanceRate = $derived.by(() => {
-		const pastSeances = seances.filter(
-			(s) => s.endAt < now && (s.emargements?.length ?? 0) > 0
-		);
-		if (pastSeances.length === 0) return null;
-		let totalEm = 0;
-		let signedEm = 0;
-		for (const s of pastSeances) {
-			for (const e of s.emargements ?? []) {
-				totalEm++;
-				if (e.signedAt) signedEm++;
-			}
-		}
-		return totalEm > 0 ? Math.round((signedEm / totalEm) * 100) : null;
-	});
-
+	// Finances
 	const montant = $derived(
 		formation?.montantAccorde ? Number(formation.montantAccorde) : null
 	);
@@ -107,16 +190,31 @@
 	});
 
 	const marge = $derived(
-		montant != null && totalFormateurCost != null
-			? montant - totalFormateurCost
+		montant != null && totalFormateurCost != null ? montant - totalFormateurCost : null
+	);
+
+	const margePercent = $derived(
+		montant != null && montant > 0 && marge != null
+			? Math.round((marge / montant) * 100)
 			: null
 	);
 
-	function formatTime(isoDate: string) {
-		return new Date(isoDate).toLocaleTimeString('fr-FR', {
-			hour: '2-digit',
-			minute: '2-digit'
-		});
+	// Upcoming sessions
+	const seances = $derived(formation?.seances ?? []);
+	const upcomingSeances = $derived(
+		seances.filter((s) => s.startAt >= nowIso).slice(0, 2)
+	);
+
+	let completedExpanded = $state(false);
+
+	function getActionTitle(action: ActionItem): string {
+		const tmpl = action.questKey ? getQuestTemplate(action.questKey) : null;
+		return action.title ?? tmpl?.title ?? 'Action';
+	}
+
+	function getPhaseLabel(phase: QuestPhase | null | undefined): string {
+		if (!phase) return 'Conception';
+		return PHASE_LABELS[phase] ?? phase;
 	}
 
 	function formatDate(isoDate: string) {
@@ -126,15 +224,22 @@
 		});
 	}
 
+	function formatTime(isoDate: string) {
+		return new Date(isoDate).toLocaleTimeString('fr-FR', {
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+	}
+
 	function formatDateRange() {
-		if (!formation?.dateDebut && !formation?.dateFin) return '—';
+		if (!formation?.dateDebut && !formation?.dateFin) return null;
 		if (formation.dateDebut && formation.dateFin) {
 			return `${new Date(formation.dateDebut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${new Date(formation.dateFin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 		}
 		if (formation.dateDebut) {
 			return `À partir du ${new Date(formation.dateDebut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
 		}
-		return '—';
+		return null;
 	}
 
 	function getInitials(name: string) {
@@ -147,339 +252,387 @@
 			.toUpperCase();
 	}
 
-	function getPhaseLabel(phase: QuestPhase | null | undefined): string {
-		if (!phase) return 'Conception';
-		return PHASE_LABELS[phase] ?? phase;
+	function isOverdue(action: ActionItem): boolean {
+		return action.dueDate != null && action.dueDate < today && action.status !== 'Terminé';
 	}
 
-	function goTo(segment: string) {
-		goto(`/formations/${formationId}/${segment}`);
+	function scrollToMaintenant() {
+		document.getElementById('maintenant')?.scrollIntoView({ behavior: 'smooth' });
+	}
+
+	function hasDocSubtask(action: ActionItem): boolean {
+		return (action.subActions ?? []).some((sa: { documentRequired: boolean | null }) => sa.documentRequired);
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<!-- 1. Next Action Hero Card (full width) -->
-	<Card.Root
-		class={cn(
-			'overflow-hidden',
-			allComplete
-				? 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30'
-				: 'border-primary/30 bg-primary/5'
-		)}
-	>
-		<Card.Content class="py-0">
-			{#if allComplete}
-				<div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
-					<CheckCircle
-						class="size-12 shrink-0 text-green-600 dark:text-green-400"
-						aria-hidden="true"
-					/>
-					<div>
-						<h2 class="text-lg font-semibold text-foreground">
-							Toutes les actions sont terminées
-						</h2>
-						<p class="text-sm text-muted-foreground">
-							La formation est à jour. Consultez les autres onglets pour les détails.
-						</p>
-					</div>
-					<Button
-						variant="outline"
-						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('actions')}
-					>
-						Voir le suivi
-					</Button>
-				</div>
-			{:else if nextQuest}
-				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-					<div class="min-w-0 flex-1 space-y-2">
-						<div class="flex flex-wrap items-center gap-2">
-							<Badge variant="secondary" class="text-xs">
-								{getPhaseLabel(nextQuest.phase)}
-							</Badge>
-							<span class="text-sm text-muted-foreground">Prochaine action</span>
-						</div>
-						<h2 class="text-lg font-semibold text-foreground">
-							{nextQuestTitle}
-						</h2>
-						{#if questTemplate?.description}
-							<p class="text-sm text-muted-foreground line-clamp-2">
-								{questTemplate.description}
-							</p>
-						{/if}
-					</div>
-					<Button
-						class="shrink-0 cursor-pointer"
-						href="/formations/{formationId}/actions{nextQuest.questKey ? `?quest=${nextQuest.questKey}` : ''}"
-					>
-						Faire
-						<ChevronRight class="ml-1 size-4" />
-					</Button>
-				</div>
-			{:else}
-				<div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
-					<p class="text-sm text-muted-foreground">
-						Aucune action définie.
-						<button
-							type="button"
-							class="text-primary underline-offset-4 hover:underline cursor-pointer ml-1"
-							onclick={() => goTo('actions')}
-						>
-							Configurer les actions
-						</button>
-					</p>
-					<Button
-						variant="outline"
-						size="sm"
-						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('actions')}
-					>
-						Configurer
-					</Button>
-				</div>
-			{/if}
-		</Card.Content>
-	</Card.Root>
+<div class="flex flex-col gap-6">
+	<!-- Health Banner -->
+	<HealthBanner
+		state={bannerState}
+		message={bannerMessage}
+		ctaLabel={bannerCtaLabel}
+		onCtaClick={scrollToMaintenant}
+	/>
 
-	<!-- 2 & 3. Key Info | Participants -->
-	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<!-- Key Info Card -->
-		<Card.Root>
-			<Card.Header>
-				<Card.Title class="flex items-center gap-2">
-					<FileText class="size-4" />
-					Informations clés
-				</Card.Title>
-			</Card.Header>
-			<Card.Content class="space-y-3 text-sm">
-				{#if formation?.type}
-					<div class="flex items-center gap-2">
-						<Badge variant="outline">{formation.type}</Badge>
-					</div>
-				{/if}
-				<div class="flex items-center gap-2 text-foreground">
-					<Layout class="size-4 shrink-0 text-muted-foreground" />
-					<span>Modalité : {formation?.modalite ?? '—'}</span>
-				</div>
-				<div class="flex items-center gap-2 text-foreground">
-					<Clock class="size-4 shrink-0 text-muted-foreground" />
-					<span>Durée : {formation?.duree ?? '—'} heures</span>
-				</div>
-				<div class="flex items-center gap-2 text-foreground">
-					<Calendar class="size-4 shrink-0 text-muted-foreground" />
-					<span>{formatDateRange()}</span>
-				</div>
-				<div class="flex items-center gap-2 text-foreground">
-					<MapPin class="size-4 shrink-0 text-muted-foreground" />
-					<span>{formation?.location ?? '—'}</span>
-				</div>
-				{#if formation?.client}
-					<div class="flex items-center gap-2 text-foreground">
-						<Building2 class="size-4 shrink-0 text-muted-foreground" />
-						<span>{formation.client.legalName ?? '—'}</span>
-					</div>
-				{/if}
-				<a
-					href="/formations/{formationId}/fiche"
-					class="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
-				>
-					Voir la fiche
-					<ChevronRight class="size-4" />
-				</a>
-			</Card.Content>
-		</Card.Root>
+	<!-- Lifecycle Indicator -->
+	<LifecycleIndicator
+		phases={questProgress.phases}
+		overallCompleted={questProgress.overall.completed}
+		overallTotal={questProgress.overall.total}
+	/>
 
-		<!-- Participants Summary Card -->
-		<Card.Root>
-			<Card.Header class="flex flex-row items-center justify-between">
-				<Card.Title class="flex items-center gap-2">
-					<Users class="size-4" />
-					Participants
-					{#if apprenants.length > 0}
-						<Badge variant="secondary" class="text-xs">{apprenants.length}</Badge>
-					{/if}
-				</Card.Title>
-				{#if apprenants.length > 0}
-					<Button
-						variant="link"
-						size="sm"
-						class="h-auto p-0 font-medium cursor-pointer"
-						onclick={() => goTo('apprenants')}
+	<!-- MAINTENANT — What needs doing NOW -->
+	{#if !allComplete}
+		{#if maintenantActions.length > 0}
+			<section id="maintenant" class="flex flex-col gap-3">
+				<h2 class="text-sm font-semibold text-foreground">Maintenant</h2>
+				{#each maintenantActions as action (action.id)}
+					{@const overdue = isOverdue(action)}
+					{@const template = action.questKey ? getQuestTemplate(action.questKey) : null}
+					{@const hasDocs = hasDocSubtask(action)}
+					<Card.Root
+						class={cn(
+							'transition-colors',
+							overdue
+								? 'border-red-200 bg-red-50/30 dark:border-red-900 dark:bg-red-950/20'
+								: 'border-border'
+						)}
 					>
-						Voir tout
-					</Button>
-				{/if}
-			</Card.Header>
-			<Card.Content>
-				{#if apprenants.length === 0}
-					<p class="text-sm text-muted-foreground">Aucun apprenant inscrit.</p>
-				{:else}
-					<ul class="space-y-2">
-						{#each apprenantsPreview as learner}
-							<li class="flex items-center gap-2">
-								<Avatar.Root class="size-8 shrink-0 border border-background">
-									<Avatar.Fallback class="text-xs">
-										{getInitials(learner.fullName)}
-									</Avatar.Fallback>
-								</Avatar.Root>
-								<span class="truncate text-sm font-medium text-foreground">
-									{learner.fullName}
-								</span>
-							</li>
-						{/each}
-					</ul>
-					{#if apprenants.length > 3}
-						<p class="mt-2 text-xs text-muted-foreground">
-							+{apprenants.length - 3} autre{apprenants.length - 3 > 1 ? 's' : ''}
-						</p>
-					{/if}
-				{#if attendanceRate != null}
-					<p class="mt-3 text-xs text-muted-foreground">
-						Taux de présence : <span class="font-medium text-foreground">{attendanceRate}%</span>
-					</p>
-				{/if}
-				{/if}
-				<a
-					href="/formations/{formationId}/apprenants"
-					class="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-				>
-					<Plus class="size-3.5" />
-					Ajouter un apprenant
-				</a>
-			</Card.Content>
-		</Card.Root>
-	</div>
-
-	<!-- 4 & 5. Upcoming Sessions | Financial Summary -->
-	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		<!-- Upcoming Sessions Card -->
-		<Card.Root>
-			<Card.Header class="flex flex-row items-center justify-between">
-				<Card.Title class="flex items-center gap-2">
-					<Calendar class="size-4" />
-					Séances
-					{#if totalSeances > 0}
-						<Badge variant="secondary" class="text-xs">{upcomingCount}/{totalSeances}</Badge>
-					{/if}
-				</Card.Title>
-				{#if totalSeances > 0}
-					<Button
-						variant="link"
-						size="sm"
-						class="h-auto p-0 font-medium cursor-pointer"
-						onclick={() => goTo('seances')}
-					>
-						Voir tout
-					</Button>
-				{/if}
-			</Card.Header>
-			<Card.Content>
-				{#if totalSeances > 0 && nextSessionDate}
-					<p class="mb-3 text-xs text-muted-foreground">
-						Prochaine séance : <span class="font-medium text-foreground">{formatDate(nextSessionDate)}</span>
-					</p>
-				{/if}
-				{#if upcomingSeances.length === 0}
-					<p class="text-sm text-muted-foreground">Aucune séance à venir.</p>
-				{:else}
-					<ul class="space-y-4">
-						{#each upcomingSeances as seance}
-							{@const signed = seance.emargements?.filter((e) => e.signedAt).length ?? 0}
-							{@const total = seance.emargements?.length ?? 0}
-							<li class="border-b border-muted pb-4 last:border-0 last:pb-0">
-								<button
-									type="button"
-									class="flex w-full flex-col gap-1.5 text-left cursor-pointer rounded-md -m-1 p-1 transition-colors hover:bg-muted/50"
-									onclick={() => goTo('seances')}
-								>
-									<div class="flex items-baseline justify-between gap-2">
-										<span class="font-medium text-foreground">
-											{formatDate(seance.startAt)}
-										</span>
-										<span class="text-sm text-muted-foreground">
-											{formatTime(seance.startAt)} – {formatTime(seance.endAt)}
-										</span>
+						<Card.Content class="py-0">
+							<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+								<div class="min-w-0 flex-1 space-y-1.5">
+									<div class="flex flex-wrap items-center gap-2">
+										<Badge variant="secondary" class="text-xs">
+											{getPhaseLabel(action.phase)}
+										</Badge>
+										{#if overdue && action.dueDate}
+											<span class="text-xs font-medium text-red-600 dark:text-red-400">
+												En retard depuis le {formatDate(action.dueDate)}
+											</span>
+										{:else if action.dueDate}
+											<span class="text-xs text-muted-foreground">
+												Échéance : {formatDate(action.dueDate)}
+											</span>
+										{/if}
 									</div>
-									{#if seance.module}
-										<p class="text-sm text-foreground">{seance.module.name}</p>
-									{/if}
-									{#if seance.formateur?.user}
-										<p class="text-sm text-muted-foreground">
-											{[seance.formateur.user.firstName, seance.formateur.user.lastName]
-												.filter(Boolean)
-												.join(' ') || 'Formateur'}
+									<h3 class="text-sm font-semibold text-foreground">
+										{getActionTitle(action)}
+									</h3>
+									{#if template?.description}
+										<p class="text-sm text-muted-foreground line-clamp-2">
+											{template.description}
 										</p>
 									{/if}
+								</div>
+								<div class="flex shrink-0 items-center gap-2">
+									{#if hasDocs}
+										<Button variant="outline" size="sm" class="gap-1.5 cursor-pointer">
+											<Upload class="size-3.5" />
+											Téléverser
+										</Button>
+									{/if}
+									<Button
+										size="sm"
+										class="gap-1.5 cursor-pointer"
+										href="/formations/{formationId}/actions{action.questKey ? `?quest=${action.questKey}` : ''}"
+									>
+										{#if hasDocs}
+											Générer
+											<Send class="size-3.5" />
+										{:else}
+											Traiter
+											<ChevronRight class="size-3.5" />
+										{/if}
+									</Button>
+								</div>
+							</div>
+						</Card.Content>
+					</Card.Root>
+				{/each}
+			</section>
+		{/if}
+	{:else}
+		<Card.Root class="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30">
+			<Card.Content class="py-0">
+				<div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
+					<CheckCircle class="size-10 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
+					<div>
+						<h2 class="text-base font-semibold text-foreground">Toutes les actions sont terminées</h2>
+						<p class="text-sm text-muted-foreground">
+							La formation est à jour. Le dossier est prêt pour l'audit.
+						</p>
+					</div>
+				</div>
+			</Card.Content>
+		</Card.Root>
+	{/if}
+
+	<!-- PROCHAINEMENT — What's coming -->
+	{#if upcomingActions.length > 0}
+		<section class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-foreground">Prochainement</h2>
+			<div class="divide-y divide-border rounded-lg border bg-card">
+				{#each upcomingActions as action (action.id)}
+					<div class="flex items-center justify-between px-4 py-3">
+						<div class="flex items-center gap-2 min-w-0">
+							<Clock class="size-3.5 shrink-0 text-muted-foreground" />
+							<span class="truncate text-sm text-foreground">{getActionTitle(action)}</span>
+						</div>
+						{#if action.dueDate}
+							<span class="shrink-0 text-xs text-muted-foreground">
+								{formatDate(action.dueDate)}
+							</span>
+						{:else}
+							<Badge variant="outline" class="text-xs shrink-0">{getPhaseLabel(action.phase)}</Badge>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	<!-- EN ATTENTE — Blocked items -->
+	{#if blockedActions.length > 0}
+		<section class="flex flex-col gap-2">
+			<h2 class="text-sm font-semibold text-foreground">En attente</h2>
+			<div class="divide-y divide-border rounded-lg border bg-muted/30">
+				{#each blockedActions.slice(0, 3) as action (action.id)}
+					<div class="flex items-start gap-3 px-4 py-3">
+						<Hourglass class="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+						<div class="min-w-0 flex-1">
+							<p class="truncate text-sm text-foreground">{getActionTitle(action)}</p>
+							{#if action.blockedByActionId}
+								{@const blocker = actions.find((a) => a.id === action.blockedByActionId)}
+								{#if blocker}
 									<p class="text-xs text-muted-foreground">
-										Émargement : {signed}/{total}
+										Bloqué par : {getActionTitle(blocker)}
 									</p>
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{/if}
+								{/if}
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	<!-- Context Cards — Formation · Participants · Finances -->
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+		<!-- Formation summary -->
+		<Card.Root>
+			<Card.Content class="py-0 space-y-2">
+				<h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Formation</h3>
+				<div class="space-y-1.5 text-sm">
+					{#if formation?.modalite}
+						<div class="flex items-center gap-2">
+							<Layout class="size-3.5 shrink-0 text-muted-foreground" />
+							<span>{formation.modalite}</span>
+						</div>
+					{/if}
+					{#if formation?.duree}
+						<div class="flex items-center gap-2">
+							<Clock class="size-3.5 shrink-0 text-muted-foreground" />
+							<span>{formation.duree}h</span>
+						</div>
+					{/if}
+					{#if formatDateRange()}
+						<div class="flex items-center gap-2">
+							<Calendar class="size-3.5 shrink-0 text-muted-foreground" />
+							<span>{formatDateRange()}</span>
+						</div>
+					{/if}
+					{#if formation?.location}
+						<div class="flex items-center gap-2">
+							<MapPin class="size-3.5 shrink-0 text-muted-foreground" />
+							<span>{formation.location}</span>
+						</div>
+					{:else}
+						<div class="flex items-center gap-2">
+							<MapPin class="size-3.5 shrink-0 text-muted-foreground/50" />
+							<span class="text-muted-foreground/60 italic">Lieu non renseigné</span>
+						</div>
+					{/if}
+					{#if formation?.client}
+						<div class="flex items-center gap-2">
+							<Building2 class="size-3.5 shrink-0 text-muted-foreground" />
+							<span>{formation.client.legalName}</span>
+						</div>
+					{/if}
+				</div>
 				<a
-					href="/formations/{formationId}/seances"
-					class="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+					href="/formations/{formationId}/fiche"
+					class="inline-flex items-center gap-1 text-xs text-primary hover:underline underline-offset-2"
 				>
-					<Plus class="size-3.5" />
-					Ajouter une séance
+					Voir la fiche
+					<ChevronRight class="size-3" />
 				</a>
 			</Card.Content>
 		</Card.Root>
 
-		<!-- Financial Summary Card -->
+		<!-- Participants -->
 		<Card.Root>
-			<Card.Header class="flex flex-row items-center justify-between">
-				<Card.Title class="flex items-center gap-2">
-					<Wallet class="size-4" />
-					Résumé financier
-				</Card.Title>
+			<Card.Content class="py-0 space-y-2">
+				<h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Participants</h3>
+				<div class="space-y-2">
+					{#if apprenants.length > 0}
+						<div class="flex items-center gap-2">
+							<Users class="size-3.5 shrink-0 text-muted-foreground" />
+							<span class="text-sm">{apprenants.length} apprenant{apprenants.length > 1 ? 's' : ''}</span>
+						</div>
+						<div class="flex -space-x-1.5">
+							{#each apprenants.slice(0, 5) as learner (learner.id)}
+								<Avatar.Root class="size-6 border-2 border-background">
+									<Avatar.Fallback class="text-[10px]">{getInitials(learner.fullName)}</Avatar.Fallback>
+								</Avatar.Root>
+							{/each}
+							{#if apprenants.length > 5}
+								<div class="flex size-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-medium">
+									+{apprenants.length - 5}
+								</div>
+							{/if}
+						</div>
+					{:else}
+						<p class="text-sm text-muted-foreground/60 italic">Aucun apprenant inscrit</p>
+					{/if}
+					{#if formateurs.length > 0}
+						<div class="flex items-center gap-2">
+							<Users class="size-3.5 shrink-0 text-muted-foreground" />
+							<span class="text-sm">{formateurs.length} formateur{formateurs.length > 1 ? 's' : ''}</span>
+						</div>
+					{:else}
+						<p class="text-sm text-muted-foreground/60 italic">Aucun formateur assigné</p>
+					{/if}
+				</div>
 				<a
-					href="/formations/{formationId}/finances"
-					class="text-sm font-medium text-primary underline-offset-4 hover:underline"
+					href="/formations/{formationId}/apprenants"
+					class="inline-flex items-center gap-1 text-xs text-primary hover:underline underline-offset-2"
 				>
-					Voir les finances
+					Gérer
+					<ChevronRight class="size-3" />
 				</a>
-			</Card.Header>
-			<Card.Content class="space-y-4">
-				<div>
-					<p class="text-xs text-muted-foreground">Montant accordé</p>
-					<div class="mt-1 flex items-center gap-2">
+			</Card.Content>
+		</Card.Root>
+
+		<!-- Finances -->
+		<Card.Root>
+			<Card.Content class="py-0 space-y-2">
+				<h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Finances</h3>
+				<div class="space-y-1.5 text-sm">
+					<div>
 						<span class="text-lg font-semibold tabular-nums">
 							{montant != null ? montant.toLocaleString('fr-FR') + ' €' : '—'}
 						</span>
 						{#if montant != null}
 							{#if formation?.financementAccorde}
-								<Badge variant="default" class="text-xs">Accordé</Badge>
+								<Badge variant="default" class="ml-2 text-xs">Accordé</Badge>
 							{:else}
-								<Badge variant="secondary" class="text-xs">En attente</Badge>
+								<Badge variant="secondary" class="ml-2 text-xs">En attente</Badge>
 							{/if}
 						{/if}
 					</div>
-				</div>
-				<div>
-					<p class="text-xs text-muted-foreground">Coûts formateurs</p>
-				<p class="mt-1 text-lg font-semibold tabular-nums">
-					{totalFormateurCost != null ? totalFormateurCost.toLocaleString('fr-FR') + ' €' : '—'}
-				</p>
-				</div>
-				<div>
-					<p class="text-xs text-muted-foreground">Marge</p>
-					<p
-						class="mt-1 text-lg font-semibold tabular-nums"
-						class:text-green-600={marge != null && marge > 0}
-						class:text-red-600={marge != null && marge < 0}
-					>
-						{marge != null ? marge.toLocaleString('fr-FR') + ' €' : '—'}
-					</p>
 					{#if marge != null}
 						<p class="text-xs text-muted-foreground">
-							(montant − coûts formateurs)
+							Marge :
+							<span
+								class={cn(
+									'font-medium',
+									marge > 0 ? 'text-green-600' : marge < 0 ? 'text-red-600' : ''
+								)}
+							>
+								{marge.toLocaleString('fr-FR')} €
+								{#if margePercent != null}({margePercent} %){/if}
+							</span>
 						</p>
 					{/if}
 				</div>
+				<a
+					href="/formations/{formationId}/finances"
+					class="inline-flex items-center gap-1 text-xs text-primary hover:underline underline-offset-2"
+				>
+					Détail
+					<ChevronRight class="size-3" />
+				</a>
 			</Card.Content>
 		</Card.Root>
 	</div>
+
+	<!-- Upcoming Sessions -->
+	{#if upcomingSeances.length > 0}
+		<section class="flex flex-col gap-2">
+			<div class="flex items-center justify-between">
+				<h2 class="text-sm font-semibold text-foreground">Prochaines séances</h2>
+				<a
+					href="/formations/{formationId}/seances"
+					class="text-xs text-primary hover:underline underline-offset-2"
+				>
+					Voir toutes les séances
+				</a>
+			</div>
+			<div class="divide-y divide-border rounded-lg border bg-card">
+				{#each upcomingSeances as seance (seance.id)}
+					<div class="flex items-center justify-between px-4 py-3">
+						<div class="flex items-center gap-3 min-w-0">
+							<div class="flex flex-col items-center">
+								<span class="text-xs font-semibold text-foreground">{formatDate(seance.startAt)}</span>
+								<span class="text-[10px] text-muted-foreground">{formatTime(seance.startAt)}</span>
+							</div>
+							<div class="min-w-0">
+								{#if seance.module}
+									<p class="truncate text-sm font-medium text-foreground">{seance.module.name}</p>
+								{/if}
+								{#if seance.formateur?.user}
+									<p class="text-xs text-muted-foreground">
+										{[seance.formateur.user.firstName, seance.formateur.user.lastName]
+											.filter(Boolean)
+											.join(' ')}
+									</p>
+								{/if}
+							</div>
+						</div>
+						{#if (seance.emargements?.length ?? 0) > 0}
+							<span class="shrink-0 text-xs text-muted-foreground">
+								Émargement : {seance.emargements?.filter((e) => e.signedAt).length ?? 0}/{seance.emargements?.length ?? 0}
+							</span>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	<!-- COMPLÉTÉS — Collapsed by default -->
+	{#if completedActions.length > 0}
+		<section class="flex flex-col gap-2">
+			<button
+				type="button"
+				class="flex w-full cursor-pointer items-center justify-between rounded-lg px-1 py-1 text-left transition-colors hover:bg-muted/50"
+				onclick={() => (completedExpanded = !completedExpanded)}
+			>
+				<h2 class="text-sm font-semibold text-foreground">
+					Complétés ({completedActions.length}/{actions.length})
+				</h2>
+				<ChevronDown
+					class={cn(
+						'size-4 text-muted-foreground transition-transform',
+						completedExpanded && 'rotate-180'
+					)}
+				/>
+			</button>
+			{#if completedExpanded}
+				<div class="divide-y divide-border rounded-lg border bg-card">
+					{#each completedActions as action (action.id)}
+						<div class="flex items-center gap-3 px-4 py-2.5">
+							<CheckCircle class="size-4 shrink-0 text-green-500" />
+							<span class="truncate text-sm text-foreground">{getActionTitle(action)}</span>
+							{#if action.completedAt}
+								<span class="ml-auto shrink-0 text-xs text-muted-foreground">
+									{formatDate(action.completedAt)}
+								</span>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</section>
+	{/if}
 </div>
