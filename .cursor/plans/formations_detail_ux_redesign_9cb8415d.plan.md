@@ -1,24 +1,42 @@
 ---
 name: Formations detail UX redesign
-overview: A complete UX redesign of the Formation detail page, designed from scratch around Marie's daily reality — not data domains. Replaces the 8-tab layout with a single "Pulse" page organized by time and urgency, backed by the foundation principles and behavioral psychology.
+overview: A complete UX redesign of the Formation detail page — from 8-tab data-domain layout to a single Pulse page organized by time/urgency, with document generation engine, email tracking, enhanced history, and near-zero manual uploads.
 todos:
   - id: write-design-doc
     content: Save the approved design as `docs/ux/formations-detail-redesign.md` for reference during implementation
     status: pending
-  - id: implementation-plan
-    content: "After approval: generate a `.cursor/plans/formations-detail-pulse-redesign.plan.md` with component-by-component implementation instructions"
+  - id: workspace-settings
+    content: Complete workspace settings page with legal identity, branding (logo), signataire, reglement interieur — prerequisite for document generation
+    status: pending
+  - id: doc-templates
+    content: Build fixed document templates (convention, convocation, emargement, certificat, attestation, facture, questionnaires) with data merge engine
+    status: pending
+  - id: doc-generation-engine
+    content: Implement document generation flow — template + formation data + org settings → PDF, with auto vs review routing
+    status: pending
+  - id: signature-system
+    content: Build drawn-signature public links for both apprenants AND formateurs, with signature apposition on generated PDFs
+    status: pending
+  - id: email-system
+    content: Design email send/track system (Postmark-ready) — transactional sends, delivery tracking, communication log
     status: pending
   - id: prototype-pulse
-    content: Build the Pulse page prototype (routes, layout, health banner, action stream)
+    content: Build the Pulse page (health banner, Maintenant/Prochainement/Attente/Complete action stream, context cards, lifecycle indicator)
+    status: pending
+  - id: doc-hub-panel
+    content: Build Document Hub slide-over panel with search, categories, PDF inline preview
+    status: pending
+  - id: history-panel
+    content: Build enhanced History slide-over with clickable entities, filters, communication log
     status: pending
   - id: refactor-routes
-    content: Consolidate 9 routes into 4 (Pulse + Fiche + Seances + Finances), merge Programme into Fiche, merge Formateurs+Apprenants into Participants
+    content: Consolidate 9 routes into 4 (Pulse + Fiche + Seances + Finances) + 2 slide-over panels (Documents + History)
     status: pending
   - id: quest-engine-adapt
-    content: Adapt `formation-quests.ts` to power the Maintenant/Prochainement/Attente/Complete categorization instead of the quest tracker UI
+    content: Adapt formation-quests.ts to power Maintenant/Prochainement/Attente/Complete categorization and document generation triggers
     status: pending
   - id: browser-verify
-    content: Browser-verify the new Pulse page against all foundation success criteria
+    content: Browser-verify the complete system against all foundation success criteria
     status: pending
 isProject: false
 ---
@@ -497,8 +515,471 @@ The "level up toast" when a phase completes? Replace with something subtler and 
 
 ---
 
-## 11. Questions for you before implementation
+## 11. The Document Generation Engine
 
-1. **People management depth**: Should formateurs and apprenants be manageable from a slide-over panel on the Pulse, or should we keep a dedicated "Participants" deep view (a 5th route)?
-2. **Programme editing**: Is it acceptable to merge Programme into the Fiche view, or do you foresee cases where Programme editing is frequent enough to warrant its own route?
-3. **Phase transition celebration**: The foundation says "brief satisfaction moment" — do you want a simple inline message, a subtle animation, or something more visible?
+### 11.1 Philosophy: "Near-zero upload"
+
+The foundation's magic wand test asks: "If the user had a magic wand, would they want the app to do this for them?" For every document in the Qualiopi lifecycle, the answer is yes. Marie should almost never need to find a file on her computer and upload it. The app knows the formation data, the people, the org info — it can generate the document itself.
+
+**What the app generates:**
+
+| Document                           | Qualiopi quest | Data sources                                                   | Trigger                                                  |
+| ---------------------------------- | -------------- | -------------------------------------------------------------- | -------------------------------------------------------- |
+| Convention de formation            | Q05            | Formation fiche + client info + org settings                   | Programme + devis validated                              |
+| Convocation                        | Q08            | Formation dates/lieu + apprenants list + org settings          | Convention signed + learners added                       |
+| Reglement interieur                | Q08b           | Org-level static template + org settings                       | With convocation                                         |
+| Test de positionnement             | Q09            | Programme objectives + template                                | Convocations sent                                        |
+| Feuilles d'emargement              | Q11            | Session date/time + apprenants list + formateur + org settings | Per session, generated automatically before session date |
+| Certificat de realisation          | Q17            | Formation info + apprenant + emargement data + org settings    | All sessions completed                                   |
+| Attestation de fin de formation    | Q18            | Formation info + apprenant + evaluation results + org settings | Evaluation completed                                     |
+| Facture                            | Q19            | Formation financials + client/OPCO info + org settings         | Certificats generated                                    |
+| Questionnaire satisfaction a chaud | Q16            | Formation + template                                           | Last session day                                         |
+| Questionnaire satisfaction a froid | Q21            | Formation + template                                           | 1-3 months post-formation                                |
+
+**What Marie might still upload manually (rare cases):**
+
+- External documents from third parties (OPCO accord letter, if no API)
+- Supplementary materials the system can't generate (custom evaluation grids, specialized course materials from the formateur)
+- Scans of legacy paper-signed documents
+
+### 11.2 Document lifecycle on the Pulse
+
+An action card for a generatable document looks fundamentally different from an upload card:
+
+**Step 1 — Ready to generate:**
+
+```
+Convention a generer
+Toutes les informations necessaires sont reunies.
+Qualiopi ind. 6 — Formalise l'engagement contractuel.
+[Generer et previsualiser]
+```
+
+**Step 2 — Generated, awaiting review (for important docs):**
+
+```
+Convention generee — a verifier
+Generee le 15 mars a partir des donnees de la fiche.
+[Previsualiser]  [Envoyer au client pour signature]
+```
+
+**Step 3 — Sent, awaiting signature:**
+
+```
+Convention envoyee — en attente de signature
+Envoyee a Marie Durand (Client SAS) le 15 mars.
+[Voir le document]  [Relancer]
+```
+
+**Step 4 — Signed, complete:**
+
+```
+✓ Convention signee le 18 mars
+   par Marie Durand (Client SAS)
+   [Voir le document signe]
+```
+
+For routine documents (convocations, emargements), steps 1-2 are automatic:
+the system generates and sends without requiring Marie's review, then notifies her.
+
+### 11.3 The generation flow
+
+```mermaid
+flowchart TD
+    trigger["Lifecycle trigger\n(dependency met)"]
+    generate["System generates\ndocument from template"]
+    importance{"Important doc?\n(convention, facture)"}
+    autoSend["Auto-send via email\nNotify Marie"]
+    reviewPreview["Show preview to Marie\non Pulse action card"]
+    approve["Marie clicks\n'Envoyer'"]
+    send["System sends via email\n(Postmark)"]
+    sign{"Signature\nrequired?"}
+    publicLink["Recipient accesses\npublic signing link"]
+    drawSign["Recipient draws\nsignature"]
+    appose["System apposes signature\non document"]
+    store["Document stored\nin Document Hub"]
+    complete["Action auto-completes\nBanner updates"]
+
+    trigger --> generate
+    generate --> importance
+    importance -- "Yes" --> reviewPreview
+    importance -- "No (routine)" --> autoSend
+    reviewPreview --> approve
+    approve --> send
+    autoSend --> sign
+    send --> sign
+    sign -- "Yes" --> publicLink
+    sign -- "No" --> store
+    publicLink --> drawSign
+    drawSign --> appose
+    appose --> store
+    store --> complete
+```
+
+### 11.4 Workspace settings (prerequisite)
+
+Document generation requires org-level information. Since workspace settings partially exist, they need to be completed with:
+
+- **Legal identity**: Nom legal, SIRET/SIREN, numero de declaration d'activite, adresse du siege
+- **Contact**: Telephone, email general, site web
+- **Branding**: Logo (used on all generated documents)
+- **Signataire par defaut**: Nom + titre du dirigeant (for conventions, certificats)
+- **Reglement interieur**: The full text (used as-is in the generated document)
+- **Templates de questionnaire**: Questions for satisfaction a chaud / a froid (fixed best-practice defaults, but the org may want to review them once)
+
+The first time Marie tries to generate a document and required org info is missing, the Pulse action card shows:
+
+```
+Convention a generer
+⚠ Informations manquantes pour generer ce document.
+   Completez les parametres de l'organisme.
+   [Completer les parametres]
+```
+
+This links to the workspace settings page. Once filled, it's never asked again.
+
+### 11.5 Fixed templates
+
+Templates are built into the app — one per document type, following legal best practices. Marie does not customize them. The system fills them with:
+
+- Org info (from workspace settings)
+- Formation info (from fiche: dates, duree, modalite, programme, objectifs)
+- People info (from formation participants: names, companies, roles)
+- Financial info (from fiche/finances: montant, conditions)
+- Dynamic content (emargement lists generated per session, evaluation results per apprenant)
+
+---
+
+## 12. The Document Hub (slide-over panel)
+
+### 12.1 Design
+
+Instead of a 5th route, the Document Hub is a **slide-over panel** accessible from any formation view via a persistent button in the formation header:
+
+```
+← Formations
+Formation name    [Badge]    📄 Documents    🕐 Historique    [...]
+```
+
+Both Documents and Historique are slide-over panels, always accessible regardless of which view Marie is on.
+
+### 12.2 Document panel content
+
+```
+┌──────────────────────────────────────────────┐
+│ Documents (12)                        [×]    │
+│──────────────────────────────────────────────│
+│ 🔍 Rechercher...                             │
+│                                              │
+│ Contractuels                                 │
+│  ✓ Convention de formation                   │
+│    Signee le 18 mars · PDF · 2 pages         │
+│  ✓ Devis #D-2026-015                         │
+│    Accepte le 10 mars · PDF                  │
+│                                              │
+│ Pedagogiques                                 │
+│  ✓ Programme de formation                    │
+│    Valide · PDF · 4 pages                    │
+│  ○ Test de positionnement                    │
+│    Genere · envoye le 22 mars                │
+│                                              │
+│ Suivi                                        │
+│  ✓ Convocation (4 apprenants)                │
+│    Envoyee le 20 mars                        │
+│  ◐ Emargement — Seance 1 (15 avr.)          │
+│    3/4 signatures recueillies                │
+│  ○ Emargement — Seance 2 (16 avr.)          │
+│    Pas encore genere                         │
+│                                              │
+│ Financiers                                   │
+│  ✓ Facture #F-2026-042                       │
+│    Payee le 25 mars · 5 200 EUR              │
+│  ✓ Certificat de realisation (x4)            │
+│    Generes le 20 mars                        │
+│                                              │
+│ Autres (televersements manuels)              │
+│  ✓ Accord OPCO — scan                        │
+│    Televerse le 5 mars                       │
+└──────────────────────────────────────────────┘
+```
+
+**Interactions:**
+
+- Click any document → **PDF preview modal** (inline viewer, not a download)
+- Each document shows: name, status (genere / envoye / signe / archive), date, quick metadata
+- Search filters by name, type, or status
+- "Televerser un document" button at the bottom for rare manual uploads
+
+### 12.3 PDF preview
+
+When Marie clicks any document (generated or uploaded), a modal opens with:
+
+- Full PDF preview (rendered inline, scrollable)
+- Document metadata: type, generation date, recipients, signature status
+- Actions: Download, Regenerer (if data changed), Envoyer/Renvoyer
+- For signed documents: signature overlay visible on the PDF
+
+---
+
+## 13. Email communications & tracking
+
+### 13.1 Communication types and approval rules
+
+| Communication             | Trigger                                      | Auto or Review?    | Recipients             |
+| ------------------------- | -------------------------------------------- | ------------------ | ---------------------- |
+| Convocation               | Convention signed + learners confirmed       | Auto (routine)     | Each apprenant         |
+| Reglement interieur       | With convocation                             | Auto               | Each apprenant         |
+| Test de positionnement    | After convocation                            | Auto               | Each apprenant         |
+| Rappel emargement         | Session J-1                                  | Auto               | Formateur + apprenants |
+| Convention pour signature | Marie clicks "Envoyer"                       | Review (important) | Client signataire      |
+| Facture                   | Marie clicks "Envoyer"                       | Review (important) | Client / OPCO          |
+| Relance OPCO              | Marie clicks "Relancer" or auto after N days | Configurable       | OPCO contact           |
+| Satisfaction a chaud      | Last session day                             | Auto               | Each apprenant         |
+| Satisfaction a froid      | +60 jours post-formation                     | Auto               | Each apprenant         |
+| Certificat de realisation | Generated post-formation                     | Review             | Client / OPCO          |
+| Attestation de fin        | Generated post-formation                     | Review             | Each apprenant         |
+
+### 13.2 How communications appear on the Pulse
+
+On action cards, the most recent communication status shows inline:
+
+```
+Convocation envoyee
+Envoyee a 4 apprenants le 20 mars.
+Jean Dupont a ouvert le lien · 2 en attente de lecture.
+```
+
+This gives Marie confidence that things are happening without her having to dig.
+
+### 13.3 Communication log in History
+
+All emails are logged in the enhanced History panel (section 14). Marie can filter the History to show "Communications seulement" to see a full list of everything the system sent on behalf of this formation.
+
+### 13.4 Designing for Postmark (future-ready)
+
+The UX design assumes:
+
+- **Send tracking**: "Envoye le [date] a [heure]"
+- **Delivery tracking**: "Delivre" (Postmark webhook)
+- **Open tracking**: "Ouvert par [nom]" (Postmark open tracking — optional, with privacy consideration)
+- **Bounce handling**: "Echec d'envoi a [email] — adresse invalide" → surface as an alert on the Pulse
+
+Even before Postmark integration, the app records the intent ("Convocation envoyee a 4 apprenants") so the tracking foundation is in place.
+
+---
+
+## 14. Enhanced History (Activity Feed)
+
+### 14.1 Design
+
+The History slide-over (accessible from the formation header alongside Documents) becomes a rich, clickable activity feed:
+
+```
+┌──────────────────────────────────────────────┐
+│ Historique                            [×]    │
+│──────────────────────────────────────────────│
+│ Filtrer: [Tout ▾] [Actions ▾] [Documents ▾] │
+│          [Communications ▾] [Personnes ▾]   │
+│                                              │
+│ Aujourd'hui                                  │
+│                                              │
+│ 14:32  Convention signee                     │
+│        par Marie Durand (Client SAS)         │
+│        📄 Voir le document signe             │
+│        👤 Marie Durand                       │
+│                                              │
+│ 11:15  Convocation envoyee                   │
+│        a 4 apprenants                        │
+│        ✉ Voir l'email                        │
+│        👥 J. Dupont, L. Martin, +2           │
+│                                              │
+│ Hier                                         │
+│                                              │
+│ 16:45  Jean Dupont ajoute comme formateur    │
+│        TJM: 650 EUR · 2 jours prevus         │
+│        👤 Voir le profil                     │
+│                                              │
+│ 10:20  Programme valide                      │
+│        3 modules · 14 heures                 │
+│        📄 Voir le programme                  │
+│                                              │
+│ 15 mars                                      │
+│                                              │
+│  9:00  Formation creee                       │
+│        depuis le deal #D-042                 │
+│        🔗 Voir le deal                       │
+│                                              │
+└──────────────────────────────────────────────┘
+```
+
+### 14.2 Clickable entities
+
+Every history entry that references an entity provides a clickable link:
+
+| Entity type                                   | Click action                                                      |
+| --------------------------------------------- | ----------------------------------------------------------------- |
+| Person (formateur, apprenant, client contact) | Navigate to their profile/CRM fiche                               |
+| Document                                      | Open PDF preview modal                                            |
+| Email/Communication                           | Show email content in a modal (subject, body, recipients, status) |
+| Deal                                          | Navigate to deal page                                             |
+| Session/Seance                                | Navigate to seances view, scrolled to that session                |
+| Formation field change                        | Show before/after values inline                                   |
+
+### 14.3 Entry types and what they log
+
+- **Status changes**: Formation status transitions, action completions
+- **People changes**: Formateur/apprenant added or removed (with name + avatar)
+- **Document events**: Generated, sent, signed, uploaded, downloaded
+- **Communications**: Every email sent, with recipients and status
+- **Data edits**: Field changes on the fiche (with before/after)
+- **Financial events**: Invoice created, payment received, OPCO accord
+- **Phase transitions**: "Formation passee en Deploiement" with brief celebration
+
+---
+
+## 15. Emargement — formateur signing
+
+### 15.1 Current gap
+
+The current system provides public signing links for apprenants (learners) only. Formateurs must also sign emargement sheets — both legally and for Qualiopi compliance. Each emargement sheet requires **two sets of signatures**: all attending apprenants + the formateur, per half-day.
+
+### 15.2 Redesign
+
+For each session, the system generates an emargement sheet with:
+
+- Session metadata (date, time, module, location)
+- List of apprenants with signature slots (AM + PM)
+- Formateur signature slot (AM + PM)
+- Org info + logo from workspace settings
+
+**Public links:**
+
+- One link per apprenant per session: `emargement.mentore.app/s/{token}` — the apprenant draws their signature for AM and PM
+- One link per formateur per session: `emargement.mentore.app/f/{token}` — the formateur draws their signature
+
+**The generated emargement PDF** shows all collected signatures composited onto the official sheet. As signatures come in, the document updates automatically.
+
+**On the Pulse:**
+
+```
+Emargement — Seance du 15 avril
+3/4 apprenants ont signe · Formateur: en attente
+[Voir la feuille]  [Envoyer un rappel]
+```
+
+**Auto-reminders:**
+
+- J-1 before session: email to formateur + apprenants with their signing links
+- J+1 after session: reminder to anyone who hasn't signed
+- J+3: escalation to Marie via the Pulse ("Emargement incomplet depuis 3 jours")
+
+---
+
+## 16. Lifecycle progress — embracing chaos
+
+### 16.1 The real-life problem
+
+The Qualiopi lifecycle diagram suggests a clean linear flow: Conception → Deploiement → Evaluation. In reality, Marie's work is messier:
+
+- She might assign a formateur (Q09c, Conception) while already scheduling sessions (Deploiement)
+- An OPCO accord might arrive late, after sessions have started
+- A learner might be added mid-formation
+- A document from Phase 1 might need to be regenerated because data changed
+
+### 16.2 The design response
+
+The lifecycle indicator is **not a strict gate**. It's an orientation tool showing the **dominant phase** and **overall progress**:
+
+```
+   Conception ━━━━━━━━●   Deploiement ━━━━━━━   Evaluation ━━━━━
+                         ↑ mostly here
+   11/15 etapes completees
+```
+
+- The filled portion represents completed steps across ALL phases (not just sequential)
+- The marker shows where the **majority of current work** falls
+- Items from any phase can appear in "Maintenant" — the system doesn't block Marie from working out of order
+- Dependencies are soft: "Convention a signer" is suggested before "Envoyer les convocations," but if Marie has a reason to reorder, the system allows it with a gentle note: "La convention n'est pas encore signee — les convocations seront envoyees sans reference contractuelle."
+
+### 16.3 Phase transitions
+
+When a phase's core items are complete, a brief inline celebration appears in the action stream:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ✓ Phase Conception terminee                        │
+│  9 etapes completees. La formation entre en         │
+│  phase de Deploiement — prochaine echeance :        │
+│  Seance 1 le 15 avril.                              │
+│                                           [Compris] │
+└─────────────────────────────────────────────────────┘
+```
+
+This is not a popup or a toast — it's a card in the "Maintenant" stream that Marie acknowledges and then it moves to "Complete." The Peak-End rule: make the transition feel like a small victory, not just a status change.
+
+---
+
+## 17. Updated route structure
+
+```
+/formations/[id]           → The Pulse (main experience)
+/formations/[id]/fiche     → Formation reference data + programme (merged)
+/formations/[id]/seances   → Session management (calendar + CRUD + emargement)
+/formations/[id]/finances  → Financial management (invoices, costs)
+```
+
+**Plus two persistent slide-over panels (accessible from any route):**
+
+- **Documents panel**: Centralized document hub with search, categories, PDF preview
+- **History panel**: Enhanced activity feed with clickable entities and communication log
+
+**People management** (formateurs + apprenants): Handled via the Participants context card on the Pulse, with add/remove in modals. Formateur cost details accessible from Finances. No dedicated route — people are an attribute of the formation, not a separate destination.
+
+---
+
+## 18. The complete system map
+
+```mermaid
+flowchart LR
+    subgraph pulse ["Pulse Page (main)"]
+        banner["Health Banner\n'Tout est a jour' / 'Action requise'"]
+        maintenant["Maintenant\n1-3 action cards with inline CTAs"]
+        prochainement["Prochainement\ncompact upcoming list"]
+        attente["En attente\nblocked items + auto-reminders"]
+        context["Context Cards\nFormation · Participants · Finances"]
+        complete["Completes\ncollapsed verification list"]
+        lifecycle["Lifecycle Indicator\nnon-linear progress"]
+    end
+
+    subgraph panels ["Slide-over Panels"]
+        docHub["Document Hub\nall docs, search, preview"]
+        history["Activity Feed\nclickable, filterable log"]
+    end
+
+    subgraph deepViews ["Deep Views (via links)"]
+        fiche["Fiche + Programme\nreference data editing"]
+        seances["Seances\ncalendar + emargement"]
+        finances["Finances\ninvoices + costs"]
+    end
+
+    subgraph engine ["Invisible Engine"]
+        questEngine["Quest Engine\n25 Qualiopi steps\ndependency resolution"]
+        docGen["Document Generator\ntemplates + data merge"]
+        emailSystem["Email System\nPostmark-ready\nsend + track"]
+        signSystem["Signature System\npublic links\ndrawn signatures"]
+    end
+
+    banner --> maintenant
+    maintenant -- "inline actions" --> docGen
+    docGen --> emailSystem
+    emailSystem --> signSystem
+    signSystem --> docHub
+    docHub -- "PDF preview" --> pulse
+    questEngine --> banner
+    questEngine --> maintenant
+    questEngine --> prochainement
+    context -- "links" --> deepViews
+    maintenant -- "links" --> deepViews
+    history -- "click entity" --> deepViews
+
+```
