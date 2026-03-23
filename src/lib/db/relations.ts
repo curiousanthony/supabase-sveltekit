@@ -21,6 +21,8 @@ import {
 	formationAuditLog,
 	formationFormateurs,
 	formationApprenants,
+	formationDocuments,
+	formationEmails,
 	formationInvoices,
 	formationCostItems,
 	modules,
@@ -211,6 +213,8 @@ export const formationsRelations = relations(formations, ({ one, many }) => ({
 	formationFormateurs: many(formationFormateurs),
 	formationApprenants: many(formationApprenants),
 	seances: many(seances, { relationName: 'formation_seances' }),
+	documents: many(formationDocuments),
+	emails: many(formationEmails),
 	invoices: many(formationInvoices),
 	costItems: many(formationCostItems),
 	dealsFromFormation: many(deals)
@@ -276,6 +280,10 @@ export const emargementsRelations = relations(emargements, ({ one }) => ({
 	contact: one(contacts, {
 		fields: [emargements.contactId],
 		references: [contacts.id]
+	}),
+	formateur: one(formateurs, {
+		fields: [emargements.formateurId],
+		references: [formateurs.id]
 	})
 }));
 
@@ -360,7 +368,8 @@ export const formateursRelations = relations(formateurs, ({ one, many }) => ({
 	}),
 	formateursThematiques: many(formateursThematiques),
 	formationFormateurs: many(formationFormateurs),
-	seances: many(seances)
+	seances: many(seances),
+	emargements: many(emargements)
 }));
 
 export const formateursThematiquesRelations = relations(formateursThematiques, ({ one }) => ({
@@ -510,6 +519,45 @@ export const questCommentsRelations = relations(questComments, ({ one }) => ({
 	}),
 	user: one(users, {
 		fields: [questComments.userId],
+		references: [users.id]
+	})
+}));
+
+export const formationDocumentsRelations = relations(formationDocuments, ({ one, many }) => ({
+	formation: one(formations, {
+		fields: [formationDocuments.formationId],
+		references: [formations.id]
+	}),
+	generatedByUser: one(users, {
+		fields: [formationDocuments.generatedBy],
+		references: [users.id]
+	}),
+	relatedContact: one(contacts, {
+		fields: [formationDocuments.relatedContactId],
+		references: [contacts.id]
+	}),
+	relatedFormateur: one(formateurs, {
+		fields: [formationDocuments.relatedFormateurId],
+		references: [formateurs.id]
+	}),
+	relatedSeance: one(seances, {
+		fields: [formationDocuments.relatedSeanceId],
+		references: [seances.id]
+	}),
+	emails: many(formationEmails)
+}));
+
+export const formationEmailsRelations = relations(formationEmails, ({ one }) => ({
+	formation: one(formations, {
+		fields: [formationEmails.formationId],
+		references: [formations.id]
+	}),
+	document: one(formationDocuments, {
+		fields: [formationEmails.documentId],
+		references: [formationDocuments.id]
+	}),
+	createdByUser: one(users, {
+		fields: [formationEmails.createdBy],
 		references: [users.id]
 	})
 }));

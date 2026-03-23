@@ -210,13 +210,20 @@ export const actions: Actions = {
 					signedAt: emargements.signedAt
 				})
 				.from(emargements)
-				.where(eq(emargements.seanceId, seanceId));
+				.where(
+					and(
+						eq(emargements.seanceId, seanceId),
+						eq(emargements.signerType, 'apprenant')
+					)
+				);
 
-			const existingContactIds = existing.map((e) => e.contactId);
+			const existingContactIds = existing
+				.map((e) => e.contactId)
+				.filter((contactId): contactId is string => contactId !== null);
 
 			const toAdd = selectedContactIds.filter((id) => !existingContactIds.includes(id));
 			const toRemove = existing.filter(
-				(e) => !selectedContactIds.includes(e.contactId) && e.signedAt === null
+				(e) => e.contactId !== null && !selectedContactIds.includes(e.contactId) && e.signedAt === null
 			);
 
 			if (toAdd.length > 0) {
@@ -229,13 +236,15 @@ export const actions: Actions = {
 			}
 
 			if (toRemove.length > 0) {
+				const removableContactIds = toRemove
+					.map((e) => e.contactId)
+					.filter((contactId): contactId is string => contactId !== null);
+
 				await db.delete(emargements).where(
 					and(
 						eq(emargements.seanceId, seanceId),
-						inArray(
-							emargements.contactId,
-							toRemove.map((e) => e.contactId)
-						),
+						eq(emargements.signerType, 'apprenant'),
+						inArray(emargements.contactId, removableContactIds),
 						isNull(emargements.signedAt)
 					)
 				);

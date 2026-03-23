@@ -16,6 +16,7 @@ export * from './formateurs';
 export * from './biblio-modules';
 export * from './biblio-programmes';
 export * from './formations';
+export * from './documents';
 export * from './apprenants';
 export * from './seances';
 export * from './deals';

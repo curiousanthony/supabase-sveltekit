@@ -123,3 +123,4 @@ export const typeQuestionnaire = pgEnum('type_questionnaire', [
 	'Audit des besoins'
 ]);
 export const questPhase = pgEnum('quest_phase', ['conception', 'deploiement', 'evaluation']);
+export const emargementSignerType = pgEnum('emargement_signer_type', ['apprenant', 'formateur']);
