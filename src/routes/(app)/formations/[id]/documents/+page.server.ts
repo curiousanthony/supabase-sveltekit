@@ -1,0 +1,139 @@
+import { db } from '$lib/db';
+import { formationDocuments, formations } from '$lib/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
+import { fail } from '@sveltejs/kit';
+import { getUserWorkspace } from '$lib/auth';
+import { generateDocument, getDocumentSignedUrl, type DocumentType } from '$lib/services/document-generator';
+import type { PageServerLoad, Actions } from './$types';
+
+async function verifyFormationOwnership(formationId: string, workspaceId: string) {
+	const formation = await db.query.formations.findFirst({
+		where: and(eq(formations.id, formationId), eq(formations.workspaceId, workspaceId)),
+		columns: { id: true }
+	});
+	return !!formation;
+}
+
+export const load: PageServerLoad = async ({ params, locals }) => {
+	const workspaceId = await getUserWorkspace(locals);
+	if (!workspaceId) return { documents: [] };
+
+	const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+	if (!isOwner) return { documents: [] };
+
+	const documents = await db.query.formationDocuments.findMany({
+		where: eq(formationDocuments.formationId, params.id),
+		orderBy: [desc(formationDocuments.createdAt)],
+		with: {
+			generatedByUser: {
+				columns: { firstName: true, lastName: true }
+			},
+			relatedContact: {
+				columns: { firstName: true, lastName: true }
+			},
+			relatedFormateur: {
+				columns: { id: true },
+				with: {
+					user: { columns: { firstName: true, lastName: true } }
+				}
+			}
+		}
+	});
+
+	return { documents };
+};
+
+const VALID_DOCUMENT_TYPES: DocumentType[] = [
+	'convention',
+	'convocation',
+	'feuille_emargement',
+	'certificat',
+	'attestation',
+	'devis',
+	'ordre_mission'
+];
+
+export const actions: Actions = {
+	generateDocument: async ({ request, params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+		if (!isOwner) return fail(403, { message: 'Accès refusé' });
+
+		const formData = await request.formData();
+		const type = formData.get('type')?.toString();
+		const contactId = formData.get('contactId')?.toString() || undefined;
+		const formateurId = formData.get('formateurId')?.toString() || undefined;
+		const seanceId = formData.get('seanceId')?.toString() || undefined;
+
+		if (!type || !VALID_DOCUMENT_TYPES.includes(type as DocumentType)) {
+			return fail(400, { message: 'Type de document invalide' });
+		}
+
+		try {
+			const result = await generateDocument(
+				type as DocumentType,
+				params.id,
+				user.id,
+				{ contactId, formateurId, seanceId }
+			);
+			return { success: true, documentId: result.documentId };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Erreur de génération';
+			return fail(500, { message });
+		}
+	},
+
+	getSignedUrl: async ({ request, params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+		if (!isOwner) return fail(403, { message: 'Accès refusé' });
+
+		const formData = await request.formData();
+		const documentId = formData.get('documentId')?.toString();
+		if (!documentId) return fail(400, { message: 'Document ID manquant' });
+
+		const doc = await db.query.formationDocuments.findFirst({
+			where: and(
+				eq(formationDocuments.id, documentId),
+				eq(formationDocuments.formationId, params.id)
+			),
+			columns: { storagePath: true }
+		});
+
+		if (!doc?.storagePath) return fail(404, { message: 'Document introuvable' });
+
+		try {
+			const url = await getDocumentSignedUrl(doc.storagePath);
+			return { success: true, url };
+		} catch {
+			return fail(500, { message: 'Impossible de générer le lien' });
+		}
+	},
+
+	deleteDocument: async ({ request, params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+
+		const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+		if (!isOwner) return fail(403, { message: 'Accès refusé' });
+
+		const formData = await request.formData();
+		const documentId = formData.get('documentId')?.toString();
+		if (!documentId) return fail(400, { message: 'Document ID manquant' });
+
+		await db.delete(formationDocuments).where(
+			and(
+				eq(formationDocuments.id, documentId),
+				eq(formationDocuments.formationId, params.id)
+			)
+		);
+
+		return { success: true };
+	}
+};

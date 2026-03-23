@@ -9,6 +9,7 @@
 	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 	import Users from '@lucide/svelte/icons/users';
 	import Wallet from '@lucide/svelte/icons/wallet';
+	import Files from '@lucide/svelte/icons/files';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -28,6 +29,7 @@
 		{ href: basePath + '/seances', label: 'Séances', icon: Calendar, dot: missingSignatures || undefined },
 		{ href: basePath + '/formateurs', label: 'Formateurs', icon: GraduationCap, dot: missingFormateurDocs || undefined },
 		{ href: basePath + '/apprenants', label: 'Apprenants', icon: Users, dot: unsignedEmargements || undefined },
+		{ href: basePath + '/documents', label: 'Documents', icon: Files },
 		{ href: basePath + '/finances', label: 'Finances', icon: Wallet, dot: overdueInvoices || undefined }
 	]);
 </script>
