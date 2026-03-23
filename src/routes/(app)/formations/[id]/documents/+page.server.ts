@@ -1,5 +1,5 @@
 import { db } from '$lib/db';
-import { formationDocuments, formations } from '$lib/db/schema';
+import { formationDocuments, formationEmails, formations } from '$lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
@@ -40,7 +40,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	});
 
-	return { documents };
+	const emails = await db.query.formationEmails.findMany({
+		where: eq(formationEmails.formationId, params.id),
+		orderBy: [desc(formationEmails.createdAt)],
+		with: {
+			createdByUser: {
+				columns: { firstName: true, lastName: true }
+			}
+		}
+	});
+
+	return { documents, emails };
 };
 
 const VALID_DOCUMENT_TYPES: DocumentType[] = [

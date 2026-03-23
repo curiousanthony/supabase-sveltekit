@@ -23,6 +23,9 @@
 	import Eye from '@lucide/svelte/icons/eye';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
+	import Send from '@lucide/svelte/icons/send';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import type { Component } from 'svelte';
 
 	let { data }: PageProps = $props();
@@ -82,8 +85,18 @@
 
 	const formation = $derived(data.formation);
 	const documents = $derived(data.documents ?? []);
+	const emails = $derived(data.emails ?? []);
 	const apprenants = $derived(formation?.formationApprenants ?? []);
 	const formateurs = $derived(formation?.formationFormateurs ?? []);
+
+	let commsExpanded = $state(false);
+
+	const EMAIL_STATUS_CONFIG: Record<string, { label: string; class: string }> = {
+		sent: { label: 'Envoyé', class: 'border-green-300 bg-green-50 text-green-700' },
+		logged: { label: 'Enregistré', class: 'border-blue-300 bg-blue-50 text-blue-700' },
+		failed: { label: 'Échec', class: 'border-red-300 bg-red-50 text-red-700' },
+		pending: { label: 'En attente', class: 'border-amber-300 bg-amber-50 text-amber-700' }
+	};
 
 	const filteredDocuments = $derived.by(() => {
 		let result = documents;
@@ -339,6 +352,61 @@
 					</Card.Content>
 				</Card.Root>
 			{/each}
+		</div>
+	{/if}
+
+	<!-- Communications section -->
+	{#if emails.length > 0}
+		<div class="mt-8">
+			<button
+				type="button"
+				class="flex w-full items-center gap-2 text-left"
+				onclick={() => (commsExpanded = !commsExpanded)}
+			>
+				{#if commsExpanded}
+					<ChevronDown class="size-4 text-muted-foreground" />
+				{:else}
+					<ChevronRight class="size-4 text-muted-foreground" />
+				{/if}
+				<Send class="size-4 text-muted-foreground" />
+				<h3 class="text-sm font-semibold">Communications</h3>
+				<Badge variant="secondary" class="text-xs">{emails.length}</Badge>
+			</button>
+
+			{#if commsExpanded}
+				<div class="mt-3 space-y-2">
+					{#each emails as email (email.id)}
+						{@const statusCfg = EMAIL_STATUS_CONFIG[email.status] ?? EMAIL_STATUS_CONFIG['pending']}
+						<Card.Root>
+							<Card.Content class="flex items-center gap-4 py-3">
+								<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+									<Mail class="size-4 text-muted-foreground" />
+								</div>
+
+								<div class="min-w-0 flex-1">
+									<div class="flex items-center gap-2">
+										<p class="truncate text-sm font-medium">{email.subject}</p>
+										<Badge variant="outline" class={statusCfg.class + ' text-xs'}>
+											{statusCfg.label}
+										</Badge>
+									</div>
+									<div class="flex items-center gap-3 text-xs text-muted-foreground">
+										<span>→ {email.recipientName ?? email.recipientEmail}</span>
+										{#if email.recipientType}
+											<span class="capitalize">({email.recipientType})</span>
+										{/if}
+										{#if email.sentAt}
+											<span>{new Date(email.sentAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+										{:else}
+											<span>{new Date(email.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+										{/if}
+									</div>
+								</div>
+							</Card.Content>
+						</Card.Root>
+					{/each}
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>
