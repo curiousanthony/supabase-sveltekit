@@ -114,6 +114,7 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: "Vérifier l'intitulé et la description",
+				description: "L'intitulé figure sur tous les documents officiels (convention, certificat).",
 				inlineType: 'verify-fields',
 				inlineConfig: {
 					fields: [
@@ -124,6 +125,7 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 			},
 			{
 				title: 'Confirmer les dates de début et de fin',
+				description: "Les dates conditionnent le calcul automatique des échéances.",
 				inlineType: 'verify-fields',
 				inlineConfig: {
 					fields: [
@@ -144,6 +146,7 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 			},
 			{
 				title: 'Confirmer les informations client',
+				description: "Le client apparaît sur la convention et la facturation.",
 				inlineType: 'verify-fields',
 				inlineConfig: {
 					fields: [{ key: 'client', label: 'Client', type: 'company-display' }]
@@ -579,22 +582,19 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		key: 'emargement',
 		phase: 'deploiement',
 		title: 'Suivi des émargements',
-		description: "S'assurer que les feuilles de présence sont signées par tous les participants à chaque séance.",
+		description: "S'assurer que les feuilles de présence sont signées par tous les participants.",
 		guidance:
-			"L'émargement est obligatoire (art. R.6313-3). Vérifiez quotidiennement que tous les apprenants ont signé matin ET après-midi. Relancez en cas de signatures manquantes.",
+			"L'émargement est obligatoire (art. R.6313-3). Vérifiez que les émargements sont bien configurés et que les apprenants signent.",
 		subActions: [
 			{
-				title: 'Vérifier les signatures quotidiennes',
+				title: 'Vérifier que les émargements sont configurés',
+				description: "Ouvrez l'onglet Séances et vérifiez que chaque séance a ses émargements prêts.",
 				inlineType: 'inline-view',
 				inlineConfig: { viewType: 'seances' }
 			},
 			{
 				title: 'Relancer les signatures manquantes',
-				inlineType: 'send-email',
-				inlineConfig: { emailType: 'rappel_emargement', recipientType: 'apprenant' }
-			},
-			{
-				title: 'Envoyer des rappels si nécessaire',
+				description: "Envoyez un rappel aux apprenants qui n'ont pas encore signé.",
 				inlineType: 'send-email',
 				inlineConfig: { emailType: 'rappel_emargement', recipientType: 'apprenant' }
 			}
@@ -614,12 +614,21 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 			"Suivez le déroulé pédagogique. Documentez tout écart significatif par rapport au programme prévu et justifiez les adaptations. Indicateurs Qualiopi n°6, 10, 19.",
 		subActions: [
 			{
-				title: 'Vérifier le déroulement conforme au programme',
+				title: 'Confirmer le déroulement du programme',
+				description: "Vérifiez que les modules prévus correspondent au contenu réellement dispensé.",
 				inlineType: 'inline-view',
 				inlineConfig: { viewType: 'programme' }
 			},
-			{ title: 'Documenter les adaptations éventuelles', inlineType: 'confirm-task' },
-			{ title: 'Distribuer les supports pédagogiques', inlineType: 'confirm-task' }
+			{
+				title: 'Distribuer les supports pédagogiques',
+				inlineType: 'confirm-task'
+			},
+			{
+				title: 'Documenter les écarts éventuels',
+				description: "Si le contenu a été adapté, téléversez un document justifiant les modifications.",
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: "Déposer les notes d'adaptation" }
+			}
 		],
 		dependencies: ['accueil_lancement'],
 		applicableTo: null,
@@ -653,22 +662,24 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		key: 'suivi_absences',
 		phase: 'deploiement',
 		title: 'Suivi des absences',
-		description: "Suivre et documenter les absences des apprenants, relancer et prévenir les abandons.",
+		description: "Documenter les absences et prévenir les abandons.",
 		guidance:
-			"Enregistrez toute absence, informez le client et/ou le financeur si nécessaire. Documentez les justificatifs et les actions de relance. Indicateur Qualiopi n°12.",
+			"Enregistrez toute absence, informez le client et/ou le financeur si nécessaire. Documentez les justificatifs. Indicateur Qualiopi n°12.",
 		subActions: [
 			{
-				title: 'Enregistrer les absences',
+				title: 'Vérifier la présence sur les émargements',
+				description: "Passez en revue les séances pour identifier les absences non justifiées.",
 				inlineType: 'inline-view',
 				inlineConfig: { viewType: 'seances' }
 			},
 			{
-				title: 'Informer le client si nécessaire',
+				title: 'Informer le client des absences',
+				description: "Si des absences significatives sont constatées, prévenez le donneur d'ordre.",
 				inlineType: 'send-email',
 				inlineConfig: { emailType: 'notification_absence', recipientType: 'client' }
 			},
 			{
-				title: 'Documenter les justificatifs',
+				title: 'Archiver les justificatifs d\'absence',
 				inlineType: 'upload-document',
 				inlineConfig: { acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'], label: 'Déposer les justificatifs' }
 			}
@@ -682,17 +693,21 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 	{
 		key: 'adaptation_formation',
 		phase: 'deploiement',
-		title: 'Adaptation en cours de formation',
-		description: "Ajuster le déroulement en fonction des retours et des résultats des évaluations.",
+		title: 'Bilan intermédiaire et adaptations',
+		description: "Ajuster le contenu en fonction des évaluations et documenter les modifications.",
 		guidance:
 			"Adaptez le rythme, approfondissez des sujets, modifiez les exercices selon les besoins. Documentez ces adaptations et justifiez-les. Indicateur Qualiopi n°10.",
 		subActions: [
-			{ title: 'Analyser les résultats des évaluations formatives', inlineType: 'confirm-task' },
-			{ title: 'Adapter le contenu si nécessaire', inlineType: 'confirm-task' },
 			{
-				title: 'Documenter les adaptations',
+				title: 'Rédiger le bilan intermédiaire',
+				description: "Synthétisez les résultats des évaluations formatives et les retours du formateur.",
 				inlineType: 'upload-document',
-				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: "Déposer les notes d'adaptation" }
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: 'Déposer le bilan intermédiaire' }
+			},
+			{
+				title: 'Confirmer les adaptations appliquées',
+				description: "Si le contenu a été modifié, confirmez que le programme mis à jour est cohérent.",
+				inlineType: 'confirm-task'
 			}
 		],
 		dependencies: ['evaluations_formatives'],

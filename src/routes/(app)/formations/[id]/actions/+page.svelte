@@ -46,24 +46,29 @@
 		prevPhaseCompletion = { ...current };
 	});
 
-	async function callAction(actionName: string, body: FormData) {
+	async function callAction(actionName: string, body: FormData): Promise<boolean> {
 		try {
 			const response = await fetch(`?/${actionName}`, { method: 'POST', body });
 			if (!response.ok) {
 				toast.error(`Erreur serveur (${response.status})`);
-				return;
+				return false;
 			}
 			const result = deserialize(await response.text());
 			if (result.type === 'success') {
 				await invalidateAll();
+				return true;
 			} else if (result.type === 'failure') {
 				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+				return false;
 			} else if (result.type === 'error') {
 				toast.error(result.error?.message ?? 'Erreur inattendue');
+				return false;
 			}
+			return false;
 		} catch (err) {
 			console.error('callAction error:', err);
 			toast.error(err instanceof Error ? err.message : 'Erreur réseau');
+			return false;
 		}
 	}
 
@@ -103,16 +108,16 @@
 <div class="mx-auto max-w-3xl">
 	<QuestBoard
 		{actions}
-		formation={{
-			type: formation?.type ?? null,
-			typeFinancement: formation?.typeFinancement ?? null,
-			dateDebut: formation?.dateDebut ?? null,
-			dateFin: formation?.dateFin ?? null
-		}}
+		formation={formation as unknown as Record<string, unknown>}
 		onSubActionToggle={handleSubActionToggle}
 		onStatusChange={handleStatusChange}
 		onDismissGuidance={handleDismissGuidance}
+		{callAction}
 	/>
 </div>
 
-<LevelUpToast phaseName={levelUpPhase ?? ''} show={showLevelUp} onClose={() => (showLevelUp = false)} />
+<LevelUpToast
+	phaseName={levelUpPhase ?? ''}
+	show={showLevelUp}
+	onClose={() => (showLevelUp = false)}
+/>

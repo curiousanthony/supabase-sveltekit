@@ -3,11 +3,7 @@
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { cn } from '$lib/utils';
 	import { categorizeQuests } from '$lib/formation-quest-urgency';
-	import {
-		PHASE_LABELS,
-		getBlockingInfo,
-		type QuestPhase
-	} from '$lib/formation-quests';
+	import { PHASE_LABELS, getBlockingInfo, type QuestPhase } from '$lib/formation-quests';
 	import Flame from '@lucide/svelte/icons/flame';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Clock from '@lucide/svelte/icons/clock';
@@ -23,6 +19,7 @@
 		completed: boolean;
 		orderIndex: number;
 		inlineType?: string | null;
+		document?: { id: string; fileName: string; fileSize: number } | null;
 	}
 
 	interface Action {
@@ -40,24 +37,15 @@
 
 	interface Props {
 		actions: Action[];
-		formation: {
-			type?: string | null;
-			typeFinancement?: string | null;
-			dateDebut?: string | null;
-			dateFin?: string | null;
-		};
+		formation: Record<string, unknown>;
 		onSubActionToggle: (subActionId: string, completed: boolean) => Promise<void>;
 		onStatusChange: (actionId: string, newStatus: string) => Promise<void>;
 		onDismissGuidance: (actionId: string) => Promise<void>;
+		callAction: (actionName: string, data: FormData) => Promise<boolean>;
 	}
 
-	let {
-		actions,
-		formation,
-		onSubActionToggle,
-		onStatusChange,
-		onDismissGuidance
-	}: Props = $props();
+	let { actions, formation, onSubActionToggle, onStatusChange, onDismissGuidance, callAction }: Props =
+		$props();
 
 	const categorized = $derived(categorizeQuests(actions, formation));
 
@@ -99,7 +87,6 @@
 </script>
 
 <div class="space-y-8">
-	<!-- Lifecycle progress bar -->
 	<div class="space-y-2">
 		<div class="flex items-center justify-between">
 			<span class="text-sm font-medium">{completedActions}/{totalActions} étapes</span>
@@ -127,7 +114,6 @@
 		</div>
 	</div>
 
-	<!-- Section 1: À faire maintenant -->
 	{#if categorized.maintenant.length > 0}
 		<section>
 			<div class="mb-3 flex items-center gap-2">
@@ -142,17 +128,18 @@
 						template={item.template}
 						urgencyScore={item.urgencyScore}
 						dueDate={item.dueDate}
+						{formation}
 						expanded={expandedQuestId === item.action.id}
 						onToggleExpand={() => toggleQuest(item.action.id)}
 						{onSubActionToggle}
 						{onStatusChange}
+						{callAction}
 					/>
 				{/each}
 			</div>
 		</section>
 	{/if}
 
-	<!-- Section 2: Prochainement -->
 	{#if categorized.prochainement.length > 0}
 		<section>
 			<div class="mb-3 flex items-center gap-2">
@@ -168,17 +155,18 @@
 						template={item.template}
 						urgencyScore={item.urgencyScore}
 						dueDate={item.dueDate}
+						{formation}
 						expanded={expandedQuestId === item.action.id}
 						onToggleExpand={() => toggleQuest(item.action.id)}
 						{onSubActionToggle}
 						{onStatusChange}
+						{callAction}
 					/>
 				{/each}
 			</div>
 		</section>
 	{/if}
 
-	<!-- Section 3: En attente -->
 	{#if categorized.enAttente.length > 0}
 		<section>
 			<div class="mb-3 flex items-center gap-2">
@@ -206,7 +194,6 @@
 		</section>
 	{/if}
 
-	<!-- Section 4: Complétées -->
 	{#if categorized.completes.length > 0}
 		<section>
 			<button
@@ -227,7 +214,7 @@
 			{#if completedExpanded}
 				<ul class="space-y-1 pl-6" transition:slide={{ duration: 200 }}>
 					{#each categorized.completes as rawItem (rawItem.action.id)}
-					{@const item = rawItem as ActionItem}
+						{@const item = rawItem as ActionItem}
 						<li class="flex items-center gap-2 py-1.5 text-sm text-muted-foreground">
 							<CheckCircle2 class="size-3.5 text-green-500" />
 							<span class="line-through">{item.action.title}</span>
