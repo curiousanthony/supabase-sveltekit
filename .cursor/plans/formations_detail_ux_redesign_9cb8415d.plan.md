@@ -28,7 +28,7 @@ todos:
     status: pending
   - id: history-panel
     content: Build enhanced History slide-over with clickable entities, filters, communication log
-    status: pending
+    status: completed
   - id: refactor-routes
     content: Consolidate 9 routes into 4 (Pulse + Fiche + Seances + Finances) + 2 slide-over panels (Documents + History)
     status: pending
@@ -37,7 +37,7 @@ todos:
     status: pending
   - id: browser-verify
     content: Browser-verify the complete system against all foundation success criteria
-    status: pending
+    status: completed
 isProject: false
 ---
 
