@@ -975,7 +975,7 @@ Each template uses Postmark's template variables (`{{formation_name}}`, `{{learn
 The email sender should be configurable per workspace:
 
 - Add `email_sender_name` and `email_sender_address` to workspace settings
-- Default: "Mentore Manager [formations@mentore.app](mailto:formations@mentore.app)"
+- Default: "Mentore Manager [formations@mentore.fr](mailto:formations@mentore.app)"
 - Workspace can override: "Centre Formation ABC [contact@abc.fr](mailto:contact@abc.fr)" (requires Postmark sender signature setup — guide the user)
 
 ---
