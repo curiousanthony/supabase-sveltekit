@@ -3,11 +3,74 @@ import type { formationActions } from '$lib/db/schema';
 
 export type QuestPhase = 'conception' | 'deploiement' | 'evaluation';
 
+export type InlineType =
+	| 'verify-fields'
+	| 'upload-document'
+	| 'generate-document'
+	| 'select-people'
+	| 'send-email'
+	| 'external-link'
+	| 'wait-external'
+	| 'confirm-task'
+	| 'inline-view';
+
+export interface VerifyFieldConfig {
+	fields: { key: string; label: string; type: 'text' | 'textarea' | 'date' | 'number' | 'select' | 'company-display'; options?: string[] }[];
+}
+
+export interface GenerateDocumentConfig {
+	documentType: string;
+}
+
+export interface SelectPeopleConfig {
+	peopleType: 'formateur' | 'apprenant';
+}
+
+export interface SendEmailConfig {
+	emailType: string;
+	recipientType: 'client' | 'apprenant' | 'formateur' | 'financeur';
+}
+
+export interface ExternalLinkConfig {
+	url?: string;
+	label?: string;
+}
+
+export interface WaitExternalConfig {
+	waitingFor: string;
+	reminderEmailType?: string;
+}
+
+export interface InlineViewConfig {
+	viewType: 'seances' | 'finances' | 'programme' | 'apprenants' | 'formateurs';
+}
+
+export interface UploadDocumentConfig {
+	acceptedFileTypes?: string[];
+	label?: string;
+}
+
+export type InlineConfig =
+	| VerifyFieldConfig
+	| GenerateDocumentConfig
+	| SelectPeopleConfig
+	| SendEmailConfig
+	| ExternalLinkConfig
+	| WaitExternalConfig
+	| InlineViewConfig
+	| UploadDocumentConfig
+	| Record<string, unknown>;
+
 export interface SubActionTemplate {
 	title: string;
 	description?: string;
+	inlineType: InlineType;
+	inlineConfig?: InlineConfig;
+	/** @deprecated Use inlineType instead */
 	ctaType?: 'navigate' | 'upload' | 'external' | null;
+	/** @deprecated Use inlineConfig instead */
 	ctaLabel?: string;
+	/** @deprecated Use inlineType instead */
 	ctaTarget?: string;
 	documentRequired?: boolean;
 	acceptedFileTypes?: string[];
@@ -51,18 +114,41 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: "Vérifier l'intitulé et la description",
-				ctaType: 'navigate',
-				ctaLabel: 'Voir la fiche',
-				ctaTarget: '/formations/[id]/fiche'
+				inlineType: 'verify-fields',
+				inlineConfig: {
+					fields: [
+						{ key: 'name', label: 'Intitulé', type: 'text' },
+						{ key: 'description', label: 'Description', type: 'textarea' }
+					]
+				}
 			},
 			{
 				title: 'Confirmer les dates de début et de fin',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir la fiche',
-				ctaTarget: '/formations/[id]/fiche'
+				inlineType: 'verify-fields',
+				inlineConfig: {
+					fields: [
+						{ key: 'dateDebut', label: 'Date de début', type: 'date' },
+						{ key: 'dateFin', label: 'Date de fin', type: 'date' }
+					]
+				}
 			},
-			{ title: 'Vérifier la modalité et la durée' },
-			{ title: 'Confirmer les informations client' }
+			{
+				title: 'Vérifier la modalité et la durée',
+				inlineType: 'verify-fields',
+				inlineConfig: {
+					fields: [
+						{ key: 'modalite', label: 'Modalité', type: 'select', options: ['Présentiel', 'Distanciel', 'Hybride', 'E-Learning'] },
+						{ key: 'duree', label: 'Durée (heures)', type: 'number' }
+					]
+				}
+			},
+			{
+				title: 'Confirmer les informations client',
+				inlineType: 'verify-fields',
+				inlineConfig: {
+					fields: [{ key: 'client', label: 'Client', type: 'company-display' }]
+				}
+			}
 		],
 		dependencies: [],
 		applicableTo: null,
@@ -78,19 +164,17 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Envoyez un questionnaire d'analyse des besoins aux apprenants et/ou à leur manager. Les réponses permettront d'adapter le programme. Indicateur Qualiopi n°4.",
 		subActions: [
-			{ title: 'Choisir ou créer le questionnaire de besoins' },
+			{ title: 'Choisir ou créer le questionnaire de besoins', inlineType: 'confirm-task' },
 			{
 				title: 'Envoyer aux apprenants',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les apprenants',
-				ctaTarget: '/formations/[id]/apprenants'
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'analyse_besoins', recipientType: 'apprenant' }
 			},
-			{ title: 'Collecter les réponses' },
+			{ title: 'Collecter les réponses', inlineType: 'wait-external', inlineConfig: { waitingFor: 'Apprenants' } },
 			{
 				title: 'Partager les résultats avec le formateur',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les formateurs',
-				ctaTarget: '/formations/[id]/formateurs'
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'analyse_besoins_resultats', recipientType: 'formateur' }
 			}
 		],
 		dependencies: ['verification_infos'],
@@ -109,18 +193,16 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Associer ou créer le programme',
-				ctaType: 'navigate',
-				ctaLabel: 'Aller au programme',
-				ctaTarget: '/formations/[id]/programme'
+				inlineType: 'inline-view',
+				inlineConfig: { viewType: 'programme' }
 			},
 			{
 				title: 'Vérifier les modules et leur durée',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les modules',
-				ctaTarget: '/formations/[id]/programme'
+				inlineType: 'inline-view',
+				inlineConfig: { viewType: 'programme' }
 			},
-			{ title: 'Confirmer les objectifs pédagogiques' },
-			{ title: "Valider les modalités d'évaluation" }
+			{ title: 'Confirmer les objectifs pédagogiques', inlineType: 'confirm-task' },
+			{ title: "Valider les modalités d'évaluation", inlineType: 'confirm-task' }
 		],
 		dependencies: ['verification_infos'],
 		applicableTo: null,
@@ -136,14 +218,20 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Le devis doit mentionner : intitulé, dates, durée, nombre de stagiaires, coût HT/TTC, conditions de paiement et d'annulation. Indicateur Qualiopi n°1.",
 		subActions: [
-			{ title: 'Rédiger le devis' },
-			{ title: 'Envoyer au client' },
+			{
+				title: 'Générer le devis',
+				inlineType: 'generate-document',
+				inlineConfig: { documentType: 'devis' }
+			},
+			{
+				title: 'Envoyer au client',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'devis_envoi', recipientType: 'client' }
+			},
 			{
 				title: 'Obtenir la validation du devis',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer le devis signé',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'Client', reminderEmailType: 'devis_relance' }
 			}
 		],
 		dependencies: ['programme_modules'],
@@ -160,15 +248,21 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"La convention formalise l'accord entre l'organisme et le client. Elle doit être signée avant le début de la formation. Indicateur Qualiopi n°6.",
 		subActions: [
-			{ title: 'Générer la convention' },
-			{ title: 'Relire et personnaliser si nécessaire' },
-			{ title: 'Envoyer au client' },
+			{
+				title: 'Générer la convention',
+				inlineType: 'generate-document',
+				inlineConfig: { documentType: 'convention' }
+			},
+			{ title: 'Relire et personnaliser si nécessaire', inlineType: 'confirm-task' },
+			{
+				title: 'Envoyer au client',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'convention_envoi', recipientType: 'client' }
+			},
 			{
 				title: 'Obtenir la signature',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer la convention signée',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'Client', reminderEmailType: 'convention_relance' }
 			}
 		],
 		dependencies: ['devis'],
@@ -185,15 +279,17 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"La demande OPCO doit être déposée au moins 15 jours à 2 mois avant J0. Le dossier comprend : convention, programme, devis, formulaire OPCO, infos salariés.",
 		subActions: [
-			{ title: 'Préparer le dossier de financement' },
+			{ title: 'Préparer le dossier de financement', inlineType: 'confirm-task' },
 			{
 				title: "Déposer sur la plateforme OPCO",
-				ctaType: 'external',
-				ctaLabel: 'Ouvrir la plateforme OPCO',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'external-link',
+				inlineConfig: { label: 'Ouvrir la plateforme OPCO' }
 			},
-			{ title: "Suivre l'état de la demande" }
+			{
+				title: "Suivre l'état de la demande",
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'OPCO' }
+			}
 		],
 		dependencies: ['convention'],
 		applicableTo: { funding: ['OPCO'] },
@@ -209,14 +305,22 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Vérifiez que le montant accordé correspond au devis. En cas de prise en charge partielle, informez le client du reste à charge.",
 		subActions: [
-			{ title: "Réceptionner l'accord de prise en charge" },
-			{ title: 'Vérifier le montant accordé' },
+			{
+				title: "Réceptionner l'accord de prise en charge",
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'OPCO' }
+			},
+			{
+				title: 'Vérifier le montant accordé',
+				inlineType: 'verify-fields',
+				inlineConfig: {
+					fields: [{ key: 'montantAccorde', label: 'Montant accordé', type: 'number' }]
+				}
+			},
 			{
 				title: "Archiver l'accord",
-				ctaType: 'upload',
-				ctaLabel: "Déposer l'accord OPCO",
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: "Déposer l'accord OPCO" }
 			}
 		],
 		dependencies: ['demande_financement'],
@@ -235,11 +339,15 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Créer la session sur EDOF',
-				ctaType: 'external',
-				ctaLabel: 'Ouvrir EDOF'
+				inlineType: 'external-link',
+				inlineConfig: { url: 'https://www.of.moncompteformation.gouv.fr', label: 'Ouvrir EDOF' }
 			},
-			{ title: "Valider l'inscription du stagiaire" },
-			{ title: 'Confirmer le financement' }
+			{
+				title: "Valider l'inscription du stagiaire",
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'Stagiaire (via Mon Compte Formation)' }
+			},
+			{ title: 'Confirmer le financement', inlineType: 'confirm-task' }
 		],
 		dependencies: ['convention'],
 		applicableTo: { funding: ['CPF'] },
@@ -255,19 +363,20 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Chaque apprenant doit recevoir une convocation contenant : lieu, date, horaires, programme, documents à apporter. Indicateur Qualiopi n°9.",
 		subActions: [
-			{ title: 'Générer les convocations' },
+			{
+				title: 'Générer les convocations',
+				inlineType: 'generate-document',
+				inlineConfig: { documentType: 'convocation' }
+			},
 			{
 				title: "Joindre le livret d'accueil",
-				ctaType: 'upload',
-				ctaLabel: "Déposer le livret d'accueil",
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: "Déposer le livret d'accueil" }
 			},
 			{
 				title: 'Envoyer à tous les apprenants',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les apprenants',
-				ctaTarget: '/formations/[id]/apprenants'
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'convocation', recipientType: 'apprenant' }
 			}
 		],
 		dependencies: ['convention'],
@@ -286,12 +395,14 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Préparer le règlement intérieur',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer le règlement',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: 'Déposer le règlement' }
 			},
-			{ title: 'Transmettre aux stagiaires' }
+			{
+				title: 'Transmettre aux stagiaires',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'reglement_interieur', recipientType: 'apprenant' }
+			}
 		],
 		dependencies: ['convocations'],
 		applicableTo: null,
@@ -307,15 +418,18 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Le test de positionnement permet d'adapter le contenu aux besoins réels. Il sera comparé au test final pour mesurer la progression. Indicateur Qualiopi n°8.",
 		subActions: [
-			{ title: 'Choisir ou créer le test de positionnement' },
-			{ title: "Configurer l'envoi" },
+			{ title: 'Choisir ou créer le test de positionnement', inlineType: 'confirm-task' },
+			{ title: "Configurer l'envoi", inlineType: 'confirm-task' },
 			{
 				title: 'Envoyer aux apprenants',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les apprenants',
-				ctaTarget: '/formations/[id]/apprenants'
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'test_positionnement', recipientType: 'apprenant' }
 			},
-			{ title: 'Collecter les résultats' }
+			{
+				title: 'Collecter les résultats',
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'Apprenants' }
+			}
 		],
 		dependencies: ['analyse_besoins'],
 		applicableTo: null,
@@ -331,10 +445,10 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Réservez la salle, vérifiez le matériel (vidéoprojecteur, PC, connexion), préparez les supports pédagogiques, vérifiez l'accessibilité PMR. Indicateur Qualiopi n°17.",
 		subActions: [
-			{ title: 'Réserver la salle / vérifier le lien visio' },
-			{ title: 'Vérifier le matériel technique' },
-			{ title: 'Préparer les supports pédagogiques' },
-			{ title: "Vérifier l'accessibilité PMR" }
+			{ title: 'Réserver la salle / vérifier le lien visio', inlineType: 'confirm-task' },
+			{ title: 'Vérifier le matériel technique', inlineType: 'confirm-task' },
+			{ title: 'Préparer les supports pédagogiques', inlineType: 'confirm-task' },
+			{ title: "Vérifier l'accessibilité PMR", inlineType: 'confirm-task' }
 		],
 		dependencies: ['convention'],
 		applicableTo: null,
@@ -352,18 +466,15 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Affecter le formateur',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les formateurs',
-				ctaTarget: '/formations/[id]/formateurs'
+				inlineType: 'select-people',
+				inlineConfig: { peopleType: 'formateur' }
 			},
 			{
 				title: 'Vérifier les qualifications',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer le CV',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'], label: 'Déposer le CV' }
 			},
-			{ title: 'Formaliser le contrat (si sous-traitant)' }
+			{ title: 'Formaliser le contrat (si sous-traitant)', inlineType: 'confirm-task' }
 		],
 		dependencies: ['programme_modules'],
 		applicableTo: null,
@@ -379,14 +490,20 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"L'ordre de mission détaille les conditions d'intervention : dates, lieu, contenu, rémunération. Le formateur doit le retourner signé.",
 		subActions: [
-			{ title: "Générer l'ordre de mission" },
-			{ title: 'Envoyer au formateur' },
+			{
+				title: "Générer l'ordre de mission",
+				inlineType: 'generate-document',
+				inlineConfig: { documentType: 'ordre_mission' }
+			},
+			{
+				title: 'Envoyer au formateur',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'ordre_mission_envoi', recipientType: 'formateur' }
+			},
 			{
 				title: 'Collecter la copie signée',
-				ctaType: 'upload',
-				ctaLabel: "Déposer l'ordre signé",
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'Formateur', reminderEmailType: 'ordre_mission_relance' }
 			}
 		],
 		dependencies: ['convention'],
@@ -405,26 +522,24 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Vérifier le CV à jour',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer le CV',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'], label: 'Déposer le CV' }
 			},
 			{
 				title: 'Vérifier les diplômes',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les diplômes',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'], label: 'Déposer les diplômes' }
 			},
 			{
 				title: 'Vérifier NDA / URSSAF / SIRET',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les justificatifs',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'], label: 'Déposer les justificatifs' }
 			},
-			{ title: 'Relancer pour les documents manquants' }
+			{
+				title: 'Relancer pour les documents manquants',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'relance_documents_formateur', recipientType: 'formateur' }
+			}
 		],
 		dependencies: [],
 		applicableTo: null,
@@ -442,10 +557,10 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Vérifiez que la logistique est prête (salle, matériel, accès distanciel). Accueillez les apprenants, faites le tour de table et distribuez les supports. Indicateurs Qualiopi n°9, 10.",
 		subActions: [
-			{ title: 'Vérifier la logistique (salle, matériel, lien visio)' },
-			{ title: 'Accueillir les apprenants et faire le tour de table' },
-			{ title: 'Distribuer les supports et le livret d\'accueil' },
-			{ title: 'Recueillir les attentes des participants' }
+			{ title: 'Vérifier la logistique (salle, matériel, lien visio)', inlineType: 'confirm-task' },
+			{ title: 'Accueillir les apprenants et faire le tour de table', inlineType: 'confirm-task' },
+			{ title: 'Distribuer les supports et le livret d\'accueil', inlineType: 'confirm-task' },
+			{ title: 'Recueillir les attentes des participants', inlineType: 'confirm-task' }
 		],
 		dependencies: [
 			'verification_infos',
@@ -470,12 +585,19 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Vérifier les signatures quotidiennes',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les séances',
-				ctaTarget: '/formations/[id]/seances'
+				inlineType: 'inline-view',
+				inlineConfig: { viewType: 'seances' }
 			},
-			{ title: 'Relancer les signatures manquantes' },
-			{ title: 'Envoyer des rappels si nécessaire' }
+			{
+				title: 'Relancer les signatures manquantes',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'rappel_emargement', recipientType: 'apprenant' }
+			},
+			{
+				title: 'Envoyer des rappels si nécessaire',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'rappel_emargement', recipientType: 'apprenant' }
+			}
 		],
 		dependencies: ['accueil_lancement'],
 		applicableTo: null,
@@ -493,12 +615,11 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Vérifier le déroulement conforme au programme',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir le programme',
-				ctaTarget: '/formations/[id]/programme'
+				inlineType: 'inline-view',
+				inlineConfig: { viewType: 'programme' }
 			},
-			{ title: 'Documenter les adaptations éventuelles' },
-			{ title: 'Distribuer les supports pédagogiques' }
+			{ title: 'Documenter les adaptations éventuelles', inlineType: 'confirm-task' },
+			{ title: 'Distribuer les supports pédagogiques', inlineType: 'confirm-task' }
 		],
 		dependencies: ['accueil_lancement'],
 		applicableTo: null,
@@ -514,15 +635,13 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Des évaluations en cours de formation (quiz, exercices pratiques, mises en situation) permettent de vérifier l'acquisition des compétences et d'adapter le contenu. Indicateur Qualiopi n°11.",
 		subActions: [
-			{ title: 'Réaliser les évaluations prévues' },
+			{ title: 'Réaliser les évaluations prévues', inlineType: 'confirm-task' },
 			{
 				title: 'Consigner les résultats',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les résultats',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: 'Déposer les résultats' }
 			},
-			{ title: 'Adapter le contenu si nécessaire' }
+			{ title: 'Adapter le contenu si nécessaire', inlineType: 'confirm-task' }
 		],
 		dependencies: ['animation_pedagogique'],
 		applicableTo: null,
@@ -540,17 +659,18 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Enregistrer les absences',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les séances',
-				ctaTarget: '/formations/[id]/seances'
+				inlineType: 'inline-view',
+				inlineConfig: { viewType: 'seances' }
 			},
-			{ title: 'Informer le client si nécessaire' },
+			{
+				title: 'Informer le client si nécessaire',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'notification_absence', recipientType: 'client' }
+			},
 			{
 				title: 'Documenter les justificatifs',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les justificatifs',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'], label: 'Déposer les justificatifs' }
 			}
 		],
 		dependencies: ['emargement'],
@@ -567,14 +687,12 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Adaptez le rythme, approfondissez des sujets, modifiez les exercices selon les besoins. Documentez ces adaptations et justifiez-les. Indicateur Qualiopi n°10.",
 		subActions: [
-			{ title: 'Analyser les résultats des évaluations formatives' },
-			{ title: 'Adapter le contenu si nécessaire' },
+			{ title: 'Analyser les résultats des évaluations formatives', inlineType: 'confirm-task' },
+			{ title: 'Adapter le contenu si nécessaire', inlineType: 'confirm-task' },
 			{
 				title: 'Documenter les adaptations',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les notes d\'adaptation',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: "Déposer les notes d'adaptation" }
 			}
 		],
 		dependencies: ['evaluations_formatives'],
@@ -593,15 +711,22 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Envoyez le questionnaire de satisfaction le jour de la fin de la formation ou le lendemain. Prévoyez des relances à J+2 et J+5. Indicateur Qualiopi n°30 (non-conformité majeure si absent).",
 		subActions: [
-			{ title: 'Choisir ou créer le questionnaire apprenants' },
+			{ title: 'Choisir ou créer le questionnaire apprenants', inlineType: 'confirm-task' },
 			{
 				title: 'Envoyer aux apprenants',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les apprenants',
-				ctaTarget: '/formations/[id]/apprenants'
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'satisfaction_chaud', recipientType: 'apprenant' }
 			},
-			{ title: "Envoyer au donneur d'ordre (client)" },
-			{ title: 'Collecter et analyser les réponses' }
+			{
+				title: "Envoyer au donneur d'ordre (client)",
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'satisfaction_chaud_client', recipientType: 'client' }
+			},
+			{
+				title: 'Collecter et analyser les réponses',
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'Apprenants et client' }
+			}
 		],
 		dependencies: ['emargement'],
 		applicableTo: null,
@@ -617,15 +742,13 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Administrez le test final (même format que le positionnement). Comparez les résultats pour mesurer la montée en compétences. Les résultats doivent être documentés individuellement. Indicateur Qualiopi n°11.",
 		subActions: [
-			{ title: 'Administrer le test final' },
+			{ title: 'Administrer le test final', inlineType: 'confirm-task' },
 			{
 				title: 'Consigner les résultats individuels',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les résultats',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: 'Déposer les résultats' }
 			},
-			{ title: 'Comparer avec le test de positionnement' }
+			{ title: 'Comparer avec le test de positionnement', inlineType: 'confirm-task' }
 		],
 		dependencies: ['evaluations_formatives'],
 		applicableTo: null,
@@ -643,18 +766,19 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Vérifier les données de présence',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les séances',
-				ctaTarget: '/formations/[id]/seances'
+				inlineType: 'inline-view',
+				inlineConfig: { viewType: 'seances' }
 			},
-			{ title: 'Générer les certificats' },
-		{
-			title: 'Envoyer aux apprenants et au financeur',
-			ctaType: 'upload',
-			ctaLabel: 'Déposer les certificats',
-			documentRequired: false,
-			acceptedFileTypes: ['application/pdf']
-		}
+			{
+				title: 'Générer les certificats',
+				inlineType: 'generate-document',
+				inlineConfig: { documentType: 'certificat' }
+			},
+			{
+				title: 'Envoyer aux apprenants et au financeur',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'certificat_realisation', recipientType: 'apprenant' }
+			}
 		],
 		dependencies: ['emargement'],
 		applicableTo: null,
@@ -670,20 +794,20 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"L'attestation mentionne les objectifs, la nature et la durée de l'action, les compétences acquises et les résultats de l'évaluation. Indicateur Qualiopi n°11.",
 		subActions: [
-			{ title: 'Générer les attestations' },
+			{
+				title: 'Générer les attestations',
+				inlineType: 'generate-document',
+				inlineConfig: { documentType: 'attestation' }
+			},
 			{
 				title: 'Envoyer aux apprenants',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les apprenants',
-				ctaTarget: '/formations/[id]/apprenants'
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'attestation_fin_formation', recipientType: 'apprenant' }
 			},
-		{
-			title: 'Archiver les copies',
-			ctaType: 'upload',
-			ctaLabel: 'Déposer les attestations',
-			documentRequired: false,
-			acceptedFileTypes: ['application/pdf']
-		}
+			{
+				title: 'Archiver les copies',
+				inlineType: 'confirm-task'
+			}
 		],
 		dependencies: ['certificat_realisation', 'evaluation_acquis_fin'],
 		applicableTo: null,
@@ -701,15 +825,18 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Générer la facture',
-				documentRequired: false,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'generate-document',
+				inlineConfig: { documentType: 'facture' }
 			},
-			{ title: "Envoyer au client ou à l'OPCO" },
+			{
+				title: "Envoyer au client ou à l'OPCO",
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'facture_envoi', recipientType: 'client' }
+			},
 			{
 				title: 'Suivre le paiement',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les finances',
-				ctaTarget: '/formations/[id]/finances'
+				inlineType: 'inline-view',
+				inlineConfig: { viewType: 'finances' }
 			}
 		],
 		dependencies: ['certificat_realisation'],
@@ -728,13 +855,19 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		subActions: [
 			{
 				title: 'Compiler le dossier justificatif',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les justificatifs',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: 'Déposer les justificatifs' }
 			},
-			{ title: "Envoyer à l'OPCO / déclarer sur EDOF" },
-			{ title: 'Suivre la validation' }
+			{
+				title: "Envoyer à l'OPCO / déclarer sur EDOF",
+				inlineType: 'external-link',
+				inlineConfig: { label: "Ouvrir la plateforme de l'OPCO / EDOF" }
+			},
+			{
+				title: 'Suivre la validation',
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'OPCO / Caisse des Dépôts' }
+			}
 		],
 		dependencies: ['facturation'],
 		applicableTo: { funding: ['OPCO', 'CPF'] },
@@ -750,15 +883,22 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Le questionnaire à froid mesure le transfert des acquis en situation de travail. Envoyez-le aussi au commanditaire (entreprise). Indicateur Qualiopi n°30.",
 		subActions: [
-			{ title: "Programmer l'envoi à J+60" },
+			{ title: "Programmer l'envoi à J+60", inlineType: 'confirm-task' },
 			{
 				title: 'Envoyer aux apprenants',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir les apprenants',
-				ctaTarget: '/formations/[id]/apprenants'
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'satisfaction_froid', recipientType: 'apprenant' }
 			},
-			{ title: 'Envoyer au commanditaire (entreprise)' },
-			{ title: 'Collecter et analyser les réponses' }
+			{
+				title: 'Envoyer au commanditaire (entreprise)',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'satisfaction_froid_client', recipientType: 'client' }
+			},
+			{
+				title: 'Collecter et analyser les réponses',
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'Apprenants et entreprise' }
+			}
 		],
 		dependencies: ['satisfaction_chaud'],
 		applicableTo: null,
@@ -774,14 +914,20 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Envoyez un questionnaire au stagiaire et à son manager. Cette évaluation est très valorisée lors des audits Qualiopi. Indicateurs n°11, 32.",
 		subActions: [
-			{ title: 'Envoyer le questionnaire au stagiaire et au manager' },
-			{ title: 'Collecter les retours' },
+			{
+				title: 'Envoyer le questionnaire au stagiaire et au manager',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'evaluation_transfert', recipientType: 'apprenant' }
+			},
+			{
+				title: 'Collecter les retours',
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'Stagiaire et manager' }
+			},
 			{
 				title: 'Documenter les résultats',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer les résultats',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: 'Déposer les résultats' }
 			}
 		],
 		dependencies: ['satisfaction_froid'],
@@ -798,14 +944,20 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Le bilan formateur documente : déroulement, points forts/faibles, adaptations réalisées, recommandations. Input essentiel pour l'amélioration continue. Indicateurs Qualiopi n°30, 32.",
 		subActions: [
-			{ title: 'Envoyer le questionnaire de bilan' },
-			{ title: 'Collecter le retour du formateur' },
+			{
+				title: 'Envoyer le questionnaire de bilan',
+				inlineType: 'send-email',
+				inlineConfig: { emailType: 'bilan_formateur', recipientType: 'formateur' }
+			},
+			{
+				title: 'Collecter le retour du formateur',
+				inlineType: 'wait-external',
+				inlineConfig: { waitingFor: 'Formateur' }
+			},
 			{
 				title: "Documenter les points d'amélioration",
-				ctaType: 'upload',
-				ctaLabel: 'Déposer le bilan',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: 'Déposer le bilan' }
 			}
 		],
 		dependencies: ['satisfaction_chaud'],
@@ -822,20 +974,17 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Analysez satisfaction à chaud, à froid, bilan formateur, évaluations. Mettez à jour le programme si nécessaire. Crucial pour le renouvellement Qualiopi. Indicateur n°32 (non-conformité majeure si absent).",
 		subActions: [
-			{ title: 'Analyser tous les retours collectés' },
-			{ title: 'Identifier les actions d\'amélioration' },
+			{ title: 'Analyser tous les retours collectés', inlineType: 'confirm-task' },
+			{ title: 'Identifier les actions d\'amélioration', inlineType: 'confirm-task' },
 			{
 				title: 'Documenter le plan d\'actions correctives',
-				ctaType: 'upload',
-				ctaLabel: 'Déposer la fiche d\'amélioration',
-				documentRequired: true,
-				acceptedFileTypes: ['application/pdf']
+				inlineType: 'upload-document',
+				inlineConfig: { acceptedFileTypes: ['application/pdf'], label: "Déposer la fiche d'amélioration" }
 			},
 			{
 				title: 'Mettre à jour le programme si nécessaire',
-				ctaType: 'navigate',
-				ctaLabel: 'Voir le programme',
-				ctaTarget: '/formations/[id]/programme'
+				inlineType: 'inline-view',
+				inlineConfig: { viewType: 'programme' }
 			}
 		],
 		dependencies: ['satisfaction_chaud', 'satisfaction_froid', 'bilan_formateur'],
@@ -852,9 +1001,9 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
 		guidance:
 			"Passez en revue tous les documents du dossier. Archivez-les pour une durée minimale de 5 ans (exigence Qualiopi). Marquez la formation comme terminée.",
 		subActions: [
-			{ title: 'Vérifier la présence de tous les documents' },
-			{ title: 'Archiver le dossier complet' },
-			{ title: 'Marquer la formation comme terminée' }
+			{ title: 'Vérifier la présence de tous les documents', inlineType: 'confirm-task' },
+			{ title: 'Archiver le dossier complet', inlineType: 'confirm-task' },
+			{ title: 'Marquer la formation comme terminée', inlineType: 'confirm-task' }
 		],
 		dependencies: [
 			'satisfaction_chaud',
