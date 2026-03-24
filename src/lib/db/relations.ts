@@ -31,6 +31,7 @@ import {
 	emargements,
 	formateurs,
 	formateursThematiques,
+	formateursSousthematiques,
 	deals,
 	biblioModules,
 	biblioProgrammes,
@@ -367,6 +368,7 @@ export const formateursRelations = relations(formateurs, ({ one, many }) => ({
 		references: [workspaces.id]
 	}),
 	formateursThematiques: many(formateursThematiques),
+	formateursSousthematiques: many(formateursSousthematiques),
 	formationFormateurs: many(formationFormateurs),
 	seances: many(seances),
 	emargements: many(emargements)
@@ -379,6 +381,17 @@ export const formateursThematiquesRelations = relations(formateursThematiques, (
 	}),
 	formateur: one(formateurs, {
 		fields: [formateursThematiques.formateurId],
+		references: [formateurs.id]
+	})
+}));
+
+export const formateursSousthematiquesRelations = relations(formateursSousthematiques, ({ one }) => ({
+	sousthematique: one(sousthematiques, {
+		fields: [formateursSousthematiques.sousthematiqueId],
+		references: [sousthematiques.id]
+	}),
+	formateur: one(formateurs, {
+		fields: [formateursSousthematiques.formateurId],
 		references: [formateurs.id]
 	})
 }));

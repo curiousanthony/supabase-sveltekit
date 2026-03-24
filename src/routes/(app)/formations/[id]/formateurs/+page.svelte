@@ -6,9 +6,11 @@
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Input from '$lib/components/ui/input/input.svelte';
+	import { Label } from '$lib/components/ui/label';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { enhance } from '$app/forms';
+	import { toast } from 'svelte-sonner';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
@@ -21,11 +23,41 @@
 	import X from '@lucide/svelte/icons/x';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
+	import CityCombobox from '$lib/components/crm/CityCombobox.svelte';
 
 	let { data }: PageProps = $props();
 
 	let dialogOpen = $state(false);
 	let searchQuery = $state('');
+	let showCreateForm = $state(false);
+	let submitting = $state(false);
+
+	let newFirstName = $state('');
+	let newLastName = $state('');
+	let newEmail = $state('');
+	let newVille = $state('');
+	let newDepartement = $state('');
+	let selectedThematiqueIds = $state<string[]>([]);
+	let selectedSousthematiqueIds = $state<string[]>([]);
+
+	const availableSousthematiques = $derived(
+		(data.allSousthematiques ?? []).filter((st) =>
+			selectedThematiqueIds.includes(st.parentTopicId)
+		)
+	);
+
+	function resetDialog() {
+		searchQuery = '';
+		showCreateForm = false;
+		submitting = false;
+		newFirstName = '';
+		newLastName = '';
+		newEmail = '';
+		newVille = '';
+		newDepartement = '';
+		selectedThematiqueIds = [];
+		selectedSousthematiqueIds = [];
+	}
 
 	const formation = $derived(data.formation);
 	const allFormateurs = $derived(data.allFormateurs ?? []);
@@ -160,22 +192,26 @@
 					<Badge variant="secondary" class="text-xs">{assignedFormateurs.length}</Badge>
 				{/if}
 			</Card.Title>
-			<Dialog.Root bind:open={dialogOpen}>
-				<Dialog.Trigger>
-					{#snippet child({ props })}
-						<Button {...props} variant="outline" size="sm" class="cursor-pointer">
-							<UserPlus class="size-4 mr-1.5" />
-							Ajouter
-						</Button>
-					{/snippet}
-				</Dialog.Trigger>
-				<Dialog.Content class="sm:max-w-lg">
-					<Dialog.Header>
-						<Dialog.Title>Ajouter un formateur</Dialog.Title>
-						<Dialog.Description>
-							Recherchez un formateur dans votre répertoire pour l'assigner à cette formation.
-						</Dialog.Description>
-					</Dialog.Header>
+		<Dialog.Root bind:open={dialogOpen} onOpenChange={(open) => { if (!open) resetDialog(); }}>
+			<Dialog.Trigger>
+				{#snippet child({ props })}
+					<Button {...props} variant="outline" size="sm" class="cursor-pointer">
+						<UserPlus class="size-4 mr-1.5" />
+						Ajouter
+					</Button>
+				{/snippet}
+			</Dialog.Trigger>
+			<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+				<Dialog.Header>
+					<Dialog.Title>{showCreateForm ? 'Nouveau formateur' : 'Ajouter un formateur'}</Dialog.Title>
+					<Dialog.Description>
+						{showCreateForm
+							? 'Renseignez les informations du formateur à créer et assigner.'
+							: 'Recherchez un formateur existant ou créez-en un nouveau.'}
+					</Dialog.Description>
+				</Dialog.Header>
+
+				{#if !showCreateForm}
 					<div class="space-y-4">
 						<div class="relative">
 							<Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -222,6 +258,19 @@
 							{/each}
 						</div>
 
+						<button
+							type="button"
+							class="flex w-full items-center gap-2 rounded-md border border-dashed px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							onclick={() => {
+							selectedThematiqueIds = data.formation?.topicId ? [data.formation.topicId] : [];
+							selectedSousthematiqueIds = data.formation?.subtopicsIds ? [data.formation.subtopicsIds] : [];
+							showCreateForm = true;
+						}}
+						>
+							<UserPlus class="size-4" />
+							Créer un nouveau formateur
+						</button>
+
 						<Separator />
 
 						<!-- Marketplace teaser -->
@@ -235,8 +284,139 @@
 							</div>
 						</div>
 					</div>
-				</Dialog.Content>
-			</Dialog.Root>
+				{:else}
+					<form
+						method="POST"
+						action="?/createFormateurAndAssign"
+						use:enhance={() => {
+							submitting = true;
+							return async ({ result, update }) => {
+								submitting = false;
+								if (result.type === 'success') {
+									toast.success('Formateur créé et assigné');
+									dialogOpen = false;
+									resetDialog();
+									await update();
+								} else if (result.type === 'failure') {
+									toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+								}
+							};
+						}}
+					>
+						<div class="space-y-4">
+							<div class="grid grid-cols-2 gap-3">
+								<div class="space-y-1.5">
+									<Label for="new-first-name">Prénom</Label>
+									<Input id="new-first-name" name="firstName" bind:value={newFirstName} autocomplete="off" />
+								</div>
+								<div class="space-y-1.5">
+									<Label for="new-last-name">Nom</Label>
+									<Input id="new-last-name" name="lastName" bind:value={newLastName} required autocomplete="off" />
+								</div>
+							</div>
+							<div class="space-y-1.5">
+								<Label for="new-email">Email</Label>
+								<Input id="new-email" name="email" type="email" bind:value={newEmail} autocomplete="off" />
+							</div>
+							<div class="space-y-1.5">
+								<Label>Ville / Département</Label>
+								<CityCombobox
+									city={newVille}
+									departement={newDepartement}
+									secondaryField="departement"
+									onSelect={(c, _region, _code, dept) => { newVille = c; newDepartement = dept ?? ''; }}
+								/>
+								<input type="hidden" name="ville" value={newVille} />
+								<input type="hidden" name="departement" value={newDepartement} />
+							</div>
+
+							{#if (data.allThematiques ?? []).length > 0}
+								<div class="space-y-2">
+									<Label>Thématiques</Label>
+									<div class="space-y-1.5 rounded-md border p-3">
+										{#each data.allThematiques ?? [] as t (t.id)}
+											<label class="flex cursor-pointer items-center gap-2 text-sm">
+												<input
+													type="checkbox"
+													class="size-4 rounded"
+													checked={selectedThematiqueIds.includes(t.id)}
+													onchange={() => {
+														if (selectedThematiqueIds.includes(t.id)) {
+															const removedId = t.id;
+															selectedThematiqueIds = selectedThematiqueIds.filter((id) => id !== removedId);
+															const removedSousIds = (data.allSousthematiques ?? [])
+																.filter((st) => st.parentTopicId === removedId)
+																.map((st) => st.id);
+															selectedSousthematiqueIds = selectedSousthematiqueIds.filter(
+																(id) => !removedSousIds.includes(id)
+															);
+														} else {
+															selectedThematiqueIds = [...selectedThematiqueIds, t.id];
+														}
+													}}
+												/>
+												{t.name}
+											</label>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							{#each selectedThematiqueIds as id (id)}
+								<input type="hidden" name="thematiqueIds[]" value={id} />
+							{/each}
+
+							{#if selectedThematiqueIds.length > 0 && availableSousthematiques.length > 0}
+								<div class="space-y-2">
+									<Label>Sous-thématiques</Label>
+									<div class="space-y-1.5 rounded-md border p-3">
+										{#each availableSousthematiques as st (st.id)}
+											<label class="flex cursor-pointer items-center gap-2 text-sm">
+												<input
+													type="checkbox"
+													class="size-4 rounded"
+													checked={selectedSousthematiqueIds.includes(st.id)}
+													onchange={() => {
+														if (selectedSousthematiqueIds.includes(st.id)) {
+															selectedSousthematiqueIds = selectedSousthematiqueIds.filter((id) => id !== st.id);
+														} else {
+															selectedSousthematiqueIds = [...selectedSousthematiqueIds, st.id];
+														}
+													}}
+												/>
+												{st.name}
+											</label>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							{#each selectedSousthematiqueIds as id (id)}
+								<input type="hidden" name="sousthematiqueIds[]" value={id} />
+							{/each}
+
+							<p class="text-xs text-muted-foreground">
+								Vous pourrez compléter son profil (tarif, disponibilité, description…) depuis sa fiche dans le CRM.
+							</p>
+						</div>
+
+						<Dialog.Footer class="mt-4">
+							<Button
+								variant="outline"
+								type="button"
+								class="cursor-pointer"
+								onclick={() => { showCreateForm = false; }}
+							>
+								Retour
+							</Button>
+							<Button type="submit" class="cursor-pointer" disabled={submitting || (!newFirstName.trim() && !newLastName.trim())}>
+								{submitting ? 'Création...' : 'Créer et assigner'}
+							</Button>
+						</Dialog.Footer>
+					</form>
+				{/if}
+			</Dialog.Content>
+		</Dialog.Root>
 		</Card.Header>
 
 		<Card.Content>

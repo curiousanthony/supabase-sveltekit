@@ -1,8 +1,9 @@
 import { db } from '$lib/db';
-import { formateurs, users } from '$lib/db/schema';
+import { formateurs } from '$lib/db/schema';
 import { getUserWorkspace } from '$lib/auth';
 import { eq } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
+import { createFormateurForWorkspace } from '$lib/services/formateur-create';
 import type { PageServerLoad, Actions } from './$types';
 
 const header = {
@@ -72,7 +73,7 @@ export const actions: Actions = {
 		const fd = await request.formData();
 		const firstName = (fd.get('firstName') as string)?.trim() || null;
 		const lastName = (fd.get('lastName') as string)?.trim() || null;
-		const emailRaw = (fd.get('email') as string)?.trim();
+		const email = (fd.get('email') as string)?.trim() || null;
 		const ville = (fd.get('ville') as string)?.trim() || null;
 		const departement = (fd.get('departement') as string)?.trim() || null;
 
@@ -80,47 +81,20 @@ export const actions: Actions = {
 			return fail(400, { message: 'Le prénom ou le nom est requis' });
 		}
 
-		// Use a generated placeholder email if none provided so users.email NOT NULL is satisfied
-		const email = emailRaw || `formateur.${Date.now()}@noreply.internal`;
-
-		// Insert user, or reuse existing if email is already taken
-		let newUserId: string;
-		const [insertedUser] = await db
-			.insert(users)
-			.values({ firstName, lastName, email })
-			.onConflictDoNothing()
-			.returning({ id: users.id });
-
-		if (insertedUser) {
-			newUserId = insertedUser.id;
-		} else {
-			// Email already exists — look up the existing user
-			const existing = await db.query.users.findFirst({
-				where: eq(users.email, email),
-				columns: { id: true }
-			});
-			if (!existing) {
-				return fail(500, { message: 'Impossible de créer le formateur. Veuillez réessayer.' });
-			}
-			newUserId = existing.id;
-		}
-
-		let newFormateur: { id: string };
 		try {
-			const [row] = await db
-				.insert(formateurs)
-				.values({ userId: newUserId, workspaceId, ville, departement })
-				.returning({ id: formateurs.id });
-			if (!row) throw new Error('Insert returned no row');
-			newFormateur = row;
+			const { formateurId } = await createFormateurForWorkspace({
+				workspaceId,
+				firstName,
+				lastName,
+				email,
+				ville,
+				departement
+			});
+			throw redirect(303, `/contacts/formateurs/${formateurId}`);
 		} catch (e) {
-			console.error(
-				'[createFormateur] formateur insert error:',
-				e instanceof Error ? e.message : String(e)
-			);
+			if (e && typeof e === 'object' && 'status' in e && 'location' in e) throw e;
+			console.error('[createFormateur]', e instanceof Error ? e.message : String(e));
 			return fail(500, { message: 'Impossible de créer le formateur. Veuillez réessayer.' });
 		}
-
-		throw redirect(303, `/contacts/formateurs/${newFormateur.id}`);
 	}
 };

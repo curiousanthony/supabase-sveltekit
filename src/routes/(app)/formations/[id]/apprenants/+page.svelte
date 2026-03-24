@@ -17,6 +17,8 @@
 	import Mail from '@lucide/svelte/icons/mail';
 	import Phone from '@lucide/svelte/icons/phone';
 	import CalendarCheck from '@lucide/svelte/icons/calendar-check';
+	import * as Select from '$lib/components/ui/select/index.js';
+	import { posteOptions } from '$lib/crm/contact-schema';
 	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
 
 	let { data }: PageProps = $props();
@@ -71,6 +73,10 @@
 	let newLastName = $state('');
 	let newEmail = $state('');
 	let newPhone = $state('');
+	let newPoste = $state('');
+	let selectedCompanyId = $state('');
+	let newCompanyName = $state('');
+	let showNewCompanyInput = $state(false);
 
 	const filteredContacts = $derived(
 		searchQuery.trim().length === 0
@@ -99,6 +105,10 @@
 		newLastName = '';
 		newEmail = '';
 		newPhone = '';
+		newPoste = '';
+		selectedCompanyId = '';
+		newCompanyName = '';
+		showNewCompanyInput = false;
 		submitting = false;
 	}
 
@@ -232,9 +242,9 @@
 <Dialog.Root bind:open={addDialogOpen} onOpenChange={(open) => { if (!open) resetAddDialog(); }}>
 	<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-lg">
 		<Dialog.Header>
-			<Dialog.Title>Ajouter un apprenant</Dialog.Title>
+			<Dialog.Title>{showCreateForm ? 'Nouvel apprenant' : 'Ajouter un apprenant'}</Dialog.Title>
 			<Dialog.Description>
-				Recherchez un contact existant ou créez-en un nouveau.
+				{showCreateForm ? "Renseignez les informations de l'apprenant à créer." : 'Recherchez un contact existant ou créez-en un nouveau.'}
 			</Dialog.Description>
 		</Dialog.Header>
 
@@ -308,6 +318,8 @@
 				}}
 			>
 				<input type="hidden" name="addToFutureSessions" value={addToFutureSessions ? 'true' : 'false'} />
+				<input type="hidden" name="companyId" value={selectedCompanyId} />
+				<input type="hidden" name="newCompanyName" value={newCompanyName} />
 
 				<div class="space-y-4">
 					<div class="grid grid-cols-2 gap-3">
@@ -327,6 +339,81 @@
 					<div class="space-y-1.5">
 						<Label for="new-phone">Téléphone</Label>
 						<Input id="new-phone" name="phone" type="tel" bind:value={newPhone} />
+					</div>
+
+					<div class="space-y-1.5">
+						<Label for="new-poste">Poste</Label>
+						<Select.Root type="single" bind:value={newPoste}>
+							<Select.Trigger class="w-full">
+								{#if newPoste}{newPoste}{:else}<span class="text-muted-foreground">Sélectionner un poste...</span>{/if}
+							</Select.Trigger>
+							<Select.Content>
+								{#each posteOptions as option (option)}
+									<Select.Item value={option}>{option}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+					</div>
+
+					<div class="space-y-1.5">
+						<Label>Entreprise</Label>
+						{#if !showNewCompanyInput}
+							<Select.Root type="single" bind:value={selectedCompanyId}>
+								<Select.Trigger class="w-full">
+									{#if selectedCompanyId}
+										{data.workspaceCompanies?.find((c) => c.id === selectedCompanyId)?.name ?? ''}
+									{:else}
+										<span class="text-muted-foreground">Sélectionner une entreprise...</span>
+									{/if}
+								</Select.Trigger>
+								<Select.Content>
+									{#each data.workspaceCompanies ?? [] as co (co.id)}
+										<Select.Item value={co.id}>{co.name}</Select.Item>
+									{/each}
+									{#if (data.workspaceCompanies ?? []).length > 0}
+										<div class="mt-1 border-t pt-1">
+											<button
+												type="button"
+												class="w-full px-2 py-1.5 text-left text-sm text-muted-foreground hover:text-foreground"
+												onclick={() => {
+													showNewCompanyInput = true;
+													selectedCompanyId = '';
+												}}
+											>
+												+ Créer une nouvelle entreprise
+											</button>
+										</div>
+									{/if}
+								</Select.Content>
+							</Select.Root>
+							{#if (data.workspaceCompanies ?? []).length === 0}
+								<button
+									type="button"
+									class="text-sm text-primary hover:underline"
+									onclick={() => {
+										showNewCompanyInput = true;
+									}}
+								>
+									+ Créer une nouvelle entreprise
+								</button>
+							{/if}
+						{:else}
+							<div class="flex items-center gap-2">
+								<Input
+									bind:value={newCompanyName}
+									placeholder="Nom de l'entreprise"
+									class="flex-1"
+								/>
+								<button
+									type="button"
+									class="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+									onclick={() => {
+										showNewCompanyInput = false;
+										newCompanyName = '';
+									}}
+								>Annuler</button>
+							</div>
+						{/if}
 					</div>
 
 					{#if futureSeances.length > 0}
