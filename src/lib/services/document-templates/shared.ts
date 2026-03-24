@@ -63,7 +63,9 @@ export const SHARED_STYLES: StyleDictionary = {
 
 export function formatDateFr(isoDate: string | null): string {
 	if (!isoDate) return '—';
-	return new Date(isoDate).toLocaleDateString('fr-FR', {
+	const date = new Date(isoDate);
+	if (isNaN(date.getTime())) return '—';
+	return date.toLocaleDateString('fr-FR', {
 		day: 'numeric',
 		month: 'long',
 		year: 'numeric'
@@ -106,15 +108,12 @@ export function buildOrgHeader(ws: WorkspaceIdentity): Content {
 	};
 }
 
-export function buildSignatureBlock(
-	ws: WorkspaceIdentity,
-	clientName?: string
-): Content {
+export function buildSignatureBlock(ws: WorkspaceIdentity, clientName?: string): Content {
 	const cols: Content[] = [
 		{
 			width: '*',
 			stack: [
-				{ text: 'Pour l\'organisme de formation', style: 'label', margin: [0, 0, 0, 3] },
+				{ text: "Pour l'organisme de formation", style: 'label', margin: [0, 0, 0, 3] },
 				{ text: ws.legalName ?? ws.name ?? '', style: 'value' },
 				...(ws.signatoryName ? [{ text: ws.signatoryName, style: 'value' }] : []),
 				...(ws.signatoryRole ? [{ text: ws.signatoryRole, style: 'small' }] : []),

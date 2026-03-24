@@ -10,7 +10,7 @@
 	import { CardCheckboxGroup, CardCheckbox } from '$lib/components/ui/card-checkbox';
 	import Stepper from '$lib/components/ui/stepper/stepper.svelte';
 	import { deserialize } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { tick } from 'svelte';
 	import { cn } from '$lib/utils';
@@ -96,7 +96,9 @@
 			const result = deserialize(await response.text());
 			if (result.type === 'success') {
 				toast.success('Enregistré');
-				await invalidateAll();
+				if (formation?.id) {
+					await invalidate(`formation:${formation.id}`);
+				}
 			} else if (result.type === 'failure') {
 				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
 			}
@@ -114,9 +116,11 @@
 
 	function handleBlur(field: string, current: string | number | boolean | null) {
 		if (editingField !== field) return;
-		const str = String(current ?? '');
-		if (editValue !== str) {
-			saveField(field, editValue);
+		const isDateField = field === 'dateDebut' || field === 'dateFin';
+		const nextVal = isDateField ? toDateInputValue(editValue) : editValue;
+		const prevVal = isDateField ? toDateInputValue(current == null ? null : String(current)) : String(current ?? '');
+		if (nextVal !== prevVal) {
+			saveField(field, isDateField ? nextVal : editValue);
 		} else {
 			editingField = null;
 		}
@@ -139,8 +143,16 @@
 		return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 	}
 
+	/** YYYY-MM-DD for date inputs — Drizzle/JSON may use full ISO timestamps. */
+	function toDateInputValue(v: string | null | undefined): string {
+		if (!v) return '';
+		const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v).trim());
+		return m ? m[1] : '';
+	}
+
 	async function openDatePicker(field: 'dateDebut' | 'dateFin') {
-		startEdit(field, formation?.[field] ?? null);
+		editingField = field;
+		editValue = toDateInputValue(formation?.[field] ?? null);
 		await tick();
 		const el = field === 'dateDebut' ? dateDebutInputEl : dateFinInputEl;
 		el?.focus();

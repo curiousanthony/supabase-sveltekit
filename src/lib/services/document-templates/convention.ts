@@ -25,6 +25,23 @@ export interface ConventionData {
 export function buildConvention(data: ConventionData): TDocumentDefinitions {
 	const { workspace, formation, client, pricing, modules } = data;
 
+	const hasPricingData =
+		pricing.prixTotal !== null ||
+		pricing.prixParJour !== null ||
+		pricing.nbParticipants !== null;
+
+	// Article 1 is fixed (Objet). Increment for each optional block (objectifs, programme)
+	// and for the remaining sections so numbering stays consistent when objectifs is absent.
+	let articleIndex = 2;
+	const objectifsArticleNumber = formation.objectifs ? articleIndex++ : undefined;
+	const programmeArticleNumber = modules.length > 0 ? articleIndex++ : undefined;
+	const moyensArticleNumber = articleIndex++;
+	const conditionsArticleNumber = articleIndex++;
+	const modalitesReglementArticleNumber = articleIndex++;
+	const deduitArticleNumber = articleIndex++;
+	const attestationArticleNumber = articleIndex++;
+	const differendsArticleNumber = articleIndex++;
+
 	const articlesContent = [
 		{
 			text: 'CONVENTION DE FORMATION PROFESSIONNELLE',
@@ -47,13 +64,20 @@ export function buildConvention(data: ConventionData): TDocumentDefinitions {
 				workspace.nda ? `, déclaré sous le numéro ${workspace.nda}` : '',
 				workspace.siret ? `, SIRET ${workspace.siret}` : '',
 				workspace.address ? `, dont le siège social est situé ${workspace.address}` : '',
-				workspace.city ? ` ${workspace.postalCode ?? ''} ${workspace.city}` : '',
+				workspace.city
+					? ` ${workspace.postalCode ? workspace.postalCode + ' ' : ''}${workspace.city}`
+					: '',
 				`, ci-après dénommé "l'Organisme de Formation",`
 			],
 			style: 'body',
 			margin: [0, 5, 0, 10] as [number, number, number, number]
 		},
-		{ text: 'ET', style: 'body', alignment: 'center' as const, margin: [0, 5, 0, 10] as [number, number, number, number] },
+		{
+			text: 'ET',
+			style: 'body',
+			alignment: 'center' as const,
+			margin: [0, 5, 0, 10] as [number, number, number, number]
+		},
 		{
 			text: [
 				{ text: `${client.legalName ?? client.name}`, bold: true },
@@ -76,12 +100,33 @@ export function buildConvention(data: ConventionData): TDocumentDefinitions {
 			table: {
 				widths: ['30%', '*'],
 				body: [
-					[{ text: 'Intitulé', style: 'label' }, { text: formation.name, style: 'value' }],
-					[{ text: 'Type', style: 'label' }, { text: formation.type ?? '—', style: 'value' }],
-					[{ text: 'Modalité', style: 'label' }, { text: formation.modalite ?? '—', style: 'value' }],
-					[{ text: 'Durée', style: 'label' }, { text: `${formation.duree ?? '—'} heures`, style: 'value' }],
-					[{ text: 'Dates', style: 'label' }, { text: `Du ${formatDateFr(formation.dateDebut)} au ${formatDateFr(formation.dateFin)}`, style: 'value' }],
-					[{ text: 'Lieu', style: 'label' }, { text: formation.location ?? 'À définir', style: 'value' }]
+					[
+						{ text: 'Intitulé', style: 'label' },
+						{ text: formation.name, style: 'value' }
+					],
+					[
+						{ text: 'Type', style: 'label' },
+						{ text: formation.type ?? '—', style: 'value' }
+					],
+					[
+						{ text: 'Modalité', style: 'label' },
+						{ text: formation.modalite ?? '—', style: 'value' }
+					],
+					[
+						{ text: 'Durée', style: 'label' },
+						{ text: `${formation.duree ?? '—'} heures`, style: 'value' }
+					],
+					[
+						{ text: 'Dates', style: 'label' },
+						{
+							text: `Du ${formatDateFr(formation.dateDebut)} au ${formatDateFr(formation.dateFin)}`,
+							style: 'value'
+						}
+					],
+					[
+						{ text: 'Lieu', style: 'label' },
+						{ text: formation.location ?? 'À définir', style: 'value' }
+					]
 				]
 			},
 			layout: 'lightHorizontalLines',
@@ -90,14 +135,17 @@ export function buildConvention(data: ConventionData): TDocumentDefinitions {
 
 		...(formation.objectifs
 			? [
-					{ text: 'Article 2 — Objectifs pédagogiques', style: 'subheader' },
+					{
+						text: `Article ${objectifsArticleNumber} — Objectifs pédagogiques`,
+						style: 'subheader'
+					},
 					{ text: formation.objectifs, style: 'body' }
 				]
 			: []),
 
 		...(modules.length > 0
 			? [
-					{ text: 'Article 3 — Programme', style: 'subheader' },
+					{ text: `Article ${programmeArticleNumber} — Programme`, style: 'subheader' },
 					{
 						table: {
 							widths: ['*', '20%'],
@@ -118,51 +166,72 @@ export function buildConvention(data: ConventionData): TDocumentDefinitions {
 				]
 			: []),
 
-		{ text: `Article ${modules.length > 0 ? 4 : 3} — Moyens pédagogiques`, style: 'subheader' },
+		{ text: `Article ${moyensArticleNumber} — Moyens pédagogiques`, style: 'subheader' },
 		{
 			text: `Les moyens pédagogiques et techniques mis en œuvre sont adaptés à la nature de la formation. L'Organisme de Formation met à disposition les supports pédagogiques nécessaires au bon déroulement de l'action.`,
 			style: 'body'
 		},
 
-		{ text: `Article ${modules.length > 0 ? 5 : 4} — Conditions financières`, style: 'subheader' },
-		{
-			table: {
-				widths: ['40%', '*'],
-				body: [
-					...(pricing.prixTotal
-						? [[{ text: 'Coût total HT', style: 'label' }, { text: `${pricing.prixTotal.toLocaleString('fr-FR')} €`, style: 'value' }]]
-						: []),
-					...(pricing.prixParJour
-						? [[{ text: 'Coût journalier HT', style: 'label' }, { text: `${pricing.prixParJour.toLocaleString('fr-FR')} €`, style: 'value' }]]
-						: []),
-					...(pricing.nbParticipants
-						? [[{ text: 'Nombre de participants', style: 'label' }, { text: `${pricing.nbParticipants}`, style: 'value' }]]
-						: [])
-				]
-			},
-			layout: 'noBorders',
-			margin: [0, 5, 0, 10] as [number, number, number, number]
-		},
+		{ text: `Article ${conditionsArticleNumber} — Conditions financières`, style: 'subheader' },
+		hasPricingData
+			? {
+					table: {
+						widths: ['40%', '*'],
+						body: [
+							...(pricing.prixTotal !== null
+								? [
+										[
+											{ text: 'Coût total HT', style: 'label' },
+											{ text: `${pricing.prixTotal.toLocaleString('fr-FR')} €`, style: 'value' }
+										]
+									]
+								: []),
+							...(pricing.prixParJour !== null
+								? [
+										[
+											{ text: 'Coût journalier HT', style: 'label' },
+											{ text: `${pricing.prixParJour.toLocaleString('fr-FR')} €`, style: 'value' }
+										]
+									]
+								: []),
+							...(pricing.nbParticipants !== null
+								? [
+										[
+											{ text: 'Nombre de participants', style: 'label' },
+											{ text: `${pricing.nbParticipants}`, style: 'value' }
+										]
+									]
+								: [])
+						]
+					},
+					layout: 'noBorders',
+					margin: [0, 5, 0, 10] as [number, number, number, number]
+				}
+			: {
+					text: 'Tarification : à définir',
+					style: 'body',
+					margin: [0, 5, 0, 10] as [number, number, number, number]
+				},
 
-		{ text: `Article ${modules.length > 0 ? 6 : 5} — Modalités de règlement`, style: 'subheader' },
+		{ text: `Article ${modalitesReglementArticleNumber} — Modalités de règlement`, style: 'subheader' },
 		{
 			text: `Le règlement sera effectué à réception de facture, à l'issue de la formation, dans un délai de 30 jours.`,
 			style: 'body'
 		},
 
-		{ text: `Article ${modules.length > 0 ? 7 : 6} — Dédit ou abandon`, style: 'subheader' },
+		{ text: `Article ${deduitArticleNumber} — Dédit ou abandon`, style: 'subheader' },
 		{
 			text: `En cas de dédit par le Client moins de 10 jours ouvrés avant le début de la formation, l'Organisme de Formation se réserve le droit de facturer 50% du montant total de la convention à titre de dédommagement. En cas d'abandon en cours de formation, le Client sera redevable de l'intégralité du coût de la formation.`,
 			style: 'body'
 		},
 
-		{ text: `Article ${modules.length > 0 ? 8 : 7} — Attestation`, style: 'subheader' },
+		{ text: `Article ${attestationArticleNumber} — Attestation`, style: 'subheader' },
 		{
 			text: `L'Organisme de Formation délivrera au stagiaire une attestation mentionnant les objectifs, la nature, la durée de l'action et les résultats de l'évaluation des acquis de la formation.`,
 			style: 'body'
 		},
 
-		{ text: `Article ${modules.length > 0 ? 9 : 8} — Différends`, style: 'subheader' },
+		{ text: `Article ${differendsArticleNumber} — Différends`, style: 'subheader' },
 		{
 			text: `Si une contestation ou un différend ne peuvent être réglés à l'amiable, le Tribunal de commerce compétent sera saisi du litige.`,
 			style: 'body'

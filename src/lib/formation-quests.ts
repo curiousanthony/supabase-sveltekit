@@ -1089,6 +1089,55 @@ export function getQuestsForFormation(
 	});
 }
 
+/** First YYYY-MM-DD in a string (Postgres date or ISO datetime). */
+function parseCivilDateParts(value: string | Date | null | undefined): {
+	y: number;
+	m: number;
+	d: number;
+} | null {
+	if (value == null) return null;
+	if (value instanceof Date) {
+		if (Number.isNaN(value.getTime())) return null;
+		return { y: value.getFullYear(), m: value.getMonth() + 1, d: value.getDate() };
+	}
+	const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+	if (!m) return null;
+	return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
+}
+
+function formatCivilDateParts(y: number, m: number, d: number): string {
+	return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/** Add calendar days to a civil date (formation start/end); avoids UTC/local mixing from Date parsing + toISOString(). */
+export function addCalendarDaysToCivilDate(isoOrDate: string | Date, deltaDays: number): string {
+	const parts = parseCivilDateParts(isoOrDate);
+	if (!parts) {
+		if (typeof isoOrDate === 'string') return isoOrDate.slice(0, 10);
+		return formatCivilDateParts(
+			isoOrDate.getFullYear(),
+			isoOrDate.getMonth() + 1,
+			isoOrDate.getDate()
+		);
+	}
+	const dt = new Date(parts.y, parts.m - 1, parts.d);
+	dt.setDate(dt.getDate() + deltaDays);
+	return formatCivilDateParts(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
+}
+
+/**
+ * Days from today (local calendar) until due date (YYYY-MM-DD = civil date).
+ * Negative = overdue. Null if unparseable.
+ */
+export function civilDaysFromTodayUntilDue(dueIso: string | null, now: Date = new Date()): number | null {
+	if (!dueIso) return null;
+	const parts = parseCivilDateParts(dueIso);
+	if (!parts) return null;
+	const due = new Date(parts.y, parts.m - 1, parts.d);
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	return Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export function calculateDueDates(
 	quests: QuestTemplate[],
 	dateDebut: string | null | undefined,
@@ -1099,9 +1148,7 @@ export function calculateDueDates(
 		if (!q.dueDateOffset) continue;
 		const refDate = q.dueDateOffset.reference === 'dateDebut' ? dateDebut : dateFin;
 		if (!refDate) continue;
-		const d = new Date(refDate);
-		d.setDate(d.getDate() + q.dueDateOffset.days);
-		dueDates.set(q.key, d.toISOString().slice(0, 10));
+		dueDates.set(q.key, addCalendarDaysToCivilDate(refDate, q.dueDateOffset.days));
 	}
 	return dueDates;
 }

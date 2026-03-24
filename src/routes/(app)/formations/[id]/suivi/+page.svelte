@@ -94,19 +94,22 @@
 	let prevCompletedKeys = $state<Set<string | null>>(new Set());
 	let prevPhaseCompletion = $state<Record<string, boolean>>({});
 	let prevAllComplete = $state(false);
+	/** True after the completion-keys effect has run once (skip sound on that baseline only). */
+	let hasRunEffect = false;
 
 	$effect(() => {
 		const currentKeys = completedKeys;
 		const prevKeys = untrack(() => prevCompletedKeys);
-		const isInitialRun = prevKeys.size === 0 && currentKeys.size > 0;
 
-		if (!isInitialRun) {
+		if (hasRunEffect) {
 			for (const key of currentKeys) {
 				if (!prevKeys.has(key)) {
 					playMicroSound();
 					break;
 				}
 			}
+		} else {
+			hasRunEffect = true;
 		}
 
 		prevCompletedKeys = new Set(currentKeys);

@@ -52,8 +52,9 @@ export function computeUrgencyScore(
 
 	const now = new Date();
 	now.setHours(0, 0, 0, 0);
-	const due = new Date(dueDate);
-	due.setHours(0, 0, 0, 0);
+	// Parse as local date to avoid UTC offset issues with YYYY-MM-DD strings
+	const [year, month, day] = dueDate.split('-').map(Number);
+	const due = new Date(year, month - 1, day);
 	const daysUntilDue = Math.floor((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
 	if (daysUntilDue < 0) return -1000 + daysUntilDue;
@@ -100,7 +101,7 @@ export function categorizeQuests(
 		if (!template) continue;
 
 		const urgencyScore = computeUrgencyScore(action, actions, dueDates);
-		const dueDate = action.questKey ? dueDates.get(action.questKey) ?? null : null;
+		const dueDate = action.questKey ? (dueDates.get(action.questKey) ?? null) : null;
 
 		scored.push({ action, template, urgencyScore, dueDate, category: 'maintenant' });
 	}
@@ -159,8 +160,8 @@ export function getUrgencyLabel(score: number): string {
 	if (score <= 0) return "Aujourd'hui";
 	if (score <= 107) return 'Cette semaine';
 	if (score <= 214) return 'Prochainement';
-	if (score >= 800) return 'Bloqué';
 	if (score >= 1000) return 'Terminé';
+	if (score >= 800) return 'Bloqué';
 	return 'Planifié';
 }
 
@@ -171,7 +172,7 @@ export function getUrgencyColor(score: number): string {
 	if (score < -999) return 'text-red-600 bg-red-50 border-red-200';
 	if (score <= 0) return 'text-orange-600 bg-orange-50 border-orange-200';
 	if (score <= 107) return 'text-amber-600 bg-amber-50 border-amber-200';
-	if (score >= 800) return 'text-slate-500 bg-slate-50 border-slate-200';
 	if (score >= 1000) return 'text-green-600 bg-green-50 border-green-200';
+	if (score >= 800) return 'text-slate-500 bg-slate-50 border-slate-200';
 	return 'text-blue-600 bg-blue-50 border-blue-200';
 }

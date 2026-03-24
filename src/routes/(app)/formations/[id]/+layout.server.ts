@@ -15,7 +15,8 @@ const STATUT_COLORS: Record<string, string> = {
 	'Archivée': '[&_svg]:text-red-400'
 };
 
-export const load = (async ({ params }) => {
+export const load = (async ({ params, depends }) => {
+	depends(`formation:${params.id}`);
 	const formationId = params.id;
 
 	const formation = await db.query.formations.findFirst({
