@@ -1,7 +1,8 @@
 import {
 	getQuestTemplate,
 	getQuestsForFormation,
-	calculateDueDates
+	calculateDueDates,
+	civilDaysFromTodayUntilDue
 } from './formation-quests';
 import type { QuestTemplate } from './formation-quests';
 import { getQuestDisplayState, type SuiviActionRow } from './formation-quest-state';
@@ -27,6 +28,18 @@ export interface PrioritizedQuest {
 	daysLate: number | null;
 }
 
+/** Calendar days until due (negative = overdue). Null if no due date. Uses civil dates, not UTC midnight parsing. */
+export function getDaysUntilDue(dueDateIso: string | null, now: Date = new Date()): number | null {
+	return civilDaysFromTodayUntilDue(dueDateIso, now);
+}
+
+/** Positive days late when past due; null if not overdue or no due date. */
+export function getDaysLateIfOverdue(dueDateIso: string | null, now: Date = new Date()): number | null {
+	const daysUntilDue = getDaysUntilDue(dueDateIso, now);
+	if (daysUntilDue === null || daysUntilDue >= 0) return null;
+	return -daysUntilDue;
+}
+
 export function computePriorityScore(
 	action: SuiviActionRow,
 	template: QuestTemplate,
@@ -37,9 +50,7 @@ export function computePriorityScore(
 	let score = 0;
 
 	const dueDate = action.questKey ? dueDates.get(action.questKey) ?? null : null;
-	const daysUntilDue = dueDate
-		? Math.floor((new Date(dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-		: null;
+	const daysUntilDue = getDaysUntilDue(dueDate, now);
 	const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
 
 	score += isOverdue ? 0 : 100_000;
@@ -76,17 +87,14 @@ export function getPrimaryAction(ctx: PriorityContext): PrioritizedQuest | null 
 			const template = getQuestTemplate(action.questKey ?? '')!;
 			const dueDate = action.questKey ? dueDates.get(action.questKey) ?? null : null;
 			const priorityScore = computePriorityScore(action, template, dueDates, now, allTemplates);
-			const daysUntilDue = dueDate
-				? Math.floor((new Date(dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-				: null;
-			const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
+			const daysLate = getDaysLateIfOverdue(dueDate, now);
 			return {
 				action,
 				template,
 				priorityScore,
 				dueDate,
-				isOverdue,
-				daysLate: isOverdue && daysUntilDue !== null ? -daysUntilDue : null
+				isOverdue: daysLate !== null,
+				daysLate
 			};
 		})
 		.filter((q) => q.template != null);
@@ -112,17 +120,14 @@ export function getConcurrentActions(ctx: PriorityContext, max = 4): Prioritized
 			const template = getQuestTemplate(action.questKey ?? '')!;
 			const dueDate = action.questKey ? dueDates.get(action.questKey) ?? null : null;
 			const priorityScore = computePriorityScore(action, template, dueDates, now, allTemplates);
-			const daysUntilDue = dueDate
-				? Math.floor((new Date(dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-				: null;
-			const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
+			const daysLate = getDaysLateIfOverdue(dueDate, now);
 			return {
 				action,
 				template,
 				priorityScore,
 				dueDate,
-				isOverdue,
-				daysLate: isOverdue && daysUntilDue !== null ? -daysUntilDue : null
+				isOverdue: daysLate !== null,
+				daysLate
 			};
 		})
 		.filter((q) => q.template != null);
@@ -239,9 +244,13 @@ function findNextActionableDueDate(ctx: PriorityContext): Date | null {
 		if (state === 'hard_locked' || state === 'soft_locked') {
 			const dd = action.questKey ? dueDates.get(action.questKey) : null;
 			if (dd) {
-				const d = new Date(dd);
-				if (d > now && (!earliest || d < earliest)) {
-					earliest = d;
+				const daysUntil = civilDaysFromTodayUntilDue(dd, now);
+				if (daysUntil != null && daysUntil > 0) {
+					const parts = dd.match(/^(\d{4})-(\d{2})-(\d{2})/);
+					if (parts) {
+						const d = new Date(+parts[1], +parts[2] - 1, +parts[3]);
+						if (!earliest || d < earliest) earliest = d;
+					}
 				}
 			}
 		}

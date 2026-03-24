@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { civilDaysFromTodayUntilDue } from './formation-quests';
 import {
 	computePriorityScore,
+	getDaysLateIfOverdue,
 	getPrimaryAction,
 	getConcurrentActions,
 	type PriorityContext
@@ -31,6 +33,20 @@ function makeContext(overrides: Partial<PriorityContext> = {}): PriorityContext 
 		...overrides
 	};
 }
+
+describe('civil calendar due dates', () => {
+	it('does not mark a future civil due date as overdue (regression: UTC vs local)', () => {
+		const today = new Date(2026, 2, 24); // 24 Mar 2026 local
+		const dueIn100Days = '2026-07-02'; // civil date ~100 days ahead
+		expect(civilDaysFromTodayUntilDue(dueIn100Days, today)).toBeGreaterThan(0);
+		expect(getDaysLateIfOverdue(dueIn100Days, today)).toBeNull();
+	});
+
+	it('marks past civil due dates as late', () => {
+		const today = new Date(2026, 2, 24);
+		expect(getDaysLateIfOverdue('2026-03-10', today)).toBe(14);
+	});
+});
 
 describe('computePriorityScore', () => {
 	it('overdue quests get highest priority (lowest score)', () => {

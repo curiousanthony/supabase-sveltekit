@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { QuestDisplayState } from '$lib/formation-quest-state';
+	import { getDaysLateIfOverdue } from '$lib/formation-quest-priority';
 	import { getHardLockTooltipText } from '$lib/formation-suivi-hints';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
@@ -90,13 +91,29 @@
 				})
 			: ''
 	);
+
+	const daysLate = $derived(
+		displayState === 'completed' || displayState === 'anticipated'
+			? null
+			: getDaysLateIfOverdue(dueDate)
+	);
 </script>
 
 <div class="rounded-lg border bg-card overflow-hidden" class:opacity-60={isLocked}>
 	<div
-		class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-l-[3px] px-4 py-3 sm:gap-x-4 {borderAccentClass}"
+		class="grid min-h-16 grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-l-[3px] px-4 py-3 sm:gap-x-4 {borderAccentClass}"
 	>
-	<span class="text-sm font-medium">{title}</span>
+	<div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+		<span class="text-sm font-medium">{title}</span>
+		{#if daysLate != null}
+			<span
+				class="inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-100"
+				title="Échéance dépassée"
+			>
+				En retard de {daysLate}&nbsp;jour{daysLate > 1 ? 's' : ''}
+			</span>
+		{/if}
+	</div>
 
 	{#if displayState === 'actionable'}
 		<span
