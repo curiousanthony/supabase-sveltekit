@@ -176,6 +176,10 @@ export const formationActions = pgTable(
 		dueDate: date('due_date'),
 		completedAt: timestamp('completed_at', { withTimezone: true, mode: 'string' }),
 		completedBy: uuid('completed_by'),
+		waitStartedAt: timestamp('wait_started_at', { withTimezone: true, mode: 'string' }),
+		lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true, mode: 'string' }),
+		anticipatedAt: timestamp('anticipated_at', { withTimezone: true, mode: 'string' }),
+		softLockOverriddenAt: timestamp('soft_lock_overridden_at', { withTimezone: true, mode: 'string' }),
 		blockedByActionId: uuid('blocked_by_action_id'),
 		orderIndex: integer('order_index').default(0).notNull(),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
