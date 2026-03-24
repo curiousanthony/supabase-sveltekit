@@ -2,6 +2,12 @@
   "plugins": {
     "svelte": {
       "enabled": true
+    },
+    "superpowers": {
+      "enabled": true
+    },
+    "supabase": {
+      "enabled": true
     }
   }
 }
