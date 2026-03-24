@@ -4,20 +4,40 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { untrack } from 'svelte';
-	import { PHASE_LABELS, type QuestPhase } from '$lib/formation-quests';
+	import { PHASE_LABELS, type QuestPhase, getQuestProgress, getQuestTemplate } from '$lib/formation-quests';
+	import { categorizeByDisplayState } from '$lib/formation-quest-state';
 	import { playMicroSound, playMediumSound, playMacroSound } from '$lib/sounds';
 	import LevelUpToast from '$lib/components/formations/level-up-toast.svelte';
-	import QuestBoard from '$lib/components/formations/quest/quest-board.svelte';
+	import PhaseCard from '$lib/components/formations/suivi/phase-card.svelte';
+	import QuestRow from '$lib/components/formations/suivi/quest-row.svelte';
 
 	let { data }: PageProps = $props();
 
 	const formation = $derived(data?.formation);
 	const actions = $derived(formation?.actions ?? []);
+	const formationId = $derived(formation?.id ?? '');
 
-	let levelUpPhase = $state<string | null>(null);
-	let showLevelUp = $state(false);
+	const categorized = $derived(
+		categorizeByDisplayState(actions as any, {
+			type: formation?.type,
+			typeFinancement: formation?.typeFinancement,
+			dateDebut: formation?.dateDebut,
+			dateFin: formation?.dateFin
+		})
+	);
+
+	const progress = $derived(getQuestProgress(actions));
 
 	const phases: QuestPhase[] = ['conception', 'deploiement', 'evaluation'];
+	const PHASE_SUBTITLES: Record<QuestPhase, string> = {
+		conception: 'Dossier & planification',
+		deploiement: 'Formation en cours',
+		evaluation: 'Bilan & suivi'
+	};
+
+	let showAllEvalSteps = $state(false);
+	let levelUpPhase = $state<string | null>(null);
+	let showLevelUp = $state(false);
 
 	const phaseCompletion = $derived(
 		Object.fromEntries(
@@ -46,6 +66,54 @@
 		prevPhaseCompletion = { ...current };
 	});
 
+	function getPhaseDateRange(phase: QuestPhase): string {
+		if (phase === 'conception') {
+			const debut = formation?.dateDebut;
+			return debut ? `Avant le ${new Date(debut).toLocaleDateString('fr-FR')}` : '';
+		}
+		if (phase === 'deploiement') {
+			const debut = formation?.dateDebut;
+			const fin = formation?.dateFin;
+			if (debut && fin) {
+				return `${new Date(debut).toLocaleDateString('fr-FR')} – ${new Date(fin).toLocaleDateString('fr-FR')}`;
+			}
+			return debut ? `À partir du ${new Date(debut).toLocaleDateString('fr-FR')}` : '';
+		}
+		const fin = formation?.dateFin;
+		return fin ? `Après le ${new Date(fin).toLocaleDateString('fr-FR')}` : '';
+	}
+
+	function getPhaseCountdownText(phase: QuestPhase): string | null {
+		const now = new Date();
+		if (phase === 'conception' && formation?.dateDebut) {
+			const days = Math.ceil((new Date(formation.dateDebut).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+			if (days > 0) return `J-${days} avant le début`;
+			if (days === 0) return "C'est aujourd'hui !";
+		}
+		if (phase === 'deploiement' && formation?.dateFin) {
+			const days = Math.ceil((new Date(formation.dateFin).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+			if (days > 0) return `${days} jours restants`;
+			if (days === 0) return 'Dernier jour';
+		}
+		return null;
+	}
+
+	function getTargetTab(questKey: string | null): string | null {
+		if (!questKey) return null;
+		const tabMap: Record<string, string> = {
+			verification_infos: 'fiche',
+			analyse_besoins: 'apprenants',
+			programme_modules: 'programme',
+			affectation_formateur: 'formateurs',
+			convocations: 'apprenants',
+			preparation_logistique: 'fiche',
+			emargement: 'seances',
+			documents_formateur: 'formateurs',
+			facturation: 'finances'
+		};
+		return tabMap[questKey] ?? 'suivi';
+	}
+
 	async function callAction(actionName: string, body: FormData): Promise<boolean> {
 		try {
 			const response = await fetch(`?/${actionName}`, { method: 'POST', body });
@@ -72,48 +140,197 @@
 		}
 	}
 
-	async function handleSubActionToggle(subActionId: string, completed: boolean) {
-		playMicroSound();
-		const formData = new FormData();
-		formData.append('subActionId', subActionId);
-		formData.append('completed', String(completed));
-		await callAction('toggleSubAction', formData);
-	}
-
-	async function handleStatusChange(actionId: string, newStatus: string) {
-		if (newStatus === 'Terminé') {
-			playMediumSound();
-		}
+	async function handleOverrideSoftLock(actionId: string) {
 		const formData = new FormData();
 		formData.append('actionId', actionId);
-		formData.append('newStatus', newStatus);
-		await callAction('updateQuestStatus', formData);
-		if (newStatus === 'Terminé') {
-			toast.success('Action terminée');
-		} else if (
-			newStatus === 'En cours' &&
-			actions.find((a) => a.id === actionId)?.status === 'Terminé'
-		) {
-			toast.info('Action rouverte');
-		}
+		await callAction('overrideSoftLock', formData);
 	}
 
-	async function handleDismissGuidance(actionId: string) {
+	async function handleReminder(actionId: string) {
 		const formData = new FormData();
 		formData.append('actionId', actionId);
-		await callAction('dismissGuidance', formData);
+		const ok = await callAction('recordReminder', formData);
+		if (ok) toast.success('Relance enregistrée');
 	}
 </script>
 
-<div class="mx-auto max-w-3xl">
-	<QuestBoard
-		{actions}
-		formation={formation as unknown as Record<string, unknown>}
-		onSubActionToggle={handleSubActionToggle}
-		onStatusChange={handleStatusChange}
-		onDismissGuidance={handleDismissGuidance}
-		{callAction}
-	/>
+<div class="mx-auto flex max-w-3xl flex-col gap-6">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+		{#each phases as phase (phase)}
+			{@const p = progress.phases[phase]}
+			{@const isActive = p.total > 0 && p.completed < p.total && p.completed > 0}
+			{@const isDone = p.total > 0 && p.completed === p.total}
+			<PhaseCard
+				{phase}
+				label={PHASE_LABELS[phase]}
+				subtitle={PHASE_SUBTITLES[phase]}
+				dateRange={getPhaseDateRange(phase)}
+				completed={p.completed}
+				total={p.total}
+				{isActive}
+				{isDone}
+				countdownText={getPhaseCountdownText(phase)}
+				tooltipText={`${p.completed} sur ${p.total} étapes terminées pour la phase ${PHASE_LABELS[phase]}`}
+			/>
+		{/each}
+	</div>
+
+	{#if categorized.actionable.length > 0}
+		<section>
+			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+				En cours / À faire
+			</h2>
+			<div class="flex flex-col gap-2">
+				{#each categorized.actionable as quest (quest.action.id)}
+					<QuestRow
+						questKey={quest.action.questKey}
+						title={quest.template.title}
+						displayState={quest.displayState}
+						phaseName={PHASE_LABELS[quest.template.phase]}
+						dueDate={quest.dueDate}
+						completedAt={quest.action.completedAt}
+						waitStartedAt={quest.action.waitStartedAt}
+						lastRemindedAt={quest.action.lastRemindedAt}
+						unmetDeps={quest.unmetDeps}
+						targetTab={getTargetTab(quest.action.questKey)}
+						{formationId}
+					/>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if categorized.waiting.length > 0}
+		<section>
+			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+				En attente
+			</h2>
+			<div class="flex flex-col gap-2">
+				{#each categorized.waiting as quest (quest.action.id)}
+					<QuestRow
+						questKey={quest.action.questKey}
+						title={quest.template.title}
+						displayState={quest.displayState}
+						phaseName={PHASE_LABELS[quest.template.phase]}
+						dueDate={quest.dueDate}
+						completedAt={quest.action.completedAt}
+						waitStartedAt={quest.action.waitStartedAt}
+						lastRemindedAt={quest.action.lastRemindedAt}
+						unmetDeps={quest.unmetDeps}
+						targetTab={getTargetTab(quest.action.questKey)}
+						{formationId}
+						onRemind={() => handleReminder(quest.action.id)}
+					/>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if categorized.locked.length > 0}
+		{@const evalLocked = categorized.locked.filter(
+			(q) => q.action.phase === 'evaluation' && q.displayState === 'hard_locked'
+		)}
+		{@const nonEvalLocked = categorized.locked.filter(
+			(q) => !(q.action.phase === 'evaluation' && q.displayState === 'hard_locked')
+		)}
+		<section>
+			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+				À venir
+			</h2>
+			<div class="flex flex-col gap-2">
+				{#each nonEvalLocked as quest (quest.action.id)}
+					<QuestRow
+						questKey={quest.action.questKey}
+						title={quest.template.title}
+						displayState={quest.displayState}
+						phaseName={PHASE_LABELS[quest.template.phase]}
+						dueDate={quest.dueDate}
+						completedAt={quest.action.completedAt}
+						waitStartedAt={quest.action.waitStartedAt}
+						lastRemindedAt={quest.action.lastRemindedAt}
+						unmetDeps={quest.unmetDeps}
+						targetTab={getTargetTab(quest.action.questKey)}
+						{formationId}
+						onOverrideSoftLock={quest.displayState === 'soft_locked'
+							? () => handleOverrideSoftLock(quest.action.id)
+							: undefined}
+					/>
+				{/each}
+
+				{#if evalLocked.length > 3}
+					<button
+						type="button"
+						class="w-full cursor-pointer rounded-lg border border-dashed border-muted-foreground/20 px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+						onclick={() => (showAllEvalSteps = !showAllEvalSteps)}
+					>
+						{#if showAllEvalSteps}
+							Masquer les étapes d'évaluation
+						{:else}
+							+ {evalLocked.length} étapes d'évaluation (après la formation)
+						{/if}
+					</button>
+					{#if showAllEvalSteps}
+						{#each evalLocked as quest (quest.action.id)}
+							<QuestRow
+								questKey={quest.action.questKey}
+								title={quest.template.title}
+								displayState={quest.displayState}
+								phaseName={PHASE_LABELS[quest.template.phase]}
+								dueDate={quest.dueDate}
+								completedAt={quest.action.completedAt}
+								waitStartedAt={quest.action.waitStartedAt}
+								lastRemindedAt={quest.action.lastRemindedAt}
+								unmetDeps={quest.unmetDeps}
+								targetTab={getTargetTab(quest.action.questKey)}
+								{formationId}
+							/>
+						{/each}
+					{/if}
+				{:else}
+					{#each evalLocked as quest (quest.action.id)}
+						<QuestRow
+							questKey={quest.action.questKey}
+							title={quest.template.title}
+							displayState={quest.displayState}
+							phaseName={PHASE_LABELS[quest.template.phase]}
+							dueDate={quest.dueDate}
+							completedAt={quest.action.completedAt}
+							waitStartedAt={quest.action.waitStartedAt}
+							lastRemindedAt={quest.action.lastRemindedAt}
+							unmetDeps={quest.unmetDeps}
+							targetTab={getTargetTab(quest.action.questKey)}
+							{formationId}
+						/>
+					{/each}
+				{/if}
+			</div>
+		</section>
+	{/if}
+
+	{#if categorized.completed.length > 0}
+		<section>
+			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+				Historique
+			</h2>
+			<div class="flex flex-col gap-2">
+				{#each categorized.completed as quest (quest.action.id)}
+					<QuestRow
+						questKey={quest.action.questKey}
+						title={quest.template.title}
+						displayState={quest.displayState}
+						phaseName={PHASE_LABELS[quest.template.phase]}
+						dueDate={quest.dueDate}
+						completedAt={quest.action.completedAt}
+						waitStartedAt={quest.action.waitStartedAt}
+						lastRemindedAt={quest.action.lastRemindedAt}
+						unmetDeps={quest.unmetDeps}
+						targetTab={getTargetTab(quest.action.questKey)}
+						{formationId}
+					/>
+				{/each}
+			</div>
+		</section>
+	{/if}
 </div>
 
 <LevelUpToast
