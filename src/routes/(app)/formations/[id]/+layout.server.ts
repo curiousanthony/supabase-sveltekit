@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { db } from '$lib/db';
 import { formations } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { getQuestProgress } from '$lib/formation-quests';
+import { getQuestProgress, getQuestsForFormation, calculateDueDates } from '$lib/formation-quests';
 import type { LayoutServerLoad } from './$types';
 
 const STATUT_COLORS: Record<string, string> = {
@@ -218,13 +218,16 @@ export const load = (async ({ params, depends }) => {
 	};
 
 	const today = new Date().toISOString().slice(0, 10);
+	const applicableQuests = getQuestsForFormation(
+		formation.type as 'Intra' | 'Inter' | 'CPF' | null | undefined,
+		formation.typeFinancement as 'CPF' | 'OPCO' | 'Inter' | 'Intra' | null | undefined
+	);
+	const dynamicDueDates = calculateDueDates(applicableQuests, formation.dateDebut, formation.dateFin);
 	const overdueQuests =
-		(formation.actions ?? []).some(
-			(a) =>
-				a.dueDate != null &&
-				a.dueDate < today &&
-				a.status !== 'Terminé'
-		) ?? false;
+		(formation.actions ?? []).some((a) => {
+			const dd = a.questKey ? dynamicDueDates.get(a.questKey) ?? a.dueDate : a.dueDate;
+			return dd != null && dd < today && a.status !== 'Terminé';
+		}) ?? false;
 
 	const nowIso = new Date().toISOString();
 

@@ -1,8 +1,9 @@
 import { db } from '$lib/db';
-import { formations, companies, thematiques, sousthematiques } from '$lib/db/schema';
+import { formations, formationActions, companies, thematiques, sousthematiques } from '$lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
+import { getQuestsForFormation, calculateDueDates } from '$lib/formation-quests';
 import type { PageServerLoad, Actions } from './$types';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -107,6 +108,38 @@ export const actions: Actions = {
 			.set({ [field]: processedValue })
 			.where(eq(formations.id, params.id));
 
+		if (['dateDebut', 'dateFin', 'type', 'typeFinancement'].includes(field)) {
+			await recalculateActionDueDates(params.id);
+		}
+
 		return { success: true };
 	}
 };
+
+async function recalculateActionDueDates(formationId: string) {
+	const formation = await db.query.formations.findFirst({
+		where: eq(formations.id, formationId),
+		columns: { type: true, typeFinancement: true, dateDebut: true, dateFin: true }
+	});
+	if (!formation) return;
+
+	const quests = getQuestsForFormation(
+		formation.type as 'Intra' | 'Inter' | 'CPF' | null | undefined,
+		formation.typeFinancement as 'CPF' | 'OPCO' | 'Inter' | 'Intra' | null | undefined
+	);
+	const dueDates = calculateDueDates(quests, formation.dateDebut, formation.dateFin);
+
+	const actions = await db.query.formationActions.findMany({
+		where: eq(formationActions.formationId, formationId),
+		columns: { id: true, questKey: true }
+	});
+
+	for (const action of actions) {
+		if (!action.questKey) continue;
+		const newDueDate = dueDates.get(action.questKey) ?? null;
+		await db
+			.update(formationActions)
+			.set({ dueDate: newDueDate })
+			.where(eq(formationActions.id, action.id));
+	}
+}
