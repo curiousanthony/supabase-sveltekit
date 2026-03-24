@@ -13,7 +13,7 @@
 	let { phaseName, message = null, show, onClose }: Props = $props();
 
 	const title = $derived(message ? 'Formation complète !' : 'Phase terminée !');
-	const subtitle = $derived(message ?? phaseName);
+	const subtitle = $derived(message || phaseName);
 
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 

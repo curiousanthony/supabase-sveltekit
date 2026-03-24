@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { QuestDisplayState } from '$lib/formation-quest-state';
+	import { getHardLockTooltipText } from '$lib/formation-suivi-hints';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
 	interface Props {
@@ -14,6 +15,8 @@
 		unmetDeps: { key: string; title: string; lockType: 'hard' | 'soft' }[];
 		targetTab: string | null;
 		formationId: string;
+		formationDateDebut?: string | null;
+		formationDateFin?: string | null;
 		onOverrideSoftLock?: () => void;
 		onRemind?: () => void;
 	}
@@ -29,11 +32,15 @@
 		unmetDeps,
 		targetTab,
 		formationId,
+		formationDateDebut = null,
+		formationDateFin = null,
 		onOverrideSoftLock,
 		onRemind
 	}: Props = $props();
 
-	const borderColor = $derived(
+	const isLocked = $derived(displayState === 'soft_locked' || displayState === 'hard_locked');
+
+	const borderAccentClass = $derived(
 		displayState === 'actionable'
 			? 'border-l-amber-500'
 			: displayState === 'waiting'
@@ -42,8 +49,6 @@
 					? 'border-l-gray-300 dark:border-l-gray-600'
 					: 'border-l-green-500'
 	);
-
-	const isLocked = $derived(displayState === 'soft_locked' || displayState === 'hard_locked');
 
 	const elapsedDays = $derived.by(() => {
 		if (displayState !== 'waiting') return 0;
@@ -76,12 +81,21 @@
 
 	const firstSoftDep = $derived(unmetDeps.find((d) => d.lockType === 'soft'));
 	const firstHardDep = $derived(unmetDeps.find((d) => d.lockType === 'hard'));
+
+	const hardLockTooltip = $derived(
+		displayState === 'hard_locked' && questKey
+			? getHardLockTooltipText(questKey, firstHardDep?.key, {
+					dateDebut: formationDateDebut,
+					dateFin: formationDateFin
+				})
+			: ''
+	);
 </script>
 
-<div
-	class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-1 rounded-lg border-l-[3px] bg-card px-4 py-3 {borderColor}"
-	class:opacity-60={isLocked}
->
+<div class="rounded-lg border bg-card overflow-hidden" class:opacity-60={isLocked}>
+	<div
+		class="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 border-l-[3px] px-4 py-3 sm:gap-x-4 {borderAccentClass}"
+	>
 	<span class="text-sm font-medium">{title}</span>
 
 	{#if displayState === 'actionable'}
@@ -93,7 +107,7 @@
 		{#if ctaHref}
 			<a
 				href={ctaHref}
-				class="rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-muted"
+				class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md bg-foreground px-5 py-2 text-sm font-medium text-background transition-opacity hover:opacity-85"
 			>
 				{capitalizedTab}
 			</a>
@@ -106,11 +120,11 @@
 		>
 			En attente
 		</span>
-		<span class="flex items-center gap-2">
+		<span class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
 			<span class="text-xs text-muted-foreground">{elapsedText}</span>
 			<button
 				type="button"
-				class="rounded-full border border-blue-300 px-3 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-50"
+				class="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-blue-300 px-5 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
 				onclick={() => onRemind?.()}
 			>
 				Relancer
@@ -139,9 +153,7 @@
 				</span>
 			</Tooltip.Trigger>
 			<Tooltip.Content>
-				<p class="max-w-xs text-xs">
-					Cette étape sera disponible après {firstHardDep?.title ?? 'une étape précédente'}.
-				</p>
+				<p class="max-w-xs text-xs leading-relaxed">{hardLockTooltip}</p>
 			</Tooltip.Content>
 		</Tooltip.Root>
 		<span></span>
@@ -160,4 +172,5 @@
 		</span>
 		<span class="text-xs text-muted-foreground">{formattedCompletedAt}</span>
 	{/if}
+	</div>
 </div>

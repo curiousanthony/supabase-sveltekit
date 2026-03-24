@@ -15,12 +15,15 @@
 		tabs,
 		activeValue = undefined,
 		onTabChange = undefined,
-		ariaLabel = 'Navigation'
+		ariaLabel = 'Navigation',
+		sticky = true
 	}: {
 		tabs: readonly TabItem[];
 		activeValue?: string;
 		onTabChange?: (value: string) => void;
 		ariaLabel?: string;
+		/** When false, the bar does not stick on its own — use a parent sticky wrapper (e.g. tabs + HUD). */
+		sticky?: boolean;
 	} = $props();
 
 	const pathname = $derived(page?.url?.pathname ?? '');
@@ -50,7 +53,10 @@
 </script>
 
 <nav
-	class="sticky top-0 z-40 -mx-4 flex h-fit w-[calc(100%+2rem)] max-w-[calc(100%+2rem)] overflow-visible border-b bg-background px-4 before:absolute before:bottom-full before:left-0 before:right-0 before:z-0 before:block before:h-4 before:bg-background before:content-['']"
+	class={cn(
+		"-mx-4 flex h-fit w-[calc(100%+2rem)] max-w-[calc(100%+2rem)] overflow-visible border-b bg-background px-4 before:absolute before:bottom-full before:left-0 before:right-0 before:z-0 before:block before:h-4 before:bg-background before:content-['']",
+		sticky && 'sticky top-0 z-40'
+	)}
 	aria-label={ariaLabel}
 >
 	<div class="nav-tabs-scroll relative z-10 min-w-0 flex-1 overflow-x-auto scroll-smooth">

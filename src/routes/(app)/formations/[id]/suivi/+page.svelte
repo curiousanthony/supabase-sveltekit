@@ -4,7 +4,15 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { untrack } from 'svelte';
-	import { PHASE_LABELS, type QuestPhase, getQuestProgress, getQuestTemplate } from '$lib/formation-quests';
+	import {
+		PHASE_LABELS,
+		type QuestPhase,
+		getQuestProgress,
+		getQuestActionTitle,
+		getQuestsForFormation,
+		calculateDueDates
+	} from '$lib/formation-quests';
+	import { getPhaseDateRangeLine, getPhaseCountdownLine } from '$lib/formation-suivi-hints';
 	import { categorizeByDisplayState } from '$lib/formation-quest-state';
 	import { playMicroSound, playMediumSound, playMacroSound } from '$lib/sounds';
 	import LevelUpToast from '$lib/components/formations/level-up-toast.svelte';
@@ -28,11 +36,39 @@
 
 	const progress = $derived(getQuestProgress(actions));
 
+	const applicableQuests = $derived(
+		getQuestsForFormation(
+			(formation?.type ?? null) as 'Intra' | 'Inter' | 'CPF' | null | undefined,
+			(formation?.typeFinancement ?? null) as 'CPF' | 'OPCO' | 'Inter' | 'Intra' | null | undefined
+		)
+	);
+
+	const evaluationPhaseEndIso = $derived.by(() => {
+		const evalKeys = applicableQuests.filter((q) => q.phase === 'evaluation').map((q) => q.key);
+		if (evalKeys.length === 0) return null;
+		const dueMap = calculateDueDates(applicableQuests, formation?.dateDebut, formation?.dateFin);
+		let max: string | null = null;
+		for (const k of evalKeys) {
+			const d = dueMap.get(k);
+			if (d && (!max || d > max)) max = d;
+		}
+		return max;
+	});
+
 	const phases: QuestPhase[] = ['conception', 'deploiement', 'evaluation'];
 	const PHASE_SUBTITLES: Record<QuestPhase, string> = {
 		conception: 'Préparation du dossier',
 		deploiement: 'Pendant la formation',
 		evaluation: 'Suivi post-formation'
+	};
+	/** Explains what the phase covers (aligned with docs/mockups/suivi-tab-mockup.html). */
+	const PHASE_TOOLTIPS: Record<QuestPhase, string> = {
+		conception:
+			'Toutes les étapes de préparation avant le début de la formation : programme, convention, convocations, logistique.',
+		deploiement:
+			'Le déroulement de la formation elle-même : accueil, émargements, animation, évaluations en cours.',
+		evaluation:
+			'Tout ce qui suit la formation : satisfaction, certificats, attestations, facturation, amélioration continue.'
 	};
 
 	let showAllEvalSteps = $state(false);
@@ -107,36 +143,17 @@
 		prevAllComplete = currentAll;
 	});
 
-	function getPhaseDateRange(phase: QuestPhase): string {
-		if (phase === 'conception') {
-			const debut = formation?.dateDebut;
-			return debut ? `Avant le ${new Date(debut).toLocaleDateString('fr-FR')}` : '';
-		}
-		if (phase === 'deploiement') {
-			const debut = formation?.dateDebut;
-			const fin = formation?.dateFin;
-			if (debut && fin) {
-				return `${new Date(debut).toLocaleDateString('fr-FR')} – ${new Date(fin).toLocaleDateString('fr-FR')}`;
-			}
-			return debut ? `À partir du ${new Date(debut).toLocaleDateString('fr-FR')}` : '';
-		}
-		const fin = formation?.dateFin;
-		return fin ? `Après le ${new Date(fin).toLocaleDateString('fr-FR')}` : '';
+	function phaseDateRange(phase: QuestPhase): string {
+		return getPhaseDateRangeLine(phase, {
+			createdAt: formation?.createdAt,
+			dateDebut: formation?.dateDebut,
+			dateFin: formation?.dateFin
+		}, evaluationPhaseEndIso);
 	}
 
-	function getPhaseCountdownText(phase: QuestPhase): string | null {
-		const now = new Date();
-		if (phase === 'conception' && formation?.dateDebut) {
-			const days = Math.ceil((new Date(formation.dateDebut).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-			if (days > 0) return `J-${days} avant le début`;
-			if (days === 0) return "C'est aujourd'hui !";
-		}
-		if (phase === 'deploiement' && formation?.dateFin) {
-			const days = Math.ceil((new Date(formation.dateFin).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-			if (days > 0) return `${days} jours restants`;
-			if (days === 0) return 'Dernier jour';
-		}
-		return null;
+	function phaseCountdown(phase: QuestPhase): string | null {
+		const p = progress.phases[phase];
+		return getPhaseCountdownLine(phase, { dateDebut: formation?.dateDebut, dateFin: formation?.dateFin }, p);
 	}
 
 	function getTargetTab(questKey: string | null): string | null {
@@ -195,7 +212,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-5xl flex-col gap-6">
+<div class="mx-auto flex max-w-5xl flex-col gap-6 pb-10">
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 		{#each phases as phase (phase)}
 			{@const p = progress.phases[phase]}
@@ -205,27 +222,34 @@
 				{phase}
 				label={PHASE_LABELS[phase]}
 				subtitle={PHASE_SUBTITLES[phase]}
-				dateRange={getPhaseDateRange(phase)}
+				dateRange={phaseDateRange(phase)}
 				completed={p.completed}
 				total={p.total}
 				{isActive}
 				{isDone}
-				countdownText={getPhaseCountdownText(phase)}
-				tooltipText={`${p.completed} sur ${p.total} étapes terminées pour la phase ${PHASE_LABELS[phase]}`}
+				countdownText={phaseCountdown(phase)}
+				tooltipText={PHASE_TOOLTIPS[phase]}
 			/>
 		{/each}
 	</div>
 
 	{#if categorized.actionable.length > 0}
 		<section>
-			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-				En cours / À faire
-			</h2>
+			<div class="mb-3 flex items-center gap-2">
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+					En cours / À faire
+				</h2>
+				<span
+					class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground"
+				>
+					{categorized.actionable.length}
+				</span>
+			</div>
 			<div class="flex flex-col gap-2">
 				{#each categorized.actionable as quest (quest.action.id)}
 					<QuestRow
 						questKey={quest.action.questKey}
-						title={quest.template.title}
+						title={getQuestActionTitle(quest.template)}
 						displayState={quest.displayState}
 						phaseName={PHASE_LABELS[quest.template.phase]}
 						dueDate={quest.dueDate}
@@ -234,6 +258,8 @@
 						lastRemindedAt={quest.action.lastRemindedAt}
 						unmetDeps={quest.unmetDeps}
 						targetTab={getTargetTab(quest.action.questKey)}
+						formationDateDebut={formation?.dateDebut ?? null}
+						formationDateFin={formation?.dateFin ?? null}
 						{formationId}
 					/>
 				{/each}
@@ -243,14 +269,21 @@
 
 	{#if categorized.waiting.length > 0}
 		<section>
-			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-				En attente
-			</h2>
+			<div class="mb-3 flex items-center gap-2">
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+					En attente
+				</h2>
+				<span
+					class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground"
+				>
+					{categorized.waiting.length}
+				</span>
+			</div>
 			<div class="flex flex-col gap-2">
 				{#each categorized.waiting as quest (quest.action.id)}
 					<QuestRow
 						questKey={quest.action.questKey}
-						title={quest.template.title}
+						title={getQuestActionTitle(quest.template)}
 						displayState={quest.displayState}
 						phaseName={PHASE_LABELS[quest.template.phase]}
 						dueDate={quest.dueDate}
@@ -259,6 +292,8 @@
 						lastRemindedAt={quest.action.lastRemindedAt}
 						unmetDeps={quest.unmetDeps}
 						targetTab={getTargetTab(quest.action.questKey)}
+						formationDateDebut={formation?.dateDebut ?? null}
+						formationDateFin={formation?.dateFin ?? null}
 						{formationId}
 						onRemind={() => handleReminder(quest.action.id)}
 					/>
@@ -275,14 +310,19 @@
 			(q) => !(q.action.phase === 'evaluation' && q.displayState === 'hard_locked')
 		)}
 		<section>
-			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-				À venir
-			</h2>
+			<div class="mb-3 flex items-center gap-2">
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">À venir</h2>
+				<span
+					class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground"
+				>
+					{categorized.locked.length}
+				</span>
+			</div>
 			<div class="flex flex-col gap-2">
 				{#each nonEvalLocked as quest (quest.action.id)}
 					<QuestRow
 						questKey={quest.action.questKey}
-						title={quest.template.title}
+						title={getQuestActionTitle(quest.template)}
 						displayState={quest.displayState}
 						phaseName={PHASE_LABELS[quest.template.phase]}
 						dueDate={quest.dueDate}
@@ -291,6 +331,8 @@
 						lastRemindedAt={quest.action.lastRemindedAt}
 						unmetDeps={quest.unmetDeps}
 						targetTab={getTargetTab(quest.action.questKey)}
+						formationDateDebut={formation?.dateDebut ?? null}
+						formationDateFin={formation?.dateFin ?? null}
 						{formationId}
 						onOverrideSoftLock={quest.displayState === 'soft_locked'
 							? () => handleOverrideSoftLock(quest.action.id)
@@ -314,7 +356,7 @@
 						{#each evalLocked as quest (quest.action.id)}
 							<QuestRow
 								questKey={quest.action.questKey}
-								title={quest.template.title}
+								title={getQuestActionTitle(quest.template)}
 								displayState={quest.displayState}
 								phaseName={PHASE_LABELS[quest.template.phase]}
 								dueDate={quest.dueDate}
@@ -323,6 +365,8 @@
 								lastRemindedAt={quest.action.lastRemindedAt}
 								unmetDeps={quest.unmetDeps}
 								targetTab={getTargetTab(quest.action.questKey)}
+								formationDateDebut={formation?.dateDebut ?? null}
+								formationDateFin={formation?.dateFin ?? null}
 								{formationId}
 							/>
 						{/each}
@@ -331,7 +375,7 @@
 					{#each evalLocked as quest (quest.action.id)}
 						<QuestRow
 							questKey={quest.action.questKey}
-							title={quest.template.title}
+							title={getQuestActionTitle(quest.template)}
 							displayState={quest.displayState}
 							phaseName={PHASE_LABELS[quest.template.phase]}
 							dueDate={quest.dueDate}
@@ -340,6 +384,8 @@
 							lastRemindedAt={quest.action.lastRemindedAt}
 							unmetDeps={quest.unmetDeps}
 							targetTab={getTargetTab(quest.action.questKey)}
+							formationDateDebut={formation?.dateDebut ?? null}
+							formationDateFin={formation?.dateFin ?? null}
 							{formationId}
 						/>
 					{/each}
@@ -350,14 +396,21 @@
 
 	{#if categorized.completed.length > 0}
 		<section>
-			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-				Historique
-			</h2>
+			<div class="mb-3 flex items-center gap-2">
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+					Historique
+				</h2>
+				<span
+					class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground"
+				>
+					{categorized.completed.length}
+				</span>
+			</div>
 			<div class="flex flex-col gap-2">
 				{#each categorized.completed as quest (quest.action.id)}
 					<QuestRow
 						questKey={quest.action.questKey}
-						title={quest.template.title}
+						title={getQuestActionTitle(quest.template)}
 						displayState={quest.displayState}
 						phaseName={PHASE_LABELS[quest.template.phase]}
 						dueDate={quest.dueDate}
@@ -366,6 +419,8 @@
 						lastRemindedAt={quest.action.lastRemindedAt}
 						unmetDeps={quest.unmetDeps}
 						targetTab={getTargetTab(quest.action.questKey)}
+						formationDateDebut={formation?.dateDebut ?? null}
+						formationDateFin={formation?.dateFin ?? null}
 						{formationId}
 					/>
 				{/each}

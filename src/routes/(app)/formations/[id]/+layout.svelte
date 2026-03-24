@@ -52,8 +52,8 @@
 </script>
 
 <div class="flex min-h-0 w-full flex-1 flex-col">
-	<NavTabs {tabs} ariaLabel="Formation sections" />
-	<div class="sticky top-0 z-30">
+	<div class="sticky top-0 z-40 bg-background">
+		<NavTabs {tabs} sticky={false} ariaLabel="Formation sections" />
 		<HudBanner {hudState} {formationId} />
 	</div>
 	<div class="flex-1 pt-4">
