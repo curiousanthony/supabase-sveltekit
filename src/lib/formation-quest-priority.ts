@@ -23,6 +23,8 @@ export interface PrioritizedQuest {
 	priorityScore: number;
 	dueDate: string | null;
 	isOverdue: boolean;
+	/** Positive number of calendar days past due when `isOverdue`; otherwise null. */
+	daysLate: number | null;
 }
 
 export function computePriorityScore(
@@ -77,12 +79,14 @@ export function getPrimaryAction(ctx: PriorityContext): PrioritizedQuest | null 
 			const daysUntilDue = dueDate
 				? Math.floor((new Date(dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 				: null;
+			const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
 			return {
 				action,
 				template,
 				priorityScore,
 				dueDate,
-				isOverdue: daysUntilDue !== null && daysUntilDue < 0
+				isOverdue,
+				daysLate: isOverdue && daysUntilDue !== null ? -daysUntilDue : null
 			};
 		})
 		.filter((q) => q.template != null);
@@ -111,12 +115,14 @@ export function getConcurrentActions(ctx: PriorityContext, max = 4): Prioritized
 			const daysUntilDue = dueDate
 				? Math.floor((new Date(dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 				: null;
+			const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
 			return {
 				action,
 				template,
 				priorityScore,
 				dueDate,
-				isOverdue: daysUntilDue !== null && daysUntilDue < 0
+				isOverdue,
+				daysLate: isOverdue && daysUntilDue !== null ? -daysUntilDue : null
 			};
 		})
 		.filter((q) => q.template != null);
