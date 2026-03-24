@@ -13,6 +13,8 @@
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
 	import { IconChalkboardTeacher, IconUserPlus } from '@tabler/icons-svelte';
+	import CityCombobox from '$lib/components/crm/CityCombobox.svelte';
+	import ThematiquesCombobox from '$lib/components/crm/ThematiquesCombobox.svelte';
 	import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 	import LayoutList from '@lucide/svelte/icons/layout-list';
 	import MapPin from '@lucide/svelte/icons/map-pin';
@@ -157,6 +159,17 @@
 	// ── Creation dialog ───────────────────────────────────────────────────────
 	let createDialogOpen = $state(false);
 	let creating = $state(false);
+	let createVille = $state('');
+	let createDepartement = $state('');
+	let createSelectedThematiqueIds = $state<string[]>([]);
+	let createSelectedSousthematiqueIds = $state<string[]>([]);
+
+	function resetCreateDialog() {
+		createVille = '';
+		createDepartement = '';
+		createSelectedThematiqueIds = [];
+		createSelectedSousthematiqueIds = [];
+	}
 
 	$effect(() => {
 		if (data.openNewModal) {
@@ -169,7 +182,7 @@
 </script>
 
 <!-- Create formateur dialog -->
-<Dialog.Root bind:open={createDialogOpen}>
+<Dialog.Root bind:open={createDialogOpen} onOpenChange={(open) => { if (!open) resetCreateDialog(); }}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
 			<Dialog.Title>Nouveau formateur</Dialog.Title>
@@ -217,17 +230,37 @@
 						autocomplete="off"
 					/>
 				</div>
-				<div class="grid grid-cols-2 gap-3">
-					<div class="flex flex-col gap-1.5">
-						<Label.Root for="ville">Ville</Label.Root>
-						<Input id="ville" name="ville" placeholder="Paris" autocomplete="off" />
-					</div>
-					<div class="flex flex-col gap-1.5">
-						<Label.Root for="departement">Département</Label.Root>
-						<Input id="departement" name="departement" placeholder="75" autocomplete="off" />
-					</div>
+				<div class="flex flex-col gap-1.5">
+					<Label.Root>Ville / Département</Label.Root>
+					<CityCombobox
+						city={createVille}
+						departement={createDepartement}
+						secondaryField="departement"
+						onSelect={(c, _region, _code, dept) => { createVille = c; createDepartement = dept ?? ''; }}
+					/>
+					<input type="hidden" name="ville" value={createVille} />
+					<input type="hidden" name="departement" value={createDepartement} />
 				</div>
+				{#if (data.allThematiques ?? []).length > 0}
+					<div class="flex flex-col gap-1.5">
+						<ThematiquesCombobox
+							thematiques={data.allThematiques ?? []}
+							sousthematiques={data.allSousthematiques ?? []}
+							bind:selectedThematiqueIds={createSelectedThematiqueIds}
+							bind:selectedSousthematiqueIds={createSelectedSousthematiqueIds}
+						/>
+						{#each createSelectedThematiqueIds as id (id)}
+							<input type="hidden" name="thematiqueIds[]" value={id} />
+						{/each}
+						{#each createSelectedSousthematiqueIds as id (id)}
+							<input type="hidden" name="sousthematiqueIds[]" value={id} />
+						{/each}
+					</div>
+				{/if}
 			</div>
+			<p class="text-xs text-muted-foreground">
+				Vous pourrez compléter son profil (tarif, disponibilité, description…) depuis sa fiche.
+			</p>
 			<Dialog.Footer class="pt-2">
 				<Dialog.Close>
 					<Button.Root type="button" variant="outline">Annuler</Button.Root>

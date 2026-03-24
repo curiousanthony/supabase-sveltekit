@@ -1,7 +1,7 @@
 import { db } from '$lib/db';
-import { formateurs } from '$lib/db/schema';
+import { formateurs, thematiques, sousthematiques } from '$lib/db/schema';
 import { getUserWorkspace } from '$lib/auth';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import { createFormateurForWorkspace } from '$lib/services/formateur-create';
 import type { PageServerLoad, Actions } from './$types';
@@ -20,13 +20,13 @@ const header = {
 };
 
 function safePayload() {
-	return { formateurs: [], pageName: 'Formateurs' as const, header, openNewModal: false };
+	return { formateurs: [], pageName: 'Formateurs' as const, header, openNewModal: false, allThematiques: [], allSousthematiques: [] };
 }
 
 export const load = (async ({ url, locals }) => {
 	const openNewModal = url.searchParams.has('new');
 	const workspaceId = await getUserWorkspace(locals);
-	if (!workspaceId) return { ...safePayload(), openNewModal };
+	if (!workspaceId) return { ...safePayload(), openNewModal, allThematiques: [], allSousthematiques: [] };
 	try {
 		let formateursList: Awaited<ReturnType<typeof runFullQuery>>;
 		try {
@@ -42,14 +42,20 @@ export const load = (async ({ url, locals }) => {
 					formateursThematiques: [] as { thematique: { name: string } }[]
 				})) as Awaited<ReturnType<typeof runFullQuery>>;
 			} catch {
-				return { ...safePayload(), openNewModal };
+				return { ...safePayload(), openNewModal, allThematiques: [], allSousthematiques: [] };
 			}
 		}
-		return { formateurs: formateursList, pageName: 'Formateurs', header, openNewModal };
+
+		const [allThematiques, allSousthematiques] = await Promise.all([
+			db.query.thematiques.findMany({ orderBy: [asc(thematiques.name)] }),
+			db.query.sousthematiques.findMany({ orderBy: [asc(sousthematiques.name)] })
+		]);
+
+		return { formateurs: formateursList, pageName: 'Formateurs', header, openNewModal, allThematiques, allSousthematiques };
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		console.error('[formateurs load]', msg);
-		return { ...safePayload(), openNewModal };
+		return { ...safePayload(), openNewModal, allThematiques: [], allSousthematiques: [] };
 	}
 }) satisfies PageServerLoad;
 
@@ -76,6 +82,8 @@ export const actions: Actions = {
 		const email = (fd.get('email') as string)?.trim() || null;
 		const ville = (fd.get('ville') as string)?.trim() || null;
 		const departement = (fd.get('departement') as string)?.trim() || null;
+		const thematiqueIds = fd.getAll('thematiqueIds[]').map(String).filter(Boolean);
+		const sousthematiqueIds = fd.getAll('sousthematiqueIds[]').map(String).filter(Boolean);
 
 		if (!firstName && !lastName) {
 			return fail(400, { message: 'Le prénom ou le nom est requis' });
@@ -88,7 +96,9 @@ export const actions: Actions = {
 				lastName,
 				email,
 				ville,
-				departement
+				departement,
+				thematiqueIds,
+				sousthematiqueIds
 			});
 			throw redirect(303, `/contacts/formateurs/${formateurId}`);
 		} catch (e) {

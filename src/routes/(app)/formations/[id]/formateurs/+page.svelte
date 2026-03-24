@@ -24,6 +24,7 @@
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
 	import CityCombobox from '$lib/components/crm/CityCombobox.svelte';
+	import ThematiquesCombobox from '$lib/components/crm/ThematiquesCombobox.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -39,12 +40,6 @@
 	let newDepartement = $state('');
 	let selectedThematiqueIds = $state<string[]>([]);
 	let selectedSousthematiqueIds = $state<string[]>([]);
-
-	const availableSousthematiques = $derived(
-		(data.allSousthematiques ?? []).filter((st) =>
-			selectedThematiqueIds.includes(st.parentTopicId)
-		)
-	);
 
 	function resetDialog() {
 		searchQuery = '';
@@ -331,69 +326,21 @@
 							</div>
 
 							{#if (data.allThematiques ?? []).length > 0}
-								<div class="space-y-2">
-									<Label>Thématiques</Label>
-									<div class="space-y-1.5 rounded-md border p-3">
-										{#each data.allThematiques ?? [] as t (t.id)}
-											<label class="flex cursor-pointer items-center gap-2 text-sm">
-												<input
-													type="checkbox"
-													class="size-4 rounded"
-													checked={selectedThematiqueIds.includes(t.id)}
-													onchange={() => {
-														if (selectedThematiqueIds.includes(t.id)) {
-															const removedId = t.id;
-															selectedThematiqueIds = selectedThematiqueIds.filter((id) => id !== removedId);
-															const removedSousIds = (data.allSousthematiques ?? [])
-																.filter((st) => st.parentTopicId === removedId)
-																.map((st) => st.id);
-															selectedSousthematiqueIds = selectedSousthematiqueIds.filter(
-																(id) => !removedSousIds.includes(id)
-															);
-														} else {
-															selectedThematiqueIds = [...selectedThematiqueIds, t.id];
-														}
-													}}
-												/>
-												{t.name}
-											</label>
-										{/each}
-									</div>
+								<div class="space-y-1.5">
+									<ThematiquesCombobox
+										thematiques={data.allThematiques ?? []}
+										sousthematiques={data.allSousthematiques ?? []}
+										bind:selectedThematiqueIds
+										bind:selectedSousthematiqueIds
+									/>
+									{#each selectedThematiqueIds as id (id)}
+										<input type="hidden" name="thematiqueIds[]" value={id} />
+									{/each}
+									{#each selectedSousthematiqueIds as id (id)}
+										<input type="hidden" name="sousthematiqueIds[]" value={id} />
+									{/each}
 								</div>
 							{/if}
-
-							{#each selectedThematiqueIds as id (id)}
-								<input type="hidden" name="thematiqueIds[]" value={id} />
-							{/each}
-
-							{#if selectedThematiqueIds.length > 0 && availableSousthematiques.length > 0}
-								<div class="space-y-2">
-									<Label>Sous-thématiques</Label>
-									<div class="space-y-1.5 rounded-md border p-3">
-										{#each availableSousthematiques as st (st.id)}
-											<label class="flex cursor-pointer items-center gap-2 text-sm">
-												<input
-													type="checkbox"
-													class="size-4 rounded"
-													checked={selectedSousthematiqueIds.includes(st.id)}
-													onchange={() => {
-														if (selectedSousthematiqueIds.includes(st.id)) {
-															selectedSousthematiqueIds = selectedSousthematiqueIds.filter((id) => id !== st.id);
-														} else {
-															selectedSousthematiqueIds = [...selectedSousthematiqueIds, st.id];
-														}
-													}}
-												/>
-												{st.name}
-											</label>
-										{/each}
-									</div>
-								</div>
-							{/if}
-
-							{#each selectedSousthematiqueIds as id (id)}
-								<input type="hidden" name="sousthematiqueIds[]" value={id} />
-							{/each}
 
 							<p class="text-xs text-muted-foreground">
 								Vous pourrez compléter son profil (tarif, disponibilité, description…) depuis sa fiche dans le CRM.
