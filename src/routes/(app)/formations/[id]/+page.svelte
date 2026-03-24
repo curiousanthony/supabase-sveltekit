@@ -185,7 +185,7 @@
 					<Button
 						variant="outline"
 						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('actions')}
+						onclick={() => goTo('suivi')}
 					>
 						Voir le suivi
 					</Button>
@@ -210,7 +210,7 @@
 					</div>
 					<Button
 						class="shrink-0 cursor-pointer"
-						href="/formations/{formationId}/actions{nextQuest.questKey ? `?quest=${nextQuest.questKey}` : ''}"
+						href="/formations/{formationId}/suivi{nextQuest.questKey ? `?quest=${nextQuest.questKey}` : ''}"
 					>
 						Faire
 						<ChevronRight class="ml-1 size-4" />
@@ -223,7 +223,7 @@
 						<button
 							type="button"
 							class="text-primary underline-offset-4 hover:underline cursor-pointer ml-1"
-							onclick={() => goTo('actions')}
+							onclick={() => goTo('suivi')}
 						>
 							Configurer les actions
 						</button>
@@ -232,7 +232,7 @@
 						variant="outline"
 						size="sm"
 						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('actions')}
+						onclick={() => goTo('suivi')}
 					>
 						Configurer
 					</Button>
