@@ -12,6 +12,7 @@
 		PHASE_LABELS,
 		type QuestPhase
 	} from '$lib/formation-quests';
+	import { getPrimaryAction } from '$lib/formation-quest-priority';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import CheckCircle from '@lucide/svelte/icons/check-circle';
 	import Clock from '@lucide/svelte/icons/clock';
@@ -30,12 +31,28 @@
 	const formationId = $derived(formation?.id ?? '');
 
 	const actions = $derived(formation?.actions ?? []);
-	const nextQuest = $derived(getNextQuest(actions));
+	const primaryAction = $derived(
+		getPrimaryAction({
+			actions: actions as any,
+			formation: {
+				type: formation?.type,
+				typeFinancement: formation?.typeFinancement,
+				dateDebut: formation?.dateDebut,
+				dateFin: formation?.dateFin
+			}
+		})
+	);
+	const nextQuest = $derived(
+		primaryAction
+			? { ...primaryAction.action, questKey: primaryAction.action.questKey }
+			: getNextQuest(actions)
+	);
 	const questTemplate = $derived(
-		nextQuest?.questKey ? getQuestTemplate(nextQuest.questKey) : undefined
+		primaryAction?.template ??
+			(nextQuest?.questKey ? getQuestTemplate(nextQuest.questKey) : undefined)
 	);
 	const nextQuestTitle = $derived(
-		(nextQuest as { title?: string } | undefined)?.title ?? questTemplate?.title ?? 'Action'
+		primaryAction?.template?.title ?? questTemplate?.title ?? 'Action'
 	);
 	const allComplete = $derived(
 		actions.length > 0 && actions.every((a) => a.status === 'Terminé')
