@@ -5,462 +5,481 @@
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
-	import * as Progress from '$lib/components/ui/progress/index.js';
-	import * as Popover from '$lib/components/ui/popover/index.js';
-	import { RangeCalendar } from 'bits-ui';
-	import { CalendarDate } from '@internationalized/date';
 	import { cn } from '$lib/utils';
+	import {
+		getQuestTemplate,
+		getNextQuest,
+		PHASE_LABELS,
+		type QuestPhase
+	} from '$lib/formation-quests';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import Check from '@lucide/svelte/icons/check';
-	import Lock from '@lucide/svelte/icons/lock';
+	import CheckCircle from '@lucide/svelte/icons/check-circle';
 	import Clock from '@lucide/svelte/icons/clock';
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import Calendar from '@lucide/svelte/icons/calendar';
 	import Wallet from '@lucide/svelte/icons/wallet';
-	import MessageCircle from '@lucide/svelte/icons/message-circle';
-	import Phone from '@lucide/svelte/icons/phone';
-	import FileSignature from '@lucide/svelte/icons/file-signature';
-	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
-	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right'; // for calendar nav
+	import Users from '@lucide/svelte/icons/users';
+	import FileText from '@lucide/svelte/icons/file-text';
+	import Building2 from '@lucide/svelte/icons/building-2';
+	import Layout from '@lucide/svelte/icons/layout';
+	import Plus from '@lucide/svelte/icons/plus';
 
 	let { data }: PageProps = $props();
 
 	const formation = $derived(data?.formation);
 	const formationId = $derived(formation?.id ?? '');
 
-	// Dummy: 7 steps; labels as action verbs. Doable = !done && !locked. Show completed (reward), doable (action), locked (unlock me).
-	const QUEST_STEPS = [
-		{ id: '1', label: 'Vérifier les informations', done: true, locked: false, href: null },
-		{ id: '2', label: 'Générer la convention', done: true, locked: false, href: null },
-		{ id: '3', label: 'Assigner un formateur', done: false, locked: false, href: 'formateurs' },
-		{ id: '4', label: 'Envoyer les questionnaires de satisfaction', done: false, locked: false, href: 'suivi' },
-		{ id: '5', label: "Contacter l'OPCO", done: false, locked: true, href: 'suivi' },
-		{ id: '6', label: 'Collecter les documents formateur', done: false, locked: true, href: 'formateurs' },
-		{ id: '7', label: 'Émettre la facturation', done: false, locked: true, href: 'suivi' }
-	];
-	const completedSteps = $derived(QUEST_STEPS.filter((s) => s.done));
-	const doableSteps = $derived(QUEST_STEPS.filter((s) => !s.done && !s.locked).slice(0, 3));
-	const lockedSteps = $derived(QUEST_STEPS.filter((s) => !s.done && s.locked).slice(0, 2));
-	const completedCount = $derived(completedSteps.length);
-	const totalCount = $derived(QUEST_STEPS.length);
-	const allComplete = $derived(completedCount === totalCount && totalCount > 0);
+	const actions = $derived(formation?.actions ?? []);
+	const nextQuest = $derived(getNextQuest(actions));
+	const questTemplate = $derived(
+		nextQuest?.questKey ? getQuestTemplate(nextQuest.questKey) : undefined
+	);
+	const nextQuestTitle = $derived(
+		(nextQuest as { title?: string } | undefined)?.title ?? questTemplate?.title ?? 'Action'
+	);
+	const allComplete = $derived(
+		actions.length > 0 && actions.every((a) => a.status === 'Terminé')
+	);
 
-	// Session date as YYYY-MM-DD for past/today/future; displayLabel for UI
-	const DUMMY_SESSIONS = [
-		{
-			dateLabel: '12 oct.',
-			dateKey: '2025-10-12',
-			moduleName: 'Module 1 : Fondamentaux',
-			time: '09:00 – 12:30',
-			educator: 'P. Martin',
-			emargement: { signed: 3, total: 4 }
-		},
-		{
-			dateLabel: '13 oct.',
-			dateKey: '2026-02-20',
-			moduleName: 'Module 2 : Avancé',
-			time: '09:00 – 17:00',
-			educator: 'P. Martin',
-			emargement: { signed: 0, total: 4 }
-		}
-		// In real app: derive status from session date vs today
-	];
-	const todayKey = $derived(new Date().toISOString().slice(0, 10));
-	function sessionStatus(dateKey: string): 'past' | 'today' | 'future' {
-		if (dateKey < todayKey) return 'past';
-		if (dateKey === todayKey) return 'today';
-		return 'future';
-	}
+	const apprenants = $derived(
+		(formation?.formationApprenants ?? []).map((fa) => ({
+			id: fa.contact.id,
+			fullName:
+				[fa.contact.firstName, fa.contact.lastName].filter(Boolean).join(' ') ||
+				'Sans nom'
+		}))
+	);
+	const apprenantsPreview = $derived(apprenants.slice(0, 3));
 
-	const DUMMY_LEARNERS = [
-		{ id: '1', fullName: 'Philippe Mejia', company: 'Acme Inc.' },
-		{ id: '2', fullName: 'Martine Ruffin', company: 'Acme Inc.' }
-	];
-
-	const DUMMY_COMPANY_POPOVER = {
-		name: 'Acme Inc.',
-		address: '12 avenue des fleurs, 51100 Reims',
-		siret: '123 456 789 00012'
-	};
-
-	// Dummy: 2 formateurs to show stacked avatars + names (toggle to [] to see "Aucun formateur assigné")
-	const DUMMY_FORMATEURS: { name: string; avatarUrl: string }[] = [
-		{ name: 'Pierre Martin', avatarUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Martin' },
-		{ name: 'Sophie Bernard', avatarUrl: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Bernard' }
-	];
-
-	// Date range for formation (dummy) – used by RangeCalendar dialog
-	const dateRangeStart = new CalendarDate(2026, 2, 16);
-	const dateRangeEnd = new CalendarDate(2026, 2, 21);
-	let dateRange = $state<{ start: CalendarDate; end: CalendarDate }>({
-		start: dateRangeStart,
-		end: dateRangeEnd
+	const seances = $derived(formation?.seances ?? []);
+	let now = $state(new Date().toISOString());
+	$effect(() => {
+		const interval = setInterval(() => { now = new Date().toISOString(); }, 60_000);
+		return () => clearInterval(interval);
 	});
-	let dateRangePopoverOpen = $state(false);
-	let addressPopoverOpen = $state(false);
-	let fundingOrgPopoverOpen = $state(false);
-	let formateursPopoverOpen = $state(false);
-	/** For company popover: open on hover (and click on mobile). One learner's popover open at a time. */
-	let openCompanyId = $state<string | null>(null);
+	const upcomingSeances = $derived(
+		seances
+			.filter((s) => s.startAt >= now)
+			.slice(0, 3)
+	);
 
-	function goToTab(segment: string) {
+	const totalSeances = $derived(seances.length);
+	const upcomingCount = $derived(seances.filter((s) => s.startAt >= now).length);
+	const nextSessionDate = $derived(
+		upcomingSeances.length > 0 ? upcomingSeances[0].startAt : null
+	);
+
+	const attendanceRate = $derived.by(() => {
+		const pastSeances = seances.filter(
+			(s) => s.endAt < now && (s.emargements?.length ?? 0) > 0
+		);
+		if (pastSeances.length === 0) return null;
+		let totalEm = 0;
+		let signedEm = 0;
+		for (const s of pastSeances) {
+			for (const e of s.emargements ?? []) {
+				totalEm++;
+				if (e.signedAt) signedEm++;
+			}
+		}
+		return totalEm > 0 ? Math.round((signedEm / totalEm) * 100) : null;
+	});
+
+	const montant = $derived(
+		formation?.montantAccorde ? Number(formation.montantAccorde) : null
+	);
+
+	const totalFormateurCost = $derived.by(() => {
+		const ffs = formation?.formationFormateurs ?? [];
+		if (ffs.length === 0) return null;
+		let total = 0;
+		let hasAny = false;
+		for (const ff of ffs) {
+			const tjm = ff.tjm ? Number(ff.tjm) : 0;
+			const days = ff.numberOfDays ? Number(ff.numberOfDays) : 0;
+			const deplacement = ff.deplacementCost ? Number(ff.deplacementCost) : 0;
+			const hebergement = ff.hebergementCost ? Number(ff.hebergementCost) : 0;
+			const cost = tjm * days + deplacement + hebergement;
+			if (cost > 0) hasAny = true;
+			total += cost;
+		}
+		return hasAny ? total : null;
+	});
+
+	const marge = $derived(
+		montant != null && totalFormateurCost != null
+			? montant - totalFormateurCost
+			: null
+	);
+
+	function formatTime(isoDate: string) {
+		return new Date(isoDate).toLocaleTimeString('fr-FR', {
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+	}
+
+	function formatDate(isoDate: string) {
+		return new Date(isoDate).toLocaleDateString('fr-FR', {
+			day: 'numeric',
+			month: 'short'
+		});
+	}
+
+	function formatDateRange() {
+		if (!formation?.dateDebut && !formation?.dateFin) return '—';
+		if (formation.dateDebut && formation.dateFin) {
+			return `${new Date(formation.dateDebut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${new Date(formation.dateFin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+		}
+		if (formation.dateDebut) {
+			return `À partir du ${new Date(formation.dateDebut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+		}
+		return '—';
+	}
+
+	function getInitials(name: string) {
+		return name
+			.split(' ')
+			.filter(Boolean)
+			.map((p) => p[0])
+			.join('')
+			.slice(0, 2)
+			.toUpperCase();
+	}
+
+	function getPhaseLabel(phase: QuestPhase | null | undefined): string {
+		if (!phase) return 'Conception';
+		return PHASE_LABELS[phase] ?? phase;
+	}
+
+	function goTo(segment: string) {
 		goto(`/formations/${formationId}/${segment}`);
-	}
-
-	function openCompany(learnerId: string) {
-		openCompanyId = learnerId;
-	}
-	function closeCompany() {
-		openCompanyId = null;
 	}
 </script>
 
-<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-	<!-- Cell 1 – Quest tracker: doable → locked → progress at bottom; completed/locked visible for reward & motivation -->
-	<Card.Root class="flex flex-col">
-		<Card.Header>
-			<Card.Title>Actions</Card.Title>
-		</Card.Header>
-		<Card.Content class="flex flex-1 flex-col gap-2">
-			{#if doableSteps.length > 0}
-				<div class="space-y-1.5">
-					{#each doableSteps as step}
-						<button
-							type="button"
-							class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2.5 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/50 focus-visible:outline focus-visible:ring-2 focus-visible:ring-ring"
-							onclick={() => step.href && goToTab(step.href)}
-						>
-							<span class="font-medium text-foreground">{step.label}</span>
-							<ChevronRight class="size-4 shrink-0 text-muted-foreground" />
-						</button>
-					{/each}
-				</div>
-			{:else if allComplete}
-				<p class="py-2 text-sm text-muted-foreground">Tout est complété.</p>
-			{/if}
-			{#if lockedSteps.length > 0}
-				<div class="space-y-1">
-					{#each lockedSteps as step}
-						<div
-							class="flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 px-3 py-2 text-sm text-muted-foreground"
-							aria-disabled="true"
-						>
-							<Lock class="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
-							<span>{step.label}</span>
-						</div>
-					{/each}
-				</div>
-			{/if}
-			{#if completedSteps.length > 0}
-				<div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-					{#each completedSteps as step}
-						<span class="inline-flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-0.5">
-							<Check class="size-3.5 shrink-0 text-primary" aria-hidden="true" />
-							<span class="line-through">{step.label}</span>
-						</span>
-					{/each}
-				</div>
-			{/if}
-			<div class="mt-2 space-y-1">
-				<div class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-					<span>{completedCount} complétées</span>
-					<span class="tabular-nums">{completedCount}/{totalCount}</span>
-				</div>
-				<Progress.Root
-					value={totalCount > 0 ? (completedCount / totalCount) * 100 : 0}
-					class="h-1.5 w-full min-h-[6px] rounded-full"
-				/>
-			</div>
-			<a
-				href="/formations/{formationId}/suivi"
-				class="mt-1 text-sm text-primary underline-offset-4 hover:underline cursor-pointer"
-			>
-				Voir toutes les actions
-			</a>
-		</Card.Content>
-	</Card.Root>
-
-	<!-- Cell 2 – Main information -->
-	<Card.Root>
-		<Card.Header>
-			<Card.Title class="flex items-center gap-2">
-				{formation?.name ?? 'Formation'}
-				<Badge variant="secondary" class="text-xs">#{formation?.idInWorkspace ?? '—'}</Badge>
-				<Badge variant="outline">Intra</Badge>
-			</Card.Title>
-		</Card.Header>
-		<Card.Content class="space-y-3 text-sm">
-			<div class="flex items-center gap-2 text-foreground">
-				<Clock class="size-4 shrink-0 text-muted-foreground" />
-				<span>{formation?.duree ?? 35} heures</span>
-			</div>
-			<Popover.Root bind:open={dateRangePopoverOpen}>
-				<Popover.Trigger
-					class="flex w-full items-center gap-2 text-left text-foreground underline-offset-4 hover:underline cursor-pointer"
-				>
-					<Calendar class="size-4 shrink-0 text-muted-foreground" />
-					<span>16 fév. – 21 fév. 2026</span>
-				</Popover.Trigger>
-				<Popover.Content class="w-auto p-0" align="start">
-					<div class="rounded-lg border bg-card p-2 shadow-sm">
-						<p class="px-2 py-1 text-xs font-medium text-muted-foreground">Période de la formation</p>
-						<RangeCalendar.Root
-							value={dateRange}
-							placeholder={dateRange.start}
-							locale="fr-FR"
-							weekdayFormat="short"
-							class="rounded-md"
-							readonly
-						>
-							{#snippet children({ months, weekdays })}
-								{#each months as month (month.value.month)}
-									<div class="space-y-2">
-										<div class="flex items-center justify-between px-1">
-											<RangeCalendar.PrevButton
-												class="inline-flex size-8 items-center justify-center rounded-md hover:bg-accent cursor-pointer"
-											>
-												<ChevronLeft class="size-4" />
-											</RangeCalendar.PrevButton>
-											<RangeCalendar.Heading class="text-sm font-medium" />
-											<RangeCalendar.NextButton
-												class="inline-flex size-8 items-center justify-center rounded-md hover:bg-accent cursor-pointer"
-											>
-												<ChevronRightIcon class="size-4" />
-											</RangeCalendar.NextButton>
-										</div>
-										<table class="w-full border-collapse text-center text-sm">
-											<thead>
-												<tr>
-													{#each weekdays as day}
-														<th class="p-1 text-muted-foreground">{day.slice(0, 2)}</th>
-													{/each}
-												</tr>
-											</thead>
-											<tbody>
-												{#each month.weeks as weekDates}
-													<tr>
-														{#each weekDates as date}
-															<RangeCalendar.Cell {date} month={month.value} class="p-0.5">
-																<RangeCalendar.Day
-																	class={cn(
-																		'size-8 rounded-md flex items-center justify-center cursor-default',
-																		'data-outside-month:text-muted-foreground/50',
-																		'data-selected:bg-primary data-selected:text-primary-foreground',
-																		'data-today:ring-1 data-today:ring-primary'
-																	)}
-																/>
-															</RangeCalendar.Cell>
-														{/each}
-													</tr>
-												{/each}
-											</tbody>
-										</table>
-									</div>
-								{/each}
-							{/snippet}
-						</RangeCalendar.Root>
+<div class="flex flex-col gap-4">
+	<!-- 1. Next Action Hero Card (full width) -->
+	<Card.Root
+		class={cn(
+			'overflow-hidden',
+			allComplete
+				? 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30'
+				: 'border-primary/30 bg-primary/5'
+		)}
+	>
+		<Card.Content class="py-0">
+			{#if allComplete}
+				<div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
+					<CheckCircle
+						class="size-12 shrink-0 text-green-600 dark:text-green-400"
+						aria-hidden="true"
+					/>
+					<div>
+						<h2 class="text-lg font-semibold text-foreground">
+							Toutes les actions sont terminées
+						</h2>
+						<p class="text-sm text-muted-foreground">
+							La formation est à jour. Consultez les autres onglets pour les détails.
+						</p>
 					</div>
-				</Popover.Content>
-			</Popover.Root>
-			<Popover.Root bind:open={addressPopoverOpen}>
-				<Popover.Trigger
-					class="flex w-full items-center gap-2 text-left text-foreground underline-offset-4 hover:underline"
-				>
-					<MapPin class="size-4 shrink-0 text-muted-foreground" />
-					<span>{formation?.modalite ?? 'Présentiel'} – 12 avenue des fleurs, 51100 Reims</span>
-				</Popover.Trigger>
-				<Popover.Content class="w-72 text-sm" align="start">
-					<p class="font-medium">Lieu</p>
-					<p class="text-muted-foreground">12 avenue des fleurs, 51100 Reims</p>
-					<p class="mt-2 text-xs text-muted-foreground">Carte (à intégrer)</p>
-				</Popover.Content>
-			</Popover.Root>
-			<div class="flex flex-col gap-1">
-				<div class="flex items-center gap-2 text-foreground">
-					<Wallet class="size-4 shrink-0 text-muted-foreground" />
-					<span class="font-medium">Financement</span>
+					<Button
+						variant="outline"
+						class="shrink-0 cursor-pointer"
+						onclick={() => goTo('actions')}
+					>
+						Voir le suivi
+					</Button>
 				</div>
-				<p class="pl-6 text-foreground">
-					<Popover.Root bind:open={fundingOrgPopoverOpen}>
-						<Popover.Trigger
-							class="cursor-pointer underline-offset-4 hover:underline font-medium"
-						>
-							Akto
-						</Popover.Trigger>
-						<Popover.Content class="w-80 text-sm" align="start">
-							<p class="font-semibold">Akto</p>
-							<p class="text-muted-foreground mt-1">OPCO des secteurs de la communication, de la publicité et du numérique. Finance la formation professionnelle des salariés de ces branches.</p>
-							<p class="text-muted-foreground mt-2 text-xs">Le contact peut varier selon la région de l'organisme ou du client (antennes régionales).</p>
-							<div class="mt-3 flex flex-wrap gap-2">
-								<a href="https://www.akto.fr" target="_blank" rel="noopener noreferrer" class="text-primary underline-offset-4 hover:underline cursor-pointer text-xs">Site web</a>
-								<a href="tel:+33188131010" class="text-primary underline-offset-4 hover:underline cursor-pointer text-xs">01 88 13 10 10</a>
-								<Button variant="outline" size="sm" class="cursor-pointer text-xs">Contacter l'OPCO</Button>
-							</div>
-						</Popover.Content>
-					</Popover.Root>
-					– 10 150 € <Badge variant="secondary">En attente</Badge>
-				</p>
-			</div>
-			<div class="flex items-center justify-between border-t pt-3 gap-2">
-				{#if DUMMY_FORMATEURS.length > 0}
-					<Popover.Root bind:open={formateursPopoverOpen}>
-						<Popover.Trigger
-							class="flex min-w-0 flex-1 items-center gap-2 text-left cursor-pointer rounded-md -ml-1 pl-1 hover:bg-muted/50"
-						>
-							<div class="flex -space-x-2 shrink-0">
-								{#each DUMMY_FORMATEURS as formateur}
-									<Avatar.Root class="size-8 border-2 border-background" title={formateur.name}>
-										<Avatar.Image src={formateur.avatarUrl} alt={formateur.name} />
-										<Avatar.Fallback class="text-xs">{formateur.name.slice(0, 2)}</Avatar.Fallback>
-									</Avatar.Root>
-								{/each}
-							</div>
-							<span class="text-sm text-foreground min-w-0 truncate">
-								{DUMMY_FORMATEURS.length === 1
-									? DUMMY_FORMATEURS[0].name
-									: `${DUMMY_FORMATEURS.length} formateurs`}
-							</span>
-						</Popover.Trigger>
-						<Popover.Content class="w-56 text-sm" align="start">
-							<p class="font-medium text-muted-foreground mb-2">Formateurs assignés</p>
-							<ul class="space-y-1.5">
-								{#each DUMMY_FORMATEURS as formateur}
-									<li class="flex items-center gap-2">
-										<Avatar.Root class="size-6 border border-background shrink-0">
-											<Avatar.Image src={formateur.avatarUrl} alt={formateur.name} />
-											<Avatar.Fallback class="text-[10px]">{formateur.name.slice(0, 2)}</Avatar.Fallback>
-										</Avatar.Root>
-										<span class="truncate">{formateur.name}</span>
-									</li>
-								{/each}
-							</ul>
-							<Button variant="outline" size="sm" class="mt-3 w-full cursor-pointer" onclick={() => { formateursPopoverOpen = false; goToTab('formateurs'); }}>
-								Gérer les formateurs
-							</Button>
-						</Popover.Content>
-					</Popover.Root>
-				{:else}
-					<span class="text-sm text-muted-foreground flex-1">Aucun formateur assigné.</span>
-				{/if}
-				<Button variant="outline" size="sm" class="shrink-0 cursor-pointer" onclick={() => goToTab('formateurs')}>
-					Gérer
-				</Button>
-			</div>
-		</Card.Content>
-	</Card.Root>
-
-	<!-- Cell 3 – Séances -->
-	<Card.Root>
-		<Card.Header class="flex flex-row items-center justify-between">
-			<Card.Title class="flex items-center gap-2">
-				<Calendar class="size-4" />
-				Séances
-			</Card.Title>
-			<Button variant="link" size="sm" class="h-auto p-0 font-medium" onclick={() => goToTab('seances')}>
-				Voir tout le calendrier
-			</Button>
-		</Card.Header>
-		<Card.Content>
-			<ul class="space-y-4">
-				{#each DUMMY_SESSIONS as session}
-					{@const status = sessionStatus(session.dateKey)}
-					<li class="border-b border-muted pb-4 last:border-0 last:pb-0">
+			{:else if nextQuest}
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+					<div class="min-w-0 flex-1 space-y-2">
+						<div class="flex flex-wrap items-center gap-2">
+							<Badge variant="secondary" class="text-xs">
+								{getPhaseLabel(nextQuest.phase)}
+							</Badge>
+							<span class="text-sm text-muted-foreground">Prochaine action</span>
+						</div>
+						<h2 class="text-lg font-semibold text-foreground">
+							{nextQuestTitle}
+						</h2>
+						{#if questTemplate?.description}
+							<p class="text-sm text-muted-foreground line-clamp-2">
+								{questTemplate.description}
+							</p>
+						{/if}
+					</div>
+					<Button
+						class="shrink-0 cursor-pointer"
+						href="/formations/{formationId}/actions{nextQuest.questKey ? `?quest=${nextQuest.questKey}` : ''}"
+					>
+						Faire
+						<ChevronRight class="ml-1 size-4" />
+					</Button>
+				</div>
+			{:else}
+				<div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
+					<p class="text-sm text-muted-foreground">
+						Aucune action définie.
 						<button
 							type="button"
-							class="flex w-full flex-col gap-1.5 text-left transition-colors hover:bg-muted/50 rounded-md -m-1 p-1 cursor-pointer"
-							onclick={() => goToTab('seances')}
+							class="text-primary underline-offset-4 hover:underline cursor-pointer ml-1"
+							onclick={() => goTo('actions')}
 						>
-							<div class="flex items-baseline justify-between gap-2 flex-wrap">
-								<span class="text-base font-semibold text-foreground">{session.dateLabel}</span>
-								<span class={cn(
-									'text-xs font-medium px-2 py-0.5 rounded-full',
-									status === 'past' && 'bg-muted text-muted-foreground',
-									status === 'today' && 'bg-primary/15 text-primary',
-									status === 'future' && 'bg-muted text-muted-foreground'
-								)}>
-									{#if status === 'past'}Passé{:else if status === 'today'}Aujourd'hui{:else}À venir{/if}
-								</span>
-								<span class="text-sm text-foreground w-full sm:w-auto">{session.time}</span>
-							</div>
-							<p class="text-sm font-medium text-foreground">{session.moduleName}</p>
-							<p class="text-sm text-foreground">{session.educator}</p>
-							<div class="flex items-center gap-2 text-sm text-foreground flex-wrap">
-								<FileSignature class="size-4 shrink-0 text-muted-foreground" />
-								Émargement {session.emargement.signed}/{session.emargement.total}
-								{#if status === 'future' && session.emargement.signed === 0}
-									<span class="text-xs text-muted-foreground">(séance à venir)</span>
-								{/if}
-								<div class="flex gap-0.5" aria-hidden="true">
-									{#each Array(session.emargement.total) as _, i}
-										<span
-											class={cn(
-												'h-2 w-2.5 rounded-sm',
-												i < session.emargement.signed ? 'bg-green-500' : 'bg-muted'
-											)}
-										></span>
-									{/each}
-								</div>
-							</div>
+							Configurer les actions
 						</button>
-					</li>
-				{/each}
-			</ul>
+					</p>
+					<Button
+						variant="outline"
+						size="sm"
+						class="shrink-0 cursor-pointer"
+						onclick={() => goTo('actions')}
+					>
+						Configurer
+					</Button>
+				</div>
+			{/if}
 		</Card.Content>
 	</Card.Root>
 
-	<!-- Cell 4 – Learners (row → fiche apprenant; quick actions don’t navigate) -->
-	<Card.Root>
-		<Card.Header>
-			<Card.Title>Apprenants</Card.Title>
-		</Card.Header>
-		<Card.Content>
-			<ul class="space-y-1">
-				{#each DUMMY_LEARNERS as learner}
-					<li class="flex items-center gap-2 rounded-md border border-transparent hover:border-muted hover:bg-muted/30 transition-colors">
-						<a
-							href="/contacts/apprenants/{learner.id}"
-							class="flex min-w-0 flex-1 items-center gap-2 py-2 pr-1 cursor-pointer"
-						>
-							<div class="min-w-0 flex-1">
-								<p class="font-medium text-foreground truncate">{learner.fullName}</p>
-								<Popover.Root
-									open={openCompanyId === learner.id}
-									onOpenChange={(open) => {
-										openCompanyId = open ? learner.id : null;
-									}}
+	<!-- 2 & 3. Key Info | Participants -->
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+		<!-- Key Info Card -->
+		<Card.Root>
+			<Card.Header>
+				<Card.Title class="flex items-center gap-2">
+					<FileText class="size-4" />
+					Informations clés
+				</Card.Title>
+			</Card.Header>
+			<Card.Content class="space-y-3 text-sm">
+				{#if formation?.type}
+					<div class="flex items-center gap-2">
+						<Badge variant="outline">{formation.type}</Badge>
+					</div>
+				{/if}
+				<div class="flex items-center gap-2 text-foreground">
+					<Layout class="size-4 shrink-0 text-muted-foreground" />
+					<span>Modalité : {formation?.modalite ?? '—'}</span>
+				</div>
+				<div class="flex items-center gap-2 text-foreground">
+					<Clock class="size-4 shrink-0 text-muted-foreground" />
+					<span>Durée : {formation?.duree ?? '—'} heures</span>
+				</div>
+				<div class="flex items-center gap-2 text-foreground">
+					<Calendar class="size-4 shrink-0 text-muted-foreground" />
+					<span>{formatDateRange()}</span>
+				</div>
+				<div class="flex items-center gap-2 text-foreground">
+					<MapPin class="size-4 shrink-0 text-muted-foreground" />
+					<span>{formation?.location ?? '—'}</span>
+				</div>
+				{#if formation?.client}
+					<div class="flex items-center gap-2 text-foreground">
+						<Building2 class="size-4 shrink-0 text-muted-foreground" />
+						<span>{formation.client.legalName ?? '—'}</span>
+					</div>
+				{/if}
+				<a
+					href="/formations/{formationId}/fiche"
+					class="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
+				>
+					Voir la fiche
+					<ChevronRight class="size-4" />
+				</a>
+			</Card.Content>
+		</Card.Root>
+
+		<!-- Participants Summary Card -->
+		<Card.Root>
+			<Card.Header class="flex flex-row items-center justify-between">
+				<Card.Title class="flex items-center gap-2">
+					<Users class="size-4" />
+					Participants
+					{#if apprenants.length > 0}
+						<Badge variant="secondary" class="text-xs">{apprenants.length}</Badge>
+					{/if}
+				</Card.Title>
+				{#if apprenants.length > 0}
+					<Button
+						variant="link"
+						size="sm"
+						class="h-auto p-0 font-medium cursor-pointer"
+						onclick={() => goTo('apprenants')}
+					>
+						Voir tout
+					</Button>
+				{/if}
+			</Card.Header>
+			<Card.Content>
+				{#if apprenants.length === 0}
+					<p class="text-sm text-muted-foreground">Aucun apprenant inscrit.</p>
+				{:else}
+					<ul class="space-y-2">
+						{#each apprenantsPreview as learner}
+							<li class="flex items-center gap-2">
+								<Avatar.Root class="size-8 shrink-0 border border-background">
+									<Avatar.Fallback class="text-xs">
+										{getInitials(learner.fullName)}
+									</Avatar.Fallback>
+								</Avatar.Root>
+								<span class="truncate text-sm font-medium text-foreground">
+									{learner.fullName}
+								</span>
+							</li>
+						{/each}
+					</ul>
+					{#if apprenants.length > 3}
+						<p class="mt-2 text-xs text-muted-foreground">
+							+{apprenants.length - 3} autre{apprenants.length - 3 > 1 ? 's' : ''}
+						</p>
+					{/if}
+				{#if attendanceRate != null}
+					<p class="mt-3 text-xs text-muted-foreground">
+						Taux de présence : <span class="font-medium text-foreground">{attendanceRate}%</span>
+					</p>
+				{/if}
+				{/if}
+				<a
+					href="/formations/{formationId}/apprenants"
+					class="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+				>
+					<Plus class="size-3.5" />
+					Ajouter un apprenant
+				</a>
+			</Card.Content>
+		</Card.Root>
+	</div>
+
+	<!-- 4 & 5. Upcoming Sessions | Financial Summary -->
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+		<!-- Upcoming Sessions Card -->
+		<Card.Root>
+			<Card.Header class="flex flex-row items-center justify-between">
+				<Card.Title class="flex items-center gap-2">
+					<Calendar class="size-4" />
+					Séances
+					{#if totalSeances > 0}
+						<Badge variant="secondary" class="text-xs">{upcomingCount}/{totalSeances}</Badge>
+					{/if}
+				</Card.Title>
+				{#if totalSeances > 0}
+					<Button
+						variant="link"
+						size="sm"
+						class="h-auto p-0 font-medium cursor-pointer"
+						onclick={() => goTo('seances')}
+					>
+						Voir tout
+					</Button>
+				{/if}
+			</Card.Header>
+			<Card.Content>
+				{#if totalSeances > 0 && nextSessionDate}
+					<p class="mb-3 text-xs text-muted-foreground">
+						Prochaine séance : <span class="font-medium text-foreground">{formatDate(nextSessionDate)}</span>
+					</p>
+				{/if}
+				{#if upcomingSeances.length === 0}
+					<p class="text-sm text-muted-foreground">Aucune séance à venir.</p>
+				{:else}
+					<ul class="space-y-4">
+						{#each upcomingSeances as seance}
+							{@const signed = seance.emargements?.filter((e) => e.signedAt).length ?? 0}
+							{@const total = seance.emargements?.length ?? 0}
+							<li class="border-b border-muted pb-4 last:border-0 last:pb-0">
+								<button
+									type="button"
+									class="flex w-full flex-col gap-1.5 text-left cursor-pointer rounded-md -m-1 p-1 transition-colors hover:bg-muted/50"
+									onclick={() => goTo('seances')}
 								>
-									<Popover.Trigger
-										class="text-sm text-muted-foreground underline-offset-4 hover:underline cursor-pointer truncate block text-left"
-										onmouseenter={() => openCompany(learner.id)}
-										onmouseleave={() => closeCompany()}
-										onclick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-									>
-										{learner.company}
-									</Popover.Trigger>
-									<Popover.Content
-										class="w-64 text-sm"
-										align="start"
-										onmouseenter={() => openCompany(learner.id)}
-										onmouseleave={() => closeCompany()}
-									>
-										<p class="font-medium">{DUMMY_COMPANY_POPOVER.name}</p>
-										<p class="text-muted-foreground">{DUMMY_COMPANY_POPOVER.address}</p>
-										<p class="text-muted-foreground">SIRET : {DUMMY_COMPANY_POPOVER.siret}</p>
-									</Popover.Content>
-								</Popover.Root>
-							</div>
-						</a>
-						<div class="flex shrink-0 gap-0.5" role="group" aria-label="Actions rapides">
-							<Button variant="ghost" size="icon" class="size-8 cursor-pointer" href="/messagerie" aria-label="Envoyer un message" onclick={(e) => e.stopPropagation()}>
-								<MessageCircle class="size-4" />
-							</Button>
-							<Button variant="ghost" size="icon" class="size-8 cursor-pointer" aria-label="Appeler" onclick={(e) => e.stopPropagation()}>
-								<Phone class="size-4" />
-							</Button>
-						</div>
-					</li>
-				{/each}
-			</ul>
-		</Card.Content>
-	</Card.Root>
+									<div class="flex items-baseline justify-between gap-2">
+										<span class="font-medium text-foreground">
+											{formatDate(seance.startAt)}
+										</span>
+										<span class="text-sm text-muted-foreground">
+											{formatTime(seance.startAt)} – {formatTime(seance.endAt)}
+										</span>
+									</div>
+									{#if seance.module}
+										<p class="text-sm text-foreground">{seance.module.name}</p>
+									{/if}
+									{#if seance.formateur?.user}
+										<p class="text-sm text-muted-foreground">
+											{[seance.formateur.user.firstName, seance.formateur.user.lastName]
+												.filter(Boolean)
+												.join(' ') || 'Formateur'}
+										</p>
+									{/if}
+									<p class="text-xs text-muted-foreground">
+										Émargement : {signed}/{total}
+									</p>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				<a
+					href="/formations/{formationId}/seances"
+					class="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+				>
+					<Plus class="size-3.5" />
+					Ajouter une séance
+				</a>
+			</Card.Content>
+		</Card.Root>
+
+		<!-- Financial Summary Card -->
+		<Card.Root>
+			<Card.Header class="flex flex-row items-center justify-between">
+				<Card.Title class="flex items-center gap-2">
+					<Wallet class="size-4" />
+					Résumé financier
+				</Card.Title>
+				<a
+					href="/formations/{formationId}/finances"
+					class="text-sm font-medium text-primary underline-offset-4 hover:underline"
+				>
+					Voir les finances
+				</a>
+			</Card.Header>
+			<Card.Content class="space-y-4">
+				<div>
+					<p class="text-xs text-muted-foreground">Montant accordé</p>
+					<div class="mt-1 flex items-center gap-2">
+						<span class="text-lg font-semibold tabular-nums">
+							{montant != null ? montant.toLocaleString('fr-FR') + ' €' : '—'}
+						</span>
+						{#if montant != null}
+							{#if formation?.financementAccorde}
+								<Badge variant="default" class="text-xs">Accordé</Badge>
+							{:else}
+								<Badge variant="secondary" class="text-xs">En attente</Badge>
+							{/if}
+						{/if}
+					</div>
+				</div>
+				<div>
+					<p class="text-xs text-muted-foreground">Coûts formateurs</p>
+				<p class="mt-1 text-lg font-semibold tabular-nums">
+					{totalFormateurCost != null ? totalFormateurCost.toLocaleString('fr-FR') + ' €' : '—'}
+				</p>
+				</div>
+				<div>
+					<p class="text-xs text-muted-foreground">Marge</p>
+					<p
+						class="mt-1 text-lg font-semibold tabular-nums"
+						class:text-green-600={marge != null && marge > 0}
+						class:text-red-600={marge != null && marge < 0}
+					>
+						{marge != null ? marge.toLocaleString('fr-FR') + ' €' : '—'}
+					</p>
+					{#if marge != null}
+						<p class="text-xs text-muted-foreground">
+							(montant − coûts formateurs)
+						</p>
+					{/if}
+				</div>
+			</Card.Content>
+		</Card.Root>
+	</div>
 </div>

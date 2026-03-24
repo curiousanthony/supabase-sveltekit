@@ -35,6 +35,9 @@ export const load = (async ({ locals }) => {
 			},
 			modules: {
 				columns: { id: true }
+			},
+			actions: {
+				columns: { status: true, phase: true, questKey: true, dueDate: true }
 			}
 		},
 		orderBy: (formations, { desc }) => [desc(formations.idInWorkspace)]
