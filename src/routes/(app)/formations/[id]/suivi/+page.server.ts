@@ -48,7 +48,12 @@ async function ensureActionStarted(actionId: string) {
 	}
 }
 
-async function autoCompleteQuestIfDone(actionId: string, userId: string, formationId: string, workspaceId: string) {
+async function autoCompleteQuestIfDone(
+	actionId: string,
+	userId: string,
+	formationId: string,
+	workspaceId: string
+) {
 	const subs = await db.query.questSubActions.findMany({
 		where: eq(questSubActions.formationActionId, actionId),
 		columns: { completed: true }
@@ -378,7 +383,11 @@ export const actions: Actions = {
 		const value = rawValue != null && typeof rawValue === 'string' ? rawValue : null;
 		let processedValue: string | number | boolean | null = value;
 		if (field === 'duree') {
-			processedValue = value ? (Number.isFinite(parseInt(value, 10)) ? parseInt(value, 10) : null) : null;
+			processedValue = value
+				? Number.isFinite(parseInt(value, 10))
+					? parseInt(value, 10)
+					: null
+				: null;
 		}
 		if (field === 'financementAccorde') processedValue = value === 'true';
 		if (field === 'montantAccorde' || field === 'tjmFormateur') {
@@ -416,6 +425,12 @@ export const actions: Actions = {
 		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
 		const { session, user } = await locals.safeGetSession();
 		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const formation = await db.query.formations.findFirst({
+			where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
+			columns: { id: true }
+		});
+		if (!formation) return fail(404, { message: 'Formation introuvable' });
 
 		const formData = await request.formData();
 		const documentType = formData.get('documentType') as DocumentType | null;
@@ -495,9 +510,7 @@ export const actions: Actions = {
 				: `${emailType.replace(/_/g, ' ')} — ${formation.name ?? 'Formation'}`;
 		const emailBody = buildEmailHtml({
 			greeting: recipientName ? `Bonjour ${recipientName},` : 'Bonjour,',
-			bodyLines: [
-				`Ce message concerne la formation <strong>${formation.name ?? '—'}</strong>.`
-			],
+			bodyLines: [`Ce message concerne la formation ${formation.name ?? '—'}.`],
 			signoff: 'Cordialement,',
 			orgName: ws?.name ?? undefined
 		});
@@ -593,8 +606,7 @@ export const actions: Actions = {
 		await db
 			.update(formationActions)
 			.set({
-				assigneeId:
-					(assigneeId && typeof assigneeId === 'string' ? assigneeId : null) || null
+				assigneeId: (assigneeId && typeof assigneeId === 'string' ? assigneeId : null) || null
 			})
 			.where(eq(formationActions.id, actionId));
 
@@ -712,12 +724,7 @@ export const actions: Actions = {
 		await ensureActionStarted(subAction.formationActionId);
 		if (!subAction.completed) {
 			await markSubActionComplete(subActionId, user.id);
-			await autoCompleteQuestIfDone(
-				subAction.formationActionId,
-				user.id,
-				params.id,
-				workspaceId
-			);
+			await autoCompleteQuestIfDone(subAction.formationActionId, user.id, params.id, workspaceId);
 		}
 
 		return { success: true };
