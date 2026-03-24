@@ -5,11 +5,15 @@
 
 	interface Props {
 		phaseName: string;
+		message?: string | null;
 		show: boolean;
 		onClose?: () => void;
 	}
 
-	let { phaseName, show, onClose }: Props = $props();
+	let { phaseName, message = null, show, onClose }: Props = $props();
+
+	const title = $derived(message ? 'Formation complète !' : 'Phase terminée !');
+	const subtitle = $derived(message ?? phaseName);
 
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -54,8 +58,8 @@
 				<Trophy class="size-5" />
 			</div>
 			<div class="min-w-0">
-				<p class="font-semibold text-foreground">Phase terminée !</p>
-				<p class="text-sm text-muted-foreground">{phaseName}</p>
+				<p class="font-semibold text-foreground">{title}</p>
+				<p class="text-sm text-muted-foreground">{subtitle}</p>
 			</div>
 			<button
 				type="button"

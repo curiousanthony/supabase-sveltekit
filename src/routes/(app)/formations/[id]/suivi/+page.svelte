@@ -37,8 +37,15 @@
 
 	let showAllEvalSteps = $state(false);
 	let levelUpPhase = $state<string | null>(null);
+	let levelUpMessage = $state<string | null>(null);
 	let showLevelUp = $state(false);
 
+	const completedKeys = $derived(
+		new Set(actions.filter((a) => a.status === 'Terminé').map((a) => a.questKey))
+	);
+	const allComplete = $derived(
+		actions.length > 0 && actions.every((a) => a.status === 'Terminé')
+	);
 	const phaseCompletion = $derived(
 		Object.fromEntries(
 			phases.map((p) => {
@@ -48,7 +55,26 @@
 		) as Record<string, boolean>
 	);
 
+	let prevCompletedKeys = $state<Set<string | null>>(new Set());
 	let prevPhaseCompletion = $state<Record<string, boolean>>({});
+	let prevAllComplete = $state(false);
+
+	$effect(() => {
+		const currentKeys = completedKeys;
+		const prevKeys = untrack(() => prevCompletedKeys);
+		const isInitialRun = prevKeys.size === 0 && currentKeys.size > 0;
+
+		if (!isInitialRun) {
+			for (const key of currentKeys) {
+				if (!prevKeys.has(key)) {
+					playMicroSound();
+					break;
+				}
+			}
+		}
+
+		prevCompletedKeys = new Set(currentKeys);
+	});
 
 	$effect(() => {
 		const current = phaseCompletion;
@@ -58,12 +84,27 @@
 		for (const phase of phases) {
 			if (current[phase] && !prev[phase] && !isInitialRun) {
 				levelUpPhase = PHASE_LABELS[phase];
+				levelUpMessage = null;
 				showLevelUp = true;
-				playMacroSound();
+				playMediumSound();
 			}
 		}
 
 		prevPhaseCompletion = { ...current };
+	});
+
+	$effect(() => {
+		const currentAll = allComplete;
+		const wasAll = untrack(() => prevAllComplete);
+
+		if (currentAll && !wasAll && actions.length > 0) {
+			levelUpPhase = null;
+			levelUpMessage = 'Dossier complet · Cette formation est prête pour l\'audit.';
+			showLevelUp = true;
+			playMacroSound();
+		}
+
+		prevAllComplete = currentAll;
 	});
 
 	function getPhaseDateRange(phase: QuestPhase): string {
@@ -335,6 +376,7 @@
 
 <LevelUpToast
 	phaseName={levelUpPhase ?? ''}
+	message={levelUpMessage}
 	show={showLevelUp}
 	onClose={() => (showLevelUp = false)}
 />
