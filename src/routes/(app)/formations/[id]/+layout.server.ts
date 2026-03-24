@@ -46,7 +46,11 @@ export const load = (async ({ params }) => {
 					dueDate: true,
 					completedAt: true,
 					blockedByActionId: true,
-					orderIndex: true
+					orderIndex: true,
+					waitStartedAt: true,
+					lastRemindedAt: true,
+					anticipatedAt: true,
+					softLockOverriddenAt: true
 				},
 				orderBy: (a, { asc }) => [asc(a.orderIndex)],
 				with: {
