@@ -12,6 +12,7 @@ import { and, eq } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { shouldAutoAdvanceStatus, getQuestTemplate } from '$lib/formation-quests';
+import { getDependencyLockType } from '$lib/formation-quest-locks';
 import {
 	uploadQuestDocument,
 	deleteQuestDocument,
@@ -133,13 +134,43 @@ export const actions: Actions = {
 			if (template && template.dependencies.length > 0) {
 				const siblingActions = await db.query.formationActions.findMany({
 					where: eq(formationActions.formationId, currentAction.formationId),
-					columns: { questKey: true, status: true, title: true }
+					columns: { questKey: true, status: true, title: true, softLockOverriddenAt: true }
 				});
+
+				const currentSibling = siblingActions.find((a) => a.questKey === currentAction.questKey);
+				const isSoftLockOverridden = !!currentSibling?.softLockOverriddenAt;
+
 				for (const depKey of template.dependencies) {
 					const dep = siblingActions.find((a) => a.questKey === depKey);
 					if (dep && dep.status !== 'Terminé') {
-						return fail(400, { message: `Prérequis non terminé : ${dep.title}` });
+						const lockType = getDependencyLockType(currentAction.questKey, depKey);
+						if (lockType === 'hard') {
+							return fail(400, { message: `Prérequis non terminé : ${dep.title}` });
+						}
+						if (lockType === 'soft' && !isSoftLockOverridden) {
+							return fail(400, { message: `Prérequis non terminé : ${dep.title}` });
+						}
 					}
+				}
+			}
+		}
+
+		let isAnticipated = false;
+		if (newStatus === 'Terminé' && currentAction?.questKey) {
+			const template = getQuestTemplate(currentAction.questKey);
+			if (template) {
+				const siblingActions = await db.query.formationActions.findMany({
+					where: eq(formationActions.formationId, currentAction.formationId),
+					columns: { questKey: true, status: true, softLockOverriddenAt: true }
+				});
+				const currentSibling = siblingActions.find((a) => a.questKey === currentAction.questKey);
+				if (currentSibling?.softLockOverriddenAt) {
+					const hasUnmetSoftDep = template.dependencies.some((depKey) => {
+						const dep = siblingActions.find((a) => a.questKey === depKey);
+						const lockType = getDependencyLockType(currentAction.questKey!, depKey);
+						return dep && dep.status !== 'Terminé' && lockType === 'soft';
+					});
+					if (hasUnmetSoftDep) isAnticipated = true;
 				}
 			}
 		}
@@ -158,6 +189,7 @@ export const actions: Actions = {
 		if (newStatus === 'Terminé') {
 			updateData.completedAt = new Date().toISOString();
 			updateData.completedBy = user.id;
+			updateData.anticipatedAt = isAnticipated ? new Date().toISOString() : undefined;
 		} else {
 			updateData.completedAt = null;
 			updateData.completedBy = null;
@@ -165,6 +197,74 @@ export const actions: Actions = {
 
 		await db.update(formationActions).set(updateData).where(eq(formationActions.id, actionId));
 		await tryAdvanceFormationStatus(params.id, workspaceId);
+
+		return { success: true };
+	},
+
+	overrideSoftLock: async ({ request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const formData = await request.formData();
+		const actionId = formData.get('actionId')?.toString();
+		if (!actionId || !UUID_RE.test(actionId)) return fail(400, { message: 'ID action invalide' });
+		const action = await verifyActionOwnership(actionId, workspaceId);
+		if (!action) return fail(404, { message: 'Action non trouvée' });
+
+		await db
+			.update(formationActions)
+			.set({ softLockOverriddenAt: new Date().toISOString() })
+			.where(eq(formationActions.id, actionId));
+
+		return { success: true };
+	},
+
+	markWaiting: async ({ request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const formData = await request.formData();
+		const actionId = formData.get('actionId')?.toString();
+		if (!actionId || !UUID_RE.test(actionId)) return fail(400, { message: 'ID action invalide' });
+		const action = await verifyActionOwnership(actionId, workspaceId);
+		if (!action) return fail(404, { message: 'Action non trouvée' });
+
+		await db
+			.update(formationActions)
+			.set({ waitStartedAt: new Date().toISOString(), status: 'En cours' })
+			.where(eq(formationActions.id, actionId));
+
+		return { success: true };
+	},
+
+	recordReminder: async ({ request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const formData = await request.formData();
+		const actionId = formData.get('actionId')?.toString();
+		if (!actionId || !UUID_RE.test(actionId)) return fail(400, { message: 'ID action invalide' });
+		const action = await verifyActionOwnership(actionId, workspaceId);
+		if (!action) return fail(404, { message: 'Action non trouvée' });
+
+		await db
+			.update(formationActions)
+			.set({ lastRemindedAt: new Date().toISOString() })
+			.where(eq(formationActions.id, actionId));
+
+		return { success: true };
+	},
+
+	clearWaiting: async ({ request, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const formData = await request.formData();
+		const actionId = formData.get('actionId')?.toString();
+		if (!actionId || !UUID_RE.test(actionId)) return fail(400, { message: 'ID action invalide' });
+		const action = await verifyActionOwnership(actionId, workspaceId);
+		if (!action) return fail(404, { message: 'Action non trouvée' });
+
+		await db
+			.update(formationActions)
+			.set({ waitStartedAt: null })
+			.where(eq(formationActions.id, actionId));
 
 		return { success: true };
 	},
