@@ -24,6 +24,7 @@
 	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import X from '@lucide/svelte/icons/x';
+	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -170,6 +171,7 @@
 </script>
 
 <div class="flex flex-col gap-6">
+	<QuestGuideBanner />
 	{#if dealFromFormation}
 		<div class="rounded-lg border bg-muted/50 px-4 py-3 text-sm">
 			<span class="text-muted-foreground">Créée depuis le deal</span>

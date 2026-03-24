@@ -3,7 +3,7 @@
 	import NavTabs from '$lib/components/nav-tabs.svelte';
 	import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 	import FileText from '@lucide/svelte/icons/file-text';
-	import Target from '@lucide/svelte/icons/target';
+	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import Calendar from '@lucide/svelte/icons/calendar';
 	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
@@ -26,7 +26,7 @@
 	const tabs = $derived([
 		{ href: basePath, label: 'Aperçu', icon: LayoutGrid },
 		{ href: basePath + '/fiche', label: 'Fiche', icon: FileText },
-		{ href: basePath + '/suivi', label: 'Suivi', icon: Target, dot: overdueQuests || undefined },
+		{ href: basePath + '/suivi', label: 'Suivi', icon: ListChecks, dot: overdueQuests || undefined },
 		{ href: basePath + '/programme', label: 'Programme', icon: BookOpen },
 		{ href: basePath + '/seances', label: 'Séances', icon: Calendar, dot: missingSignatures || undefined },
 		{ href: basePath + '/formateurs', label: 'Formateurs', icon: GraduationCap, dot: missingFormateurDocs || undefined },
@@ -51,8 +51,12 @@
 	);
 </script>
 
-<div class="flex min-h-0 w-full flex-1 flex-col gap-4">
+<div class="flex min-h-0 w-full flex-1 flex-col">
 	<NavTabs {tabs} ariaLabel="Formation sections" />
-	<HudBanner state={hudState} {formationId} />
-	{@render children()}
+	<div class="sticky top-0 z-30">
+		<HudBanner {hudState} {formationId} />
+	</div>
+	<div class="flex-1 pt-4">
+		{@render children()}
+	</div>
 </div>

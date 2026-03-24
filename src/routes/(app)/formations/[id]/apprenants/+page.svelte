@@ -17,6 +17,7 @@
 	import Mail from '@lucide/svelte/icons/mail';
 	import Phone from '@lucide/svelte/icons/phone';
 	import CalendarCheck from '@lucide/svelte/icons/calendar-check';
+	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -123,6 +124,7 @@
 </script>
 
 <div class="space-y-6">
+	<QuestGuideBanner />
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<h2 class="flex items-center gap-2 text-lg font-semibold">

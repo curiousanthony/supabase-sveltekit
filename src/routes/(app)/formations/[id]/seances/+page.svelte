@@ -26,6 +26,7 @@
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Users from '@lucide/svelte/icons/users';
 	import DoorOpen from '@lucide/svelte/icons/door-open';
+	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -248,6 +249,7 @@
 </script>
 
 <div class="space-y-6">
+	<QuestGuideBanner />
 	<!-- Header -->
 	<div class="flex items-center justify-between gap-4">
 		<h2 class="text-lg font-semibold flex items-center gap-2">

@@ -34,28 +34,30 @@
 	);
 </script>
 
-<div class="rounded-lg border bg-card p-4">
+<div class="rounded-lg border bg-card px-5 py-4">
 	<div class="flex items-start justify-between gap-2">
 		<div class="min-w-0">
-			<div class="flex items-center gap-1.5">
-				<span class="text-sm font-semibold">{label}</span>
+			<div class="flex items-center gap-2">
+				<span class="text-base font-semibold">{label}</span>
 				<Tooltip.Root>
 					<Tooltip.Trigger>
-						<Info class="size-3.5 shrink-0 text-muted-foreground/50 hover:text-muted-foreground" />
+						<Info class="size-4 shrink-0 text-muted-foreground/50 hover:text-muted-foreground" />
 					</Tooltip.Trigger>
 					<Tooltip.Content>
 						<p class="max-w-xs text-xs">{tooltipText}</p>
 					</Tooltip.Content>
 				</Tooltip.Root>
 			</div>
-			<p class="text-xs text-muted-foreground">{subtitle}</p>
+			<p class="text-sm text-muted-foreground">{subtitle}</p>
 		</div>
 	</div>
 
-	<p class="mt-2 text-xs text-muted-foreground">{dateRange}</p>
+	{#if dateRange}
+		<p class="mt-2 text-xs text-muted-foreground">{dateRange}</p>
+	{/if}
 
 	<div class="mt-3">
-		<p class="text-xs font-medium">
+		<p class="text-sm font-medium">
 			{completed} / {total} étapes
 		</p>
 
@@ -65,7 +67,7 @@
 		</div>
 
 		{#if countdownText}
-			<p class="mt-1.5 text-xs text-muted-foreground">{countdownText}</p>
+			<p class="mt-2 text-xs font-medium text-muted-foreground">{countdownText}</p>
 		{/if}
 	</div>
 </div>

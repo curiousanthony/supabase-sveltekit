@@ -175,13 +175,24 @@ export const actions: Actions = {
 			}
 		}
 
+		const forceComplete = formData.get('forceComplete') === 'true';
+
 		if (newStatus === 'Terminé') {
 			const subs = await db.query.questSubActions.findMany({
 				where: eq(questSubActions.formationActionId, actionId),
-				columns: { completed: true }
+				columns: { id: true, completed: true }
 			});
 			if (subs.length > 0 && !subs.every((s) => s.completed)) {
-				return fail(400, { message: 'Toutes les sous-tâches doivent être complétées' });
+				if (forceComplete) {
+					for (const sub of subs.filter((s) => !s.completed)) {
+						await db
+							.update(questSubActions)
+							.set({ completed: true })
+							.where(eq(questSubActions.id, sub.id));
+					}
+				} else {
+					return fail(400, { message: 'Toutes les sous-tâches doivent être complétées' });
+				}
 			}
 		}
 

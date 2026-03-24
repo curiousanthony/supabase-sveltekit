@@ -30,9 +30,9 @@
 
 	const phases: QuestPhase[] = ['conception', 'deploiement', 'evaluation'];
 	const PHASE_SUBTITLES: Record<QuestPhase, string> = {
-		conception: 'Dossier & planification',
-		deploiement: 'Formation en cours',
-		evaluation: 'Bilan & suivi'
+		conception: 'Préparation du dossier',
+		deploiement: 'Pendant la formation',
+		evaluation: 'Suivi post-formation'
 	};
 
 	let showAllEvalSteps = $state(false);
@@ -195,7 +195,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-3xl flex-col gap-6">
+<div class="mx-auto flex max-w-5xl flex-col gap-6">
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 		{#each phases as phase (phase)}
 			{@const p = progress.phases[phase]}

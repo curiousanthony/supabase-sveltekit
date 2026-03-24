@@ -25,6 +25,7 @@
 	import Unlink from '@lucide/svelte/icons/unlink';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Save from '@lucide/svelte/icons/save';
+	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -157,6 +158,7 @@
 </script>
 
 <div class="space-y-6">
+	<QuestGuideBanner />
 	<!-- Programme source info -->
 	{#if programme}
 		<Card.Root class="bg-primary/5 border-primary/20">

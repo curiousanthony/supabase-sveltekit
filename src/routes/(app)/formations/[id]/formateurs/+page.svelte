@@ -20,6 +20,7 @@
 	import Euro from '@lucide/svelte/icons/euro';
 	import X from '@lucide/svelte/icons/x';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -126,6 +127,7 @@
 </script>
 
 <div class="space-y-6">
+	<QuestGuideBanner />
 	<!-- Summary Card -->
 	{#if assignedFormateurs.length > 0}
 		<Card.Root class="border-primary/20 bg-primary/5">

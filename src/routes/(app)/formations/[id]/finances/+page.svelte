@@ -20,6 +20,7 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import FileText from '@lucide/svelte/icons/file-text';
+	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -157,6 +158,7 @@
 </script>
 
 <div class="space-y-6">
+	<QuestGuideBanner />
 	<!-- Section 1: Revenus -->
 	<Card.Root>
 		<Card.Header>
