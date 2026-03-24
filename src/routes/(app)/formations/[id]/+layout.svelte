@@ -10,6 +10,8 @@
 	import Users from '@lucide/svelte/icons/users';
 	import Wallet from '@lucide/svelte/icons/wallet';
 	import Files from '@lucide/svelte/icons/files';
+	import HudBanner from '$lib/components/formations/hud-banner.svelte';
+	import { getHudBannerState } from '$lib/formation-quest-priority';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -32,9 +34,25 @@
 		{ href: basePath + '/documents', label: 'Documents', icon: Files },
 		{ href: basePath + '/finances', label: 'Finances', icon: Wallet, dot: overdueInvoices || undefined }
 	]);
+
+	const formation = $derived(data?.formation);
+	const actions = $derived(formation?.actions ?? []);
+
+	const hudState = $derived(
+		getHudBannerState({
+			actions: actions as any,
+			formation: {
+				type: formation?.type,
+				typeFinancement: formation?.typeFinancement,
+				dateDebut: formation?.dateDebut,
+				dateFin: formation?.dateFin
+			}
+		})
+	);
 </script>
 
 <div class="flex min-h-0 w-full flex-1 flex-col gap-4">
 	<NavTabs {tabs} ariaLabel="Formation sections" />
+	<HudBanner state={hudState} {formationId} />
 	{@render children()}
 </div>
