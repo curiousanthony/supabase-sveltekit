@@ -12,8 +12,14 @@
 	import { deserialize } from '$app/forms';
 	import { invalidate } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
-	import { tick } from 'svelte';
 	import { cn } from '$lib/utils';
+	import { Calendar } from '$lib/components/ui/calendar/index.js';
+	import {
+		CalendarDate,
+		today,
+		getLocalTimeZone,
+		type DateValue
+	} from '@internationalized/date';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import Check from '@lucide/svelte/icons/check';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
@@ -59,8 +65,12 @@
 	let openSousthematiquePopover = $state(false);
 	let sousthematiqueSearchValue = $state('');
 
-	let dateDebutInputEl: HTMLInputElement | undefined = $state();
-	let dateFinInputEl: HTMLInputElement | undefined = $state();
+	let openDateDebutPopover = $state(false);
+	let openDateFinPopover = $state(false);
+	let dateDebutPickerValue = $state<CalendarDate | undefined>(undefined);
+	let dateFinPickerValue = $state<CalendarDate | undefined>(undefined);
+	let dateDebutPlaceholder = $state<DateValue>(today(getLocalTimeZone()));
+	let dateFinPlaceholder = $state<DateValue>(today(getLocalTimeZone()));
 
 	const companyName = $derived(
 		formation?.company?.name ?? formation?.client?.legalName ?? null
@@ -83,6 +93,61 @@
 	$effect(() => {
 		modalityArray = formation?.modalite ? [formation.modalite] : [];
 	});
+
+	function dateValueToDbKey(d: DateValue): string {
+		return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
+	}
+
+	/** YYYY-MM-DD for DB — Drizzle/JSON may use full ISO timestamps. */
+	function toDateInputValue(v: string | null | undefined): string {
+		if (!v) return '';
+		const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v).trim());
+		return m ? m[1] : '';
+	}
+
+	function dbStringToCalendarDate(v: string | null | undefined): CalendarDate | undefined {
+		const key = toDateInputValue(v);
+		if (!key) return undefined;
+		const [y, m, d] = key.split('-').map(Number);
+		return new CalendarDate(y, m, d);
+	}
+
+	$effect(() => {
+		dateDebutPickerValue = dbStringToCalendarDate(formation?.dateDebut ?? null);
+	});
+	$effect(() => {
+		dateFinPickerValue = dbStringToCalendarDate(formation?.dateFin ?? null);
+	});
+	$effect(() => {
+		if (dateDebutPickerValue) {
+			dateDebutPlaceholder = dateDebutPickerValue;
+		}
+	});
+	$effect(() => {
+		if (dateFinPickerValue) {
+			dateFinPlaceholder = dateFinPickerValue;
+		}
+	});
+
+	function handleDateDebutChange(v: DateValue | undefined) {
+		if (!v) return;
+		const next = dateValueToDbKey(v);
+		const prev = toDateInputValue(formation?.dateDebut ?? null);
+		if (next !== prev) {
+			saveField('dateDebut', next);
+		}
+		openDateDebutPopover = false;
+	}
+
+	function handleDateFinChange(v: DateValue | undefined) {
+		if (!v) return;
+		const next = dateValueToDbKey(v);
+		const prev = toDateInputValue(formation?.dateFin ?? null);
+		if (next !== prev) {
+			saveField('dateFin', next);
+		}
+		openDateFinPopover = false;
+	}
 
 	async function saveField(field: string, value: string) {
 		if (isSaving) return;
@@ -116,11 +181,10 @@
 
 	function handleBlur(field: string, current: string | number | boolean | null) {
 		if (editingField !== field) return;
-		const isDateField = field === 'dateDebut' || field === 'dateFin';
-		const nextVal = isDateField ? toDateInputValue(editValue) : editValue;
-		const prevVal = isDateField ? toDateInputValue(current == null ? null : String(current)) : String(current ?? '');
+		const nextVal = editValue;
+		const prevVal = String(current ?? '');
 		if (nextVal !== prevVal) {
-			saveField(field, isDateField ? nextVal : editValue);
+			saveField(field, editValue);
 		} else {
 			editingField = null;
 		}
@@ -141,22 +205,6 @@
 		const d = new Date(v + 'T00:00:00');
 		if (isNaN(d.getTime())) return String(v);
 		return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-	}
-
-	/** YYYY-MM-DD for date inputs — Drizzle/JSON may use full ISO timestamps. */
-	function toDateInputValue(v: string | null | undefined): string {
-		if (!v) return '';
-		const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v).trim());
-		return m ? m[1] : '';
-	}
-
-	async function openDatePicker(field: 'dateDebut' | 'dateFin') {
-		editingField = field;
-		editValue = toDateInputValue(formation?.[field] ?? null);
-		await tick();
-		const el = field === 'dateDebut' ? dateDebutInputEl : dateFinInputEl;
-		el?.focus();
-		try { el?.showPicker(); } catch { /* not supported in all browsers */ }
 	}
 
 	function handleDureeChange(newValue: number) {
@@ -473,24 +521,10 @@
 				<!-- dateDebut -->
 				<div class="flex flex-col gap-1">
 					<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date début</span>
-					{#if editingField === 'dateDebut'}
-						<div class="relative">
-							<CalendarIcon class="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-							<input
-								bind:this={dateDebutInputEl}
-								type="date"
-								bind:value={editValue}
-								onblur={() => handleBlur('dateDebut', formation?.dateDebut ?? null)}
-								onkeydown={(e) => handleKeydown('dateDebut', formation?.dateDebut ?? null, e)}
-								class="w-full rounded-md border border-input bg-background pl-8 pr-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-								autofocus
-							/>
-						</div>
-					{:else}
-						<button
+					<Popover.Root bind:open={openDateDebutPopover}>
+						<Popover.Trigger
 							type="button"
-							class="inline-flex items-center gap-2 cursor-pointer rounded-md border border-input bg-background px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent hover:text-accent-foreground"
-							onclick={() => openDatePicker('dateDebut')}
+							class="inline-flex h-9 w-full items-center gap-2 cursor-pointer rounded-md border border-input bg-background px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent hover:text-accent-foreground"
 						>
 							<CalendarIcon class="size-4 text-muted-foreground shrink-0" />
 							{#if formation?.dateDebut}
@@ -498,31 +532,27 @@
 							{:else}
 								<span class="text-muted-foreground">JJ/MM/AAAA</span>
 							{/if}
-						</button>
-					{/if}
+						</Popover.Trigger>
+						<Popover.Content class="w-auto overflow-hidden p-0" align="start">
+							<Calendar
+								type="single"
+								locale="fr-FR"
+								captionLayout="dropdown"
+								bind:value={dateDebutPickerValue}
+								bind:placeholder={dateDebutPlaceholder}
+								onValueChange={handleDateDebutChange}
+							/>
+						</Popover.Content>
+					</Popover.Root>
 				</div>
 
 				<!-- dateFin -->
 				<div class="flex flex-col gap-1">
 					<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date fin</span>
-					{#if editingField === 'dateFin'}
-						<div class="relative">
-							<CalendarIcon class="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-							<input
-								bind:this={dateFinInputEl}
-								type="date"
-								bind:value={editValue}
-								onblur={() => handleBlur('dateFin', formation?.dateFin ?? null)}
-								onkeydown={(e) => handleKeydown('dateFin', formation?.dateFin ?? null, e)}
-								class="w-full rounded-md border border-input bg-background pl-8 pr-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-								autofocus
-							/>
-						</div>
-					{:else}
-						<button
+					<Popover.Root bind:open={openDateFinPopover}>
+						<Popover.Trigger
 							type="button"
-							class="inline-flex items-center gap-2 cursor-pointer rounded-md border border-input bg-background px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent hover:text-accent-foreground"
-							onclick={() => openDatePicker('dateFin')}
+							class="inline-flex h-9 w-full items-center gap-2 cursor-pointer rounded-md border border-input bg-background px-2 py-1.5 text-sm text-left transition-colors hover:bg-accent hover:text-accent-foreground"
 						>
 							<CalendarIcon class="size-4 text-muted-foreground shrink-0" />
 							{#if formation?.dateFin}
@@ -530,8 +560,18 @@
 							{:else}
 								<span class="text-muted-foreground">JJ/MM/AAAA</span>
 							{/if}
-						</button>
-					{/if}
+						</Popover.Trigger>
+						<Popover.Content class="w-auto overflow-hidden p-0" align="start">
+							<Calendar
+								type="single"
+								locale="fr-FR"
+								captionLayout="dropdown"
+								bind:value={dateFinPickerValue}
+								bind:placeholder={dateFinPlaceholder}
+								onValueChange={handleDateFinChange}
+							/>
+						</Popover.Content>
+					</Popover.Root>
 				</div>
 
 				<!-- location -->
