@@ -97,7 +97,51 @@ The source programme was updated in the Bibliothèque. Marie visits the Formatio
 
 Programmes in the Bibliothèque (and by extension in the Formation Programme tab) should support linking to thématique and sous-thématique. This enables filtering in the picker modal and organization in the Bibliothèque listing.
 
-*(Field details to be finalized in the module/programme field alignment discussion.)*
+---
+
+## Programme Field Model (Qualiopi-Complete)
+
+A Programme — whether in the Bibliothèque or copied into a Formation — must carry all fields required for Qualiopi compliance and document generation.
+
+### Programme-level fields
+
+- **Title** — name of the programme
+- **Description** — general overview
+- **Overall learning objectives** — "At the end of this programme, the learner will be able to..." (Qualiopi mandatory)
+- **Target audience** (public visé) — who this programme is for (Qualiopi mandatory)
+- **Prerequisites** — entry requirements, even if "none" (Qualiopi mandatory)
+- **Modality** — présentiel / distanciel / mixte / AFEST
+- **Total duration** (hours, decimal) — sum of module durations or explicit override
+- **Public price** — used for devis generation and convention pricing
+- **Thématique / sous-thématique** — for organization and picker filtering (not strictly Qualiopi, but essential for UX)
+
+### Module-level fields
+
+Each module within a programme carries:
+
+- **Title** — name of the module
+- **Duration** (hours, decimal) — e.g. 1.5h, 3.25h
+- **Content / syllabus** — detailed description of what is taught (Qualiopi: the auditor needs to see this)
+- **Learning objectives** (per module) — what the learner will achieve in this module
+- **Evaluation method** — how learners are assessed in this module (QCM, practical, project, etc.)
+- **Supports** — linked pedagogical materials/documents from the Bibliothèque (references, not copies — the files themselves don't change per-formation)
+- **Questionnaires** — linked evaluation tools from the Bibliothèque (same reference pattern as supports)
+
+### Copy-on-link behavior
+
+When a Programme is linked to a Formation:
+- All programme-level fields are copied into the Formation and become independently editable.
+- All module-level fields (title, duration, content, objectives, evaluation method) are copied as Formation-owned data.
+- Supports and questionnaires are referenced (FK to Bibliothèque items), not duplicated. Marie can add/remove which supports and questionnaires apply to each module in this specific Formation.
+- A "modified from source" indicator shows which fields diverge from the Bibliothèque original.
+
+### Derivation tracking
+
+When Marie saves a Formation's modified programme as a new Bibliothèque programme, the new programme records a `derivedFromProgrammeId` pointing to the original. The Bibliothèque and picker display a subtle "Derived from: [Parent Programme Name]" label for traceability, without full variant management UI.
+
+### Quest auto-completion
+
+Quests that reference programme/module data (e.g., "Valider les objectifs pédagogiques", "Valider les modalités d'évaluation") auto-complete when the corresponding fields are filled in on all modules. Marie does not need to manually confirm what the system can verify.
 
 ---
 
