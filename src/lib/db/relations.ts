@@ -41,7 +41,10 @@ import {
 	biblioModuleQuestionnaires,
 	biblioSupports,
 	biblioProgrammeSupports,
-	biblioModuleSupports
+	biblioModuleSupports,
+	biblioProgrammeSousthematiques,
+	moduleSupports,
+	moduleQuestionnaires
 } from './schema';
 
 export const industriesRelations = relations(industries, ({ many }) => ({
@@ -169,13 +172,15 @@ export const sousthematiquesRelations = relations(sousthematiques, ({ one, many 
 		fields: [sousthematiques.parentTopicId],
 		references: [thematiques.id]
 	}),
-	formations: many(formations)
+	formations: many(formations),
+	biblioProgrammeSousthematiques: many(biblioProgrammeSousthematiques)
 }));
 
 export const thematiquesRelations = relations(thematiques, ({ many }) => ({
 	sousthematiques: many(sousthematiques),
 	formations: many(formations),
-	formateursThematiques: many(formateursThematiques)
+	formateursThematiques: many(formateursThematiques),
+	biblioProgrammes: many(biblioProgrammes)
 }));
 
 export const formationsRelations = relations(formations, ({ one, many }) => ({
@@ -241,7 +246,13 @@ export const modulesRelations = relations(modules, ({ one, many }) => ({
 		fields: [modules.courseId],
 		references: [formations.id]
 	}),
-	seances: many(seances)
+	sourceModule: one(biblioModules, {
+		fields: [modules.sourceModuleId],
+		references: [biblioModules.id]
+	}),
+	seances: many(seances),
+	moduleSupports: many(moduleSupports),
+	moduleQuestionnaires: many(moduleQuestionnaires)
 }));
 
 export const apprenantsRelations = relations(apprenants, ({ one }) => ({
@@ -408,8 +419,9 @@ export const biblioModulesRelations = relations(biblioModules, ({ one, many }) =
 		references: [users.id]
 	}),
 	programmeModules: many(biblioProgrammeModules),
-	moduleQuestionnaires: many(biblioModuleQuestionnaires),
-	moduleSupports: many(biblioModuleSupports)
+	biblioModuleQuestionnaires: many(biblioModuleQuestionnaires),
+	biblioModuleSupports: many(biblioModuleSupports),
+	derivedModules: many(modules)
 }));
 
 export const biblioProgrammesRelations = relations(biblioProgrammes, ({ one, many }) => ({
@@ -421,9 +433,18 @@ export const biblioProgrammesRelations = relations(biblioProgrammes, ({ one, man
 		fields: [biblioProgrammes.createdBy],
 		references: [users.id]
 	}),
+	thematique: one(thematiques, {
+		fields: [biblioProgrammes.topicId],
+		references: [thematiques.id]
+	}),
+	derivedFrom: one(biblioProgrammes, {
+		fields: [biblioProgrammes.derivedFromProgrammeId],
+		references: [biblioProgrammes.id]
+	}),
 	programmeModules: many(biblioProgrammeModules),
 	programmeQuestionnaires: many(biblioProgrammeQuestionnaires),
 	programmeSupports: many(biblioProgrammeSupports),
+	programmeSousthematiques: many(biblioProgrammeSousthematiques),
 	formations: many(formations)
 }));
 
@@ -448,7 +469,8 @@ export const biblioQuestionnairesRelations = relations(biblioQuestionnaires, ({ 
 		references: [users.id]
 	}),
 	programmeQuestionnaires: many(biblioProgrammeQuestionnaires),
-	moduleQuestionnaires: many(biblioModuleQuestionnaires)
+	biblioModuleQuestionnaires: many(biblioModuleQuestionnaires),
+	formationModuleQuestionnaires: many(moduleQuestionnaires)
 }));
 
 export const biblioProgrammeQuestionnairesRelations = relations(
@@ -489,7 +511,8 @@ export const biblioSupportsRelations = relations(biblioSupports, ({ one, many })
 		references: [users.id]
 	}),
 	programmeSupports: many(biblioProgrammeSupports),
-	moduleSupports: many(biblioModuleSupports)
+	biblioModuleSupports: many(biblioModuleSupports),
+	formationModuleSupports: many(moduleSupports)
 }));
 
 export const biblioProgrammeSupportsRelations = relations(biblioProgrammeSupports, ({ one }) => ({
@@ -590,6 +613,42 @@ export const formationCostItemsRelations = relations(formationCostItems, ({ one 
 	formation: one(formations, {
 		fields: [formationCostItems.formationId],
 		references: [formations.id]
+	})
+}));
+
+export const biblioProgrammeSousthematiquesRelations = relations(
+	biblioProgrammeSousthematiques,
+	({ one }) => ({
+		programme: one(biblioProgrammes, {
+			fields: [biblioProgrammeSousthematiques.programmeId],
+			references: [biblioProgrammes.id]
+		}),
+		sousthematique: one(sousthematiques, {
+			fields: [biblioProgrammeSousthematiques.sousthematiqueId],
+			references: [sousthematiques.id]
+		})
+	})
+);
+
+export const moduleSupportsRelations = relations(moduleSupports, ({ one }) => ({
+	module: one(modules, {
+		fields: [moduleSupports.moduleId],
+		references: [modules.id]
+	}),
+	support: one(biblioSupports, {
+		fields: [moduleSupports.supportId],
+		references: [biblioSupports.id]
+	})
+}));
+
+export const moduleQuestionnairesRelations = relations(moduleQuestionnaires, ({ one }) => ({
+	module: one(modules, {
+		fields: [moduleQuestionnaires.moduleId],
+		references: [modules.id]
+	}),
+	questionnaire: one(biblioQuestionnaires, {
+		fields: [moduleQuestionnaires.questionnaireId],
+		references: [biblioQuestionnaires.id]
 	})
 }));
 

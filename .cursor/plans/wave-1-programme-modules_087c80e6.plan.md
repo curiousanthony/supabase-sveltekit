@@ -3,38 +3,38 @@ name: wave-1-programme-modules
 overview: Wave 1 implementation plan for Programme linking + Module alignment. Covers DB schema expansion, copy-on-link flow, programme picker modal, two-way sync, supports/questionnaires visibility, derivation tracking, and quest auto-completion.
 todos:
   - id: t1-drizzle-schemas
-    content: "Task 1: Expand Drizzle schemas (modules columns, biblio_programmes columns, junction tables)"
-    status: pending
+    content: 'Task 1: Expand Drizzle schemas (modules columns, biblio_programmes columns, junction tables)'
+    status: completed
   - id: t2-relations
-    content: "Task 2: Update relations.ts with new FK relations and junction table relations"
-    status: pending
+    content: 'Task 2: Update relations.ts with new FK relations and junction table relations'
+    status: completed
   - id: t3-migration
-    content: "Task 3: Generate and apply database migration"
-    status: pending
+    content: 'Task 3: Generate and apply database migration'
+    status: completed
   - id: t4-layout-load
-    content: "Task 4: Expand layout server load with new module/programme fields and relations"
-    status: pending
+    content: 'Task 4: Expand layout server load with new module/programme fields and relations'
+    status: completed
   - id: t5-attach-programme
-    content: "Task 5: Server action attachProgramme (copy-on-link with collision handling)"
-    status: pending
+    content: 'Task 5: Server action attachProgramme (copy-on-link with collision handling)'
+    status: completed
   - id: t6-pull-from-source
-    content: "Task 6: Server action pullFromSource (pull Bibliotheque changes)"
-    status: pending
+    content: 'Task 6: Server action pullFromSource (pull Bibliotheque changes)'
+    status: completed
   - id: t7-sync-create-updates
-    content: "Task 7: Update syncToSource and createNewProgramme with expanded fields + derivation"
-    status: pending
+    content: 'Task 7: Update syncToSource and createNewProgramme with expanded fields + derivation'
+    status: completed
   - id: t8-picker-modal
-    content: "Task 8: Programme picker modal (search, filter by thematique, select)"
-    status: pending
+    content: 'Task 8: Programme picker modal (search, filter by thematique, select)'
+    status: completed
   - id: t9-module-cards
-    content: "Task 9: Expanded module cards (content, evaluation, supports, questionnaires)"
-    status: pending
+    content: 'Task 9: Expanded module cards (content, evaluation, supports, questionnaires)'
+    status: completed
   - id: t10-sync-banner
-    content: "Task 10: Sync banner with divergence detection and pull/push UI"
-    status: pending
+    content: 'Task 10: Sync banner with divergence detection and pull/push UI'
+    status: completed
   - id: t11-quest-auto
-    content: "Task 11: Quest auto-completion for objectives and evaluation modality"
-    status: pending
+    content: 'Task 11: Quest auto-completion for objectives and evaluation modality'
+    status: completed
 isProject: false
 ---
 

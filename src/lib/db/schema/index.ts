@@ -22,3 +22,4 @@ export * from './seances';
 export * from './deals';
 export * from './biblio-questionnaires';
 export * from './biblio-supports';
+export * from './module-relations';

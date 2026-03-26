@@ -27,11 +27,49 @@ export const load = (async ({ params, depends }) => {
 			client: { columns: { id: true, legalName: true } },
 			company: { columns: { id: true, name: true } },
 			programmeSource: {
-				columns: { id: true, titre: true, dureeHeures: true, modalite: true }
+				columns: {
+					id: true,
+					titre: true,
+					dureeHeures: true,
+					modalite: true,
+					objectifs: true,
+					publicVise: true,
+					prerequis: true,
+					prixPublic: true,
+					updatedAt: true,
+					topicId: true,
+					derivedFromProgrammeId: true
+				}
 			},
 			modules: {
-				columns: { id: true, name: true, durationHours: true, objectifs: true, orderIndex: true },
-				orderBy: (m, { asc }) => [asc(m.orderIndex)]
+				columns: {
+					id: true,
+					createdAt: true,
+					name: true,
+					durationHours: true,
+					objectifs: true,
+					contenu: true,
+					modaliteEvaluation: true,
+					sourceModuleId: true,
+					orderIndex: true
+				},
+				orderBy: (m, { asc }) => [asc(m.orderIndex)],
+				with: {
+					moduleSupports: {
+						with: {
+							support: {
+								columns: { id: true, titre: true, url: true, fileName: true, mimeType: true }
+							}
+						}
+					},
+					moduleQuestionnaires: {
+						with: {
+							questionnaire: {
+								columns: { id: true, titre: true, type: true, urlTest: true }
+							}
+						}
+					}
+				}
 			},
 			actions: {
 				columns: {
@@ -258,6 +296,18 @@ export const load = (async ({ params, depends }) => {
 			(inv) => inv.status !== 'Payée' && inv.dueDate != null && inv.dueDate < today
 		) ?? false;
 
+	let programmeSourceUpdatedSinceLink = false;
+	if (formation.programmeSource?.updatedAt) {
+		const sourceUpdated = new Date(formation.programmeSource.updatedAt).getTime();
+		const linkedModules = (formation.modules ?? []).filter((m) => m.sourceModuleId);
+		if (linkedModules.length > 0) {
+			const oldestLinkedModule = Math.min(
+				...linkedModules.map((m) => new Date(m.createdAt ?? 0).getTime())
+			);
+			programmeSourceUpdatedSinceLink = sourceUpdated > oldestLinkedModule;
+		}
+	}
+
 	return {
 		formation,
 		pageName: formation.name ?? 'Formation',
@@ -267,6 +317,7 @@ export const load = (async ({ params, depends }) => {
 		missingFormateurDocs,
 		unsignedEmargements,
 		overdueInvoices,
-		questProgress: questProgressData
+		questProgress: questProgressData,
+		programmeSourceUpdatedSinceLink
 	};
 }) satisfies LayoutServerLoad;

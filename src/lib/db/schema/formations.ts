@@ -15,6 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import {
 	modalites,
+	modaliteEvaluation,
 	statutsFormation,
 	typesFinancement,
 	formationType,
@@ -28,6 +29,7 @@ import { thematiques, sousthematiques } from './thematiques';
 import { clients } from './clients';
 import { companies } from './companies';
 import { biblioProgrammes } from './biblio-programmes';
+import { biblioModules } from './biblio-modules';
 import { contacts } from './contacts';
 import { formateurs } from './formateurs';
 
@@ -56,6 +58,10 @@ export const formations = pgTable(
 		dateDebut: date('date_debut'),
 		dateFin: date('date_fin'),
 		programmeSourceId: uuid('programme_source_id'),
+		objectifs: text(),
+		prerequis: text(),
+		publicVise: text('public_vise'),
+		prixPublic: numeric('prix_public'),
 		financementAccorde: boolean('financement_accorde').default(false),
 		montantAccorde: numeric('montant_accorde', { precision: 12, scale: 2 }),
 		tjmFormateur: numeric('tjm_formateur', { precision: 10, scale: 2 }),
@@ -354,6 +360,9 @@ export const modules = pgTable(
 		name: text().notNull(),
 		durationHours: numeric('duration_hours'),
 		objectifs: text(),
+		contenu: text(),
+		modaliteEvaluation: modaliteEvaluation('modalite_evaluation'),
+		sourceModuleId: uuid('source_module_id'),
 		orderIndex: integer('order_index'),
 		createdBy: uuid('created_by').notNull(),
 		courseId: uuid('course_id').notNull()
@@ -370,7 +379,14 @@ export const modules = pgTable(
 			name: 'modules_course_id_fkey'
 		})
 			.onUpdate('cascade')
-			.onDelete('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.sourceModuleId],
+			foreignColumns: [biblioModules.id],
+			name: 'modules_source_module_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('set null')
 	]
 );
 
