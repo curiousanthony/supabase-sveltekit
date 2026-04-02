@@ -2,7 +2,7 @@
 	import type { PageProps } from './$types';
 	import ProgrammePickerModal from '$lib/components/formations/programme-picker-modal.svelte';
 	import ModuleCardExpanded from '$lib/components/formations/module-card-expanded.svelte';
-	import SyncBanner from '$lib/components/formations/sync-banner.svelte';
+	import ProgrammeSourcePanel from '$lib/components/formations/programme-source-panel.svelte';
 	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
@@ -16,7 +16,6 @@
 	import { invalidateAll } from '$app/navigation';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import Clock from '@lucide/svelte/icons/clock';
-	import Library from '@lucide/svelte/icons/library';
 	import Plus from '@lucide/svelte/icons/plus';
 	import X from '@lucide/svelte/icons/x';
 
@@ -123,56 +122,13 @@
 <div class="space-y-6">
 	<QuestGuideBanner />
 
-	{#if programmeSource}
-		<Card.Root class="bg-primary/5 border-primary/20">
-			<Card.Content class="pt-6">
-				<div class="flex items-start justify-between gap-4">
-					<div class="flex items-start gap-3">
-						<Library class="text-primary mt-0.5 size-5 shrink-0" />
-						<div>
-							<p class="text-muted-foreground text-sm">Programme source (Bibliothèque)</p>
-							<h3 class="text-foreground font-semibold">{programmeSource.titre}</h3>
-							{#if programmeSource.dureeHeures}
-								<p class="text-muted-foreground mt-1 text-sm">
-									{programmeSource.dureeHeures}h · {programmeSource.modalite ?? '—'}
-								</p>
-							{/if}
-						</div>
-					</div>
-					<Button variant="outline" size="sm" class="shrink-0" onclick={() => (pickerOpen = true)}>
-						Changer
-					</Button>
-				</div>
-			</Card.Content>
-		</Card.Root>
-	{:else}
-		<Card.Root>
-			<Card.Content class="pt-6">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<Library class="text-muted-foreground size-5 shrink-0" />
-						<div>
-							<p class="text-muted-foreground text-sm">Aucun programme source</p>
-							<p class="text-muted-foreground mt-0.5 text-xs">
-								Associez un programme de la bibliothèque ou assemblez un programme personnalisé.
-							</p>
-						</div>
-					</div>
-					<Button variant="outline" size="sm" class="shrink-0" onclick={() => (pickerOpen = true)}>
-						<BookOpen class="mr-1.5 size-4" />
-						Choisir
-					</Button>
-				</div>
-			</Card.Content>
-		</Card.Root>
-	{/if}
-
-	<SyncBanner
+	<ProgrammeSourcePanel
 		{programmeSource}
 		{programmeSourceUpdatedSinceLink}
 		formationStatut={statut}
 		hasModules={modules.length > 0}
 		{formationId}
+		onOpenPicker={() => (pickerOpen = true)}
 	/>
 
 	<div class="space-y-2">
