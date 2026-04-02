@@ -109,10 +109,7 @@
 		dialogOpen = true;
 	}
 
-	function openEditDialog(seance: (typeof seances)[number]) {
-		editingSeance = seance;
-		dialogStep = 'form';
-		createdSeanceId = null;
+	function hydrateSessionForm(seance: (typeof seances)[number]) {
 		formDate = seanceCalendarDateKeyParis(seance.startAt);
 		formStartTime = new Date(seance.startAt).toLocaleTimeString('fr-FR', {
 			hour: '2-digit',
@@ -131,15 +128,29 @@
 		formModalityOverride = seance.modalityOverride ?? '';
 		formLocation = seance.location ?? '';
 		formRoom = seance.room ?? '';
+	}
+
+	function openEditDialog(seance: (typeof seances)[number]) {
+		editingSeance = seance;
+		dialogStep = 'form';
+		createdSeanceId = null;
+		hydrateSessionForm(seance);
 		dialogOpen = true;
 	}
 
+	/** Opens the “Participants à la séance” step (émargements apprenants). Must set dialogOpen — callers from a closed dialog need the modal visible. */
 	function openParticipantsStep(seanceId: string) {
+		const seance = seances.find((s) => s.id === seanceId);
+		if (!seance) return;
+		editingSeance = seance;
 		createdSeanceId = seanceId;
 		dialogStep = 'participants';
-		const seance = seances.find((s) => s.id === seanceId);
+		hydrateSessionForm(seance);
+		dialogOpen = true;
 		const existingContactIds = new Set(
-			(seance?.emargements ?? []).map((e) => e.contactId)
+			(seance.emargements ?? [])
+				.filter((e) => e.signerType === 'apprenant' && e.contactId)
+				.map((e) => e.contactId as string)
 		);
 		participantChecked = {};
 		for (const a of apprenants) {
