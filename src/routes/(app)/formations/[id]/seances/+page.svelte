@@ -1,7 +1,12 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
 	import type { DateValue } from '@internationalized/date';
-	import { CalendarDate, today, getLocalTimeZone } from '@internationalized/date';
+	import { CalendarDate, fromDate, today, getLocalTimeZone, toCalendarDate } from '@internationalized/date';
+	import {
+		FORMATION_SCHEDULE_TIMEZONE,
+		seanceCalendarDateKeyParis,
+		todayCalendarKeyParis
+	} from '$lib/datetime/seance-schedule';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -25,8 +30,12 @@
 	import Copy from '@lucide/svelte/icons/copy';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Users from '@lucide/svelte/icons/users';
+	import Send from '@lucide/svelte/icons/send';
 	import DoorOpen from '@lucide/svelte/icons/door-open';
+	import CalendarPlus from '@lucide/svelte/icons/calendar-plus';
+	import X from '@lucide/svelte/icons/x';
 	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
+	import { invalidateAll } from '$app/navigation';
 
 	let { data }: PageProps = $props();
 
@@ -46,7 +55,7 @@
 		}))
 	);
 
-	const todayStr = $derived(new Date().toISOString().slice(0, 10));
+	const todayStr = $derived(todayCalendarKeyParis());
 
 	// --- Session dialog state ---
 	let dialogOpen = $state(false);
@@ -63,6 +72,18 @@
 	let formModalityOverride = $state('');
 	let formLocation = $state('');
 	let formRoom = $state('');
+
+	const moduleFormateur = $derived.by(() => {
+		if (!formModuleId) return null;
+		const mod = modules.find((m) => m.id === formModuleId);
+		return mod?.formateur ?? null;
+	});
+
+	const moduleFormateurName = $derived.by(() => {
+		if (!moduleFormateur?.user) return null;
+		return [moduleFormateur.user.firstName, moduleFormateur.user.lastName]
+			.filter(Boolean).join(' ') || null;
+	});
 
 	const effectiveModality = $derived(
 		formModalityOverride || formation?.modalite || null
@@ -92,16 +113,18 @@
 		editingSeance = seance;
 		dialogStep = 'form';
 		createdSeanceId = null;
-		formDate = seance.startAt.slice(0, 10);
+		formDate = seanceCalendarDateKeyParis(seance.startAt);
 		formStartTime = new Date(seance.startAt).toLocaleTimeString('fr-FR', {
 			hour: '2-digit',
 			minute: '2-digit',
-			hour12: false
+			hour12: false,
+			timeZone: FORMATION_SCHEDULE_TIMEZONE
 		});
 		formEndTime = new Date(seance.endAt).toLocaleTimeString('fr-FR', {
 			hour: '2-digit',
 			minute: '2-digit',
-			hour12: false
+			hour12: false,
+			timeZone: FORMATION_SCHEDULE_TIMEZONE
 		});
 		formModuleId = seance.moduleId ?? '';
 		formFormateurId = seance.formateurId ?? '';
@@ -158,7 +181,7 @@
 
 	// --- Helpers ---
 	function sessionStatus(startAt: string): 'past' | 'today' | 'future' {
-		const dateKey = startAt.slice(0, 10);
+		const dateKey = seanceCalendarDateKeyParis(startAt);
 		if (dateKey < todayStr) return 'past';
 		if (dateKey === todayStr) return 'today';
 		return 'future';
@@ -169,18 +192,30 @@
 			weekday: 'long',
 			day: 'numeric',
 			month: 'long',
-			year: 'numeric'
+			year: 'numeric',
+			timeZone: FORMATION_SCHEDULE_TIMEZONE
 		});
 	}
 
 	function formatTimeCompact(iso: string) {
-		const d = new Date(iso);
-		return `${d.getHours()}h${String(d.getMinutes()).padStart(2, '0')}`;
+		const t = new Date(iso).toLocaleTimeString('fr-FR', {
+			hour: 'numeric',
+			minute: '2-digit',
+			hour12: false,
+			timeZone: FORMATION_SCHEDULE_TIMEZONE
+		});
+		return t.replace(':', 'h');
 	}
 
 	function formateurName(formateur: { user?: { firstName?: string | null; lastName?: string | null } | null } | null) {
 		if (!formateur?.user) return null;
 		return [formateur.user.firstName, formateur.user.lastName].filter(Boolean).join(' ') || null;
+	}
+
+	/** Same rule as lieu/salle fields in the form: only Présentiel / Hybride imply a physical venue. */
+	function seanceShowsPhysicalVenue(seance: { modalityOverride: string | null }) {
+		const mod = seance.modalityOverride || formation?.modalite || null;
+		return mod === 'Présentiel' || mod === 'Hybride';
 	}
 
 	async function copyToClipboard(token: string) {
@@ -198,7 +233,7 @@
 		const groups: { dateKey: string; dateLabel: string; sessions: typeof seances }[] = [];
 		const map = new Map<string, typeof seances>();
 		for (const s of seances) {
-			const key = s.startAt.slice(0, 10);
+			const key = seanceCalendarDateKeyParis(s.startAt);
 			if (!map.has(key)) map.set(key, []);
 			map.get(key)!.push(s);
 		}
@@ -212,7 +247,7 @@
 	const seancesByDate = $derived.by(() => {
 		const map = new Map<string, typeof seances>();
 		for (const s of seances) {
-			const key = s.startAt.slice(0, 10);
+			const key = seanceCalendarDateKeyParis(s.startAt);
 			if (!map.has(key)) map.set(key, []);
 			map.get(key)!.push(s);
 		}
@@ -229,8 +264,10 @@
 
 	$effect(() => {
 		if (!_calInitialized && seances.length > 0) {
-			const d = new Date(seances[0].startAt);
-			calendarPlaceholder = new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+			const c = toCalendarDate(
+				fromDate(new Date(seances[0].startAt), FORMATION_SCHEDULE_TIMEZONE)
+			);
+			calendarPlaceholder = new CalendarDate(c.year, c.month, c.day);
 			_calInitialized = true;
 		}
 	});
@@ -246,6 +283,58 @@
 			openCreateDialog(dateKey);
 		}
 	}
+
+	// --- Batch creation wizard ---
+	let batchDialogOpen = $state(false);
+	let batchDates = $state<string[]>([]);
+	let batchStartTime = $state('09:00');
+	let batchEndTime = $state('17:00');
+	let batchModuleId = $state('');
+	let batchLocation = $state('');
+	let batchRoom = $state('');
+	let batchModalityOverride = $state('');
+	let batchNewDate = $state('');
+	let batchSubmitting = $state(false);
+
+	const batchModuleFormateur = $derived.by(() => {
+		if (!batchModuleId) return null;
+		const mod = modules.find((m) => m.id === batchModuleId);
+		return mod?.formateur ?? null;
+	});
+
+	const batchModuleFormateurName = $derived.by(() => {
+		if (!batchModuleFormateur?.user) return null;
+		return [batchModuleFormateur.user.firstName, batchModuleFormateur.user.lastName]
+			.filter(Boolean).join(' ') || null;
+	});
+
+	function openBatchWizard() {
+		batchDates = [];
+		batchStartTime = '09:00';
+		batchEndTime = '17:00';
+		batchModuleId = modules[0]?.id ?? '';
+		batchLocation = formation?.location ?? '';
+		batchRoom = '';
+		batchModalityOverride = '';
+		batchNewDate = '';
+		batchDialogOpen = true;
+	}
+
+	function addBatchDate() {
+		if (batchNewDate && !batchDates.includes(batchNewDate)) {
+			batchDates = [...batchDates, batchNewDate].sort();
+			batchNewDate = '';
+		}
+	}
+
+	function removeBatchDate(date: string) {
+		batchDates = batchDates.filter((d) => d !== date);
+	}
+
+	function formatDateShort(dateStr: string) {
+		const d = new Date(dateStr + 'T00:00:00');
+		return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+	}
 </script>
 
 <div class="space-y-6">
@@ -259,10 +348,16 @@
 				<Badge variant="secondary" class="text-xs">{seances.length}</Badge>
 			{/if}
 		</h2>
-		<Button size="sm" onclick={() => openCreateDialog()}>
-			<Plus class="size-4 mr-1.5" />
-			Ajouter une séance
-		</Button>
+		<div class="flex gap-2">
+			<Button variant="outline" size="sm" onclick={openBatchWizard}>
+				<CalendarPlus class="size-4 mr-1.5" />
+				Créer par lot
+			</Button>
+			<Button size="sm" onclick={() => openCreateDialog()}>
+				<Plus class="size-4 mr-1.5" />
+				Ajouter une séance
+			</Button>
+		</div>
 	</div>
 
 	<!-- Empty state -->
@@ -334,13 +429,13 @@
 															{formateurName(seance.formateur)}
 														</span>
 													{/if}
-													{#if seance.location}
+													{#if seanceShowsPhysicalVenue(seance) && seance.location}
 														<span class="flex items-center gap-1">
 															<MapPin class="size-3 shrink-0" />
 															{seance.location}
 														</span>
 													{/if}
-													{#if seance.room}
+													{#if seanceShowsPhysicalVenue(seance) && seance.room}
 														<span class="flex items-center gap-1">
 															<DoorOpen class="size-3 shrink-0" />
 															{seance.room}
@@ -387,59 +482,104 @@
 													<p class="text-xs font-medium text-muted-foreground">
 														Détail des émargements
 													</p>
-													<Button
-														variant="outline"
-														size="sm"
-														class="h-7 text-xs"
-														onclick={(e: MouseEvent) => { e.stopPropagation(); openParticipantsStep(seance.id); }}
-													>
-														<Users class="size-3 mr-1" />
-														Gérer
-													</Button>
-												</div>
-												<div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-													{#each seance.emargements ?? [] as emargement}
-														{@const apprenant = apprenants.find(
-															(a) => a.contactId === emargement.contactId
-														)}
-														<div
-															class="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30"
+													<div class="flex gap-1.5">
+														<form
+															method="POST"
+															action="?/sendEmargementLinks"
+															use:enhance={() => {
+																return async ({ result, update }) => {
+																	if (result.type === 'success') {
+																		const count = (result.data as { sentCount?: number })?.sentCount ?? 0;
+																		toast.success(`${count} lien${count > 1 ? 's' : ''} envoyé${count > 1 ? 's' : ''}`);
+																		await update();
+																	} else if (result.type === 'failure') {
+																		toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+																	}
+																};
+															}}
 														>
-															{#if emargement.signedAt}
-																<Check class="size-3.5 text-green-500 shrink-0" />
-															{:else}
-																<div
-																	class="size-3.5 rounded-full border border-muted-foreground/30 shrink-0"
-																></div>
-															{/if}
-															<span
-																class={cn(
-																	'flex-1 truncate',
-																	!emargement.signedAt && 'text-muted-foreground'
-																)}
+															<input type="hidden" name="seanceId" value={seance.id} />
+															<Button
+																variant="outline"
+																size="sm"
+																class="h-7 text-xs"
+																type="submit"
+																onclick={(e: MouseEvent) => e.stopPropagation()}
 															>
-																{apprenant?.name ?? 'Participant'}
-															</span>
-															{#if emargement.signedAt}
-																<span class="text-xs text-muted-foreground">
-																	{new Date(emargement.signedAt).toLocaleTimeString(
-																		'fr-FR',
-																		{ hour: '2-digit', minute: '2-digit' }
-																	)}
-																</span>
-															{:else if emargement.signatureToken}
-																<button
-																	type="button"
-																	class="text-muted-foreground hover:text-foreground transition-colors"
-																	title="Copier le lien de signature"
-																	onclick={() => copyToClipboard(emargement.signatureToken)}
-																>
-																	<Copy class="size-3.5" />
-																</button>
-															{/if}
-														</div>
-													{/each}
+																<Send class="size-3 mr-1" />
+																Envoyer les liens
+															</Button>
+														</form>
+														<Button
+															variant="outline"
+															size="sm"
+															class="h-7 text-xs"
+															onclick={(e: MouseEvent) => { e.stopPropagation(); openParticipantsStep(seance.id); }}
+														>
+															<Users class="size-3 mr-1" />
+															Gérer
+														</Button>
+													</div>
 												</div>
+												{#each [...new Set((seance.emargements ?? []).map((e) => e.period ?? 'morning'))].sort() as period (period)}
+													{@const allPeriods = [...new Set((seance.emargements ?? []).map((e) => e.period ?? 'morning'))]}
+													{#if allPeriods.length > 1}
+														<p class="text-xs font-medium text-muted-foreground mt-2 first:mt-0 mb-1">
+															{period === 'morning' ? 'Matin' : 'Après-midi'}
+														</p>
+													{/if}
+													<div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+														{#each (seance.emargements ?? []).filter((e) => (e.period ?? 'morning') === period) as emargement}
+															{@const apprenant = emargement.signerType === 'formateur'
+																? null
+																: apprenants.find((a) => a.contactId === emargement.contactId)}
+															{@const formateurDisplay = emargement.signerType === 'formateur'
+																? formateurName(seance.formateur)
+																: null}
+															<div
+																class="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30"
+															>
+																{#if emargement.signedAt}
+																	<Check class="size-3.5 text-green-500 shrink-0" />
+																{:else}
+																	<div
+																		class="size-3.5 rounded-full border border-muted-foreground/30 shrink-0"
+																	></div>
+																{/if}
+																<span
+																	class={cn(
+																		'flex-1 truncate',
+																		!emargement.signedAt && 'text-muted-foreground'
+																	)}
+																>
+																	{#if emargement.signerType === 'formateur'}
+																		{formateurDisplay ?? 'Formateur'}
+																		<Badge variant="outline" class="ml-1 text-[10px] py-0">F</Badge>
+																	{:else}
+																		{apprenant?.name ?? 'Participant'}
+																	{/if}
+																</span>
+																{#if emargement.signedAt}
+																	<span class="text-xs text-muted-foreground">
+																		{new Date(emargement.signedAt).toLocaleTimeString(
+																			'fr-FR',
+																			{ hour: '2-digit', minute: '2-digit' }
+																		)}
+																	</span>
+																{:else if emargement.signatureToken}
+																	<button
+																		type="button"
+																		class="text-muted-foreground hover:text-foreground transition-colors"
+																		title="Copier le lien de signature"
+																		onclick={() => copyToClipboard(emargement.signatureToken)}
+																	>
+																		<Copy class="size-3.5" />
+																	</button>
+																{/if}
+															</div>
+														{/each}
+													</div>
+												{/each}
 											</div>
 										{/if}
 									</Card.Content>
@@ -459,12 +599,18 @@
 				{#if daySessions.length > 0 && !outsideMonth}
 					<span class="flex gap-0.5">
 						{#each daySessions.slice(0, 3) as s (s.id)}
+							{@const total = s.emargements?.length ?? 0}
+							{@const signed = s.emargements?.filter((e) => e.signedAt).length ?? 0}
+							{@const status = sessionStatus(s.startAt)}
 							<span
 								class={cn(
-									'size-1 rounded-full',
-									sessionStatus(s.startAt) === 'past'
-										? 'bg-muted-foreground/40'
-										: 'bg-primary'
+									'size-1.5 rounded-full',
+									status === 'future' && 'bg-primary',
+									status === 'today' && 'bg-primary ring-1 ring-primary/30',
+									status === 'past' && total === 0 && 'bg-muted-foreground/40',
+									status === 'past' && total > 0 && signed === total && 'bg-green-500',
+									status === 'past' && total > 0 && signed > 0 && signed < total && 'bg-amber-500',
+									status === 'past' && total > 0 && signed === 0 && 'bg-red-500'
 								)}
 							></span>
 						{/each}
@@ -600,29 +746,17 @@
 					</div>
 
 					<div class="space-y-1.5">
-						<Label for="s-formateur">Formateur</Label>
-						<Select.Root type="single" bind:value={formFormateurId} name="formateurId">
-							<Select.Trigger id="s-formateur" class="w-full">
-								{#if formFormateurId}
-									{@const f = formateurs.find((f) => f.id === formFormateurId)}
-									{f?.user
-										? [f.user.firstName, f.user.lastName].filter(Boolean).join(' ')
-										: 'Formateur'}
-								{:else}
-									Aucun
-								{/if}
-							</Select.Trigger>
-							<Select.Content>
-								<Select.Item value="">Aucun</Select.Item>
-								{#each formateurs as f (f.id)}
-									<Select.Item value={f.id}>
-										{f.user
-											? [f.user.firstName, f.user.lastName].filter(Boolean).join(' ')
-											: 'Formateur'}
-									</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
+						<Label>Formateur</Label>
+						<div class="flex h-10 w-full items-center rounded-md border border-input bg-muted/50 px-3 text-sm">
+							{#if moduleFormateurName}
+								<span>{moduleFormateurName}</span>
+							{:else}
+								<span class="text-muted-foreground">Défini par le module</span>
+							{/if}
+						</div>
+						<p class="text-xs text-muted-foreground">
+							Le formateur est assigné via le module dans le programme.
+						</p>
 					</div>
 
 					<div class="space-y-1.5">
@@ -839,10 +973,158 @@
 			}}
 			>
 				<input type="hidden" name="seanceId" value={deletingSeance?.id ?? ''} />
-				<AlertDialog.Action type="submit" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-					Supprimer
-				</AlertDialog.Action>
-			</form>
-		</AlertDialog.Footer>
-	</AlertDialog.Content>
+			<AlertDialog.Action type="submit" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+				Supprimer
+			</AlertDialog.Action>
+		</form>
+	</AlertDialog.Footer>
+</AlertDialog.Content>
 </AlertDialog.Root>
+
+<!-- Batch Creation Wizard -->
+<Dialog.Root bind:open={batchDialogOpen}>
+	<Dialog.Content class="sm:max-w-lg">
+		<Dialog.Header>
+			<Dialog.Title>Créer des séances par lot</Dialog.Title>
+			<Dialog.Description>
+				Sélectionnez les dates et paramètres pour créer plusieurs séances en une fois.
+			</Dialog.Description>
+		</Dialog.Header>
+
+		<form
+			method="POST"
+			action="?/batchCreateSessions"
+			use:enhance={() => {
+				batchSubmitting = true;
+				return async ({ result }) => {
+					batchSubmitting = false;
+					if (result.type === 'success') {
+						const count = (result.data as { createdCount?: number })?.createdCount ?? 0;
+						toast.success(`${count} séance${count > 1 ? 's' : ''} créée${count > 1 ? 's' : ''}`);
+						batchDialogOpen = false;
+						await invalidateAll();
+					} else if (result.type === 'failure') {
+						toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+					}
+				};
+			}}
+		>
+			<input
+				type="hidden"
+				name="sessions"
+				value={JSON.stringify(
+					batchDates.map((date) => ({
+						date,
+						startTime: batchStartTime,
+						endTime: batchEndTime,
+						moduleId: batchModuleId,
+						location: batchLocation,
+						room: batchRoom,
+						modalityOverride: batchModalityOverride
+					}))
+				)}
+			/>
+			{#each apprenants as a (a.contactId)}
+				<input type="hidden" name="contactIds" value={a.contactId} />
+			{/each}
+
+			<div class="flex flex-col gap-4 py-2">
+				<div class="space-y-1.5">
+					<Label>Dates des séances</Label>
+					<div class="flex gap-2">
+						<Input
+							type="date"
+							bind:value={batchNewDate}
+							class="flex-1"
+							onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); addBatchDate(); } }}
+						/>
+						<Button type="button" variant="outline" size="sm" onclick={addBatchDate} disabled={!batchNewDate}>
+							<Plus class="size-4" />
+						</Button>
+					</div>
+					{#if batchDates.length > 0}
+						<div class="flex flex-wrap gap-1.5 mt-2">
+							{#each batchDates as date (date)}
+								<Badge variant="secondary" class="gap-1 pr-1">
+									<span class="capitalize">{formatDateShort(date)}</span>
+									<button type="button" class="rounded-full hover:bg-muted p-0.5" onclick={() => removeBatchDate(date)}>
+										<X class="size-3" />
+									</button>
+								</Badge>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-xs text-muted-foreground">Ajoutez au moins une date.</p>
+					{/if}
+				</div>
+
+				<div class="grid grid-cols-2 gap-3">
+					<div class="space-y-1.5">
+						<Label>Début</Label>
+						<Input type="time" bind:value={batchStartTime} />
+					</div>
+					<div class="space-y-1.5">
+						<Label>Fin</Label>
+						<Input type="time" bind:value={batchEndTime} />
+					</div>
+				</div>
+
+				<div class="space-y-1.5">
+					<Label>Module</Label>
+					<Select.Root type="single" bind:value={batchModuleId} name="batchModule">
+						<Select.Trigger class="w-full">
+							{modules.find((m) => m.id === batchModuleId)?.name || 'Sélectionner un module'}
+						</Select.Trigger>
+						<Select.Content>
+							{#each modules as mod (mod.id)}
+								<Select.Item value={mod.id}>{mod.name}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>
+
+				<div class="space-y-1.5">
+					<Label>Formateur</Label>
+					<div class="flex h-10 w-full items-center rounded-md border border-input bg-muted/50 px-3 text-sm">
+						{#if batchModuleFormateurName}
+							<span>{batchModuleFormateurName}</span>
+						{:else}
+							<span class="text-muted-foreground">Défini par le module</span>
+						{/if}
+					</div>
+				</div>
+
+				{#if showLocationFields}
+					<div class="grid grid-cols-2 gap-3">
+						<div class="space-y-1.5">
+							<Label>Lieu</Label>
+							<Input bind:value={batchLocation} placeholder="Adresse" />
+						</div>
+						<div class="space-y-1.5">
+							<Label>Salle</Label>
+							<Input bind:value={batchRoom} placeholder="Salle A" />
+						</div>
+					</div>
+				{/if}
+
+				{#if batchDates.length > 0}
+					<div class="rounded-md bg-muted/50 p-3 text-sm">
+						<p class="font-medium">{batchDates.length} séance{batchDates.length > 1 ? 's' : ''} seront créées</p>
+						<p class="text-xs text-muted-foreground mt-1">
+							{apprenants.length} participant{apprenants.length > 1 ? 's' : ''} seront automatiquement ajoutés.
+						</p>
+					</div>
+				{/if}
+			</div>
+
+			<Dialog.Footer class="mt-4">
+				<Button type="button" variant="outline" onclick={() => (batchDialogOpen = false)}>
+					Annuler
+				</Button>
+				<Button type="submit" disabled={batchSubmitting || batchDates.length === 0 || !batchModuleId}>
+					{batchSubmitting ? 'Création...' : `Créer ${batchDates.length} séance${batchDates.length > 1 ? 's' : ''}`}
+				</Button>
+			</Dialog.Footer>
+		</form>
+	</Dialog.Content>
+</Dialog.Root>

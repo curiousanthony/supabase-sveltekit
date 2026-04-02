@@ -1,5 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Popover from '$lib/components/ui/popover/index.js';
+	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
@@ -20,6 +22,7 @@
 	import FileText from '@lucide/svelte/icons/file-text';
 	import ClipboardList from '@lucide/svelte/icons/clipboard-list';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 
 	interface ModuleItem {
 		id: string;
@@ -31,6 +34,11 @@
 		modaliteEvaluation: string | null;
 		sourceModuleId: string | null;
 		orderIndex: number | null;
+		formateurId: string | null;
+		formateur: {
+			id: string;
+			user: { id: string; firstName: string | null; lastName: string | null; avatarUrl: string | null };
+		} | null;
 		moduleSupports: Array<{
 			support: {
 				id: string;
@@ -57,6 +65,8 @@
 		editing,
 		formationId,
 		submitting,
+		formationFormateurs = [],
+		workspaceFormateurs = [],
 		onStartEdit,
 		onCancelEdit,
 		onMoveUp,
@@ -69,6 +79,28 @@
 		editing: boolean;
 		formationId: string;
 		submitting: boolean;
+		formationFormateurs: Array<{
+			formateur: {
+				id: string;
+				user: {
+					id: string;
+					firstName: string | null;
+					lastName: string | null;
+					avatarUrl: string | null;
+					email?: string | null;
+				};
+			};
+		}>;
+		workspaceFormateurs: Array<{
+			id: string;
+			user: {
+				id: string;
+				firstName: string | null;
+				lastName: string | null;
+				avatarUrl: string | null;
+				email: string | null;
+			};
+		}>;
 		onStartEdit: () => void;
 		onCancelEdit: () => void;
 		onMoveUp: () => void;
@@ -78,12 +110,48 @@
 
 	let objectifsExpanded = $state(false);
 	let contenuExpanded = $state(false);
+	let formateurPopoverOpen = $state(false);
+	let formateurSearch = $state('');
 
 	let editName = $state('');
 	let editDuration = $state('');
 	let editObjectifs = $state('');
 	let editContenu = $state('');
 	let editEvaluation = $state('');
+
+	function formateurName(user: { firstName: string | null; lastName: string | null }) {
+		return [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Sans nom';
+	}
+
+	function formateurInitials(user: { firstName: string | null; lastName: string | null }) {
+		const first = user.firstName?.[0] ?? '';
+		const last = user.lastName?.[0] ?? '';
+		return (first + last).toUpperCase() || '?';
+	}
+
+	const formationFormateurIds = $derived(new Set(formationFormateurs.map((ff) => ff.formateur.id)));
+
+	const otherWorkspaceFormateurs = $derived(
+		workspaceFormateurs.filter((wf) => !formationFormateurIds.has(wf.id))
+	);
+
+	const filteredFormationFormateurs = $derived(
+		formationFormateurs.filter((ff) => {
+			if (!formateurSearch) return true;
+			const q = formateurSearch.toLowerCase();
+			const name = formateurName(ff.formateur.user).toLowerCase();
+			return name.includes(q);
+		})
+	);
+
+	const filteredOtherFormateurs = $derived(
+		otherWorkspaceFormateurs.filter((wf) => {
+			if (!formateurSearch) return true;
+			const q = formateurSearch.toLowerCase();
+			const name = formateurName(wf.user).toLowerCase();
+			return name.includes(q);
+		})
+	);
 
 	$effect(() => {
 		if (editing) {
@@ -281,6 +349,151 @@
 								<span class="sr-only">Supprimer</span>
 							</Button>
 						</div>
+					</div>
+
+					<!-- Formateur -->
+					<div class="flex items-center gap-1.5">
+						<GraduationCap class="text-muted-foreground size-3.5 shrink-0" />
+						<Popover.Root bind:open={formateurPopoverOpen}>
+							<Popover.Trigger>
+								{#if module.formateur}
+									<button type="button" class="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm transition-colors">
+										<Avatar.Root class="size-5">
+											{#if module.formateur.user.avatarUrl}
+												<Avatar.Image src={module.formateur.user.avatarUrl} alt={formateurName(module.formateur.user)} />
+											{/if}
+											<Avatar.Fallback class="text-[10px]">{formateurInitials(module.formateur.user)}</Avatar.Fallback>
+										</Avatar.Root>
+										<span>{formateurName(module.formateur.user)}</span>
+									</button>
+								{:else}
+									<button type="button" class="text-muted-foreground hover:text-foreground text-xs transition-colors hover:underline">
+										Assigner un formateur
+									</button>
+								{/if}
+							</Popover.Trigger>
+							<Popover.Content class="w-72 p-0" align="start">
+								<div class="p-2">
+									<Input
+										placeholder="Rechercher un formateur…"
+										class="h-8 text-sm"
+										bind:value={formateurSearch}
+									/>
+								</div>
+								<div class="max-h-60 overflow-y-auto px-1 pb-1">
+									{#if module.formateurId}
+										<form
+											method="POST"
+											action="?/assignModuleFormateur"
+											use:enhance={() => {
+												return async ({ result, update }) => {
+													if (result.type === 'success') {
+														toast.success('Formateur retiré');
+														formateurPopoverOpen = false;
+														formateurSearch = '';
+														await invalidateAll();
+													} else if (result.type === 'failure' && result.data && 'message' in result.data) {
+														toast.error(String(result.data.message));
+													}
+													await update({ reset: false });
+												};
+											}}
+										>
+											<input type="hidden" name="moduleId" value={module.id} />
+											<input type="hidden" name="formateurId" value="" />
+											<button type="submit" class="text-muted-foreground hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm">
+												<X class="size-4" />
+												Aucun
+											</button>
+										</form>
+										<div class="bg-border mx-2 my-1 h-px"></div>
+									{/if}
+
+									{#if filteredFormationFormateurs.length > 0}
+										<p class="text-muted-foreground px-2 py-1 text-xs font-medium">Formateurs de la formation</p>
+										{#each filteredFormationFormateurs as ff (ff.formateur.id)}
+											<form
+												method="POST"
+												action="?/assignModuleFormateur"
+												use:enhance={() => {
+													return async ({ result, update }) => {
+														if (result.type === 'success') {
+															toast.success('Formateur assigné');
+															formateurPopoverOpen = false;
+															formateurSearch = '';
+															await invalidateAll();
+														} else if (result.type === 'failure' && result.data && 'message' in result.data) {
+															toast.error(String(result.data.message));
+														}
+														await update({ reset: false });
+													};
+												}}
+											>
+												<input type="hidden" name="moduleId" value={module.id} />
+												<input type="hidden" name="formateurId" value={ff.formateur.id} />
+												<button type="submit" class="hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm">
+													<Avatar.Root class="size-6 shrink-0">
+														{#if ff.formateur.user.avatarUrl}
+															<Avatar.Image src={ff.formateur.user.avatarUrl} alt={formateurName(ff.formateur.user)} />
+														{/if}
+														<Avatar.Fallback class="text-[10px]">{formateurInitials(ff.formateur.user)}</Avatar.Fallback>
+													</Avatar.Root>
+													<span class="truncate">{formateurName(ff.formateur.user)}</span>
+													{#if ff.formateur.id === module.formateurId}
+														<Check class="text-primary ml-auto size-4 shrink-0" />
+													{/if}
+												</button>
+											</form>
+										{/each}
+									{/if}
+
+									{#if filteredOtherFormateurs.length > 0}
+										{#if filteredFormationFormateurs.length > 0}
+											<div class="bg-border mx-2 my-1 h-px"></div>
+										{/if}
+										<p class="text-muted-foreground px-2 py-1 text-xs font-medium">Autres formateurs</p>
+										{#each filteredOtherFormateurs as wf (wf.id)}
+											<form
+												method="POST"
+												action="?/assignModuleFormateur"
+												use:enhance={() => {
+													return async ({ result, update }) => {
+														if (result.type === 'success') {
+															toast.success('Formateur assigné');
+															formateurPopoverOpen = false;
+															formateurSearch = '';
+															await invalidateAll();
+														} else if (result.type === 'failure' && result.data && 'message' in result.data) {
+															toast.error(String(result.data.message));
+														}
+														await update({ reset: false });
+													};
+												}}
+											>
+												<input type="hidden" name="moduleId" value={module.id} />
+												<input type="hidden" name="formateurId" value={wf.id} />
+												<button type="submit" class="hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm">
+													<Avatar.Root class="size-6 shrink-0">
+														{#if wf.user.avatarUrl}
+															<Avatar.Image src={wf.user.avatarUrl} alt={formateurName(wf.user)} />
+														{/if}
+														<Avatar.Fallback class="text-[10px]">{formateurInitials(wf.user)}</Avatar.Fallback>
+													</Avatar.Root>
+													<span class="truncate">{formateurName(wf.user)}</span>
+													{#if wf.id === module.formateurId}
+														<Check class="text-primary ml-auto size-4 shrink-0" />
+													{/if}
+												</button>
+											</form>
+										{/each}
+									{/if}
+
+									{#if filteredFormationFormateurs.length === 0 && filteredOtherFormateurs.length === 0}
+										<p class="text-muted-foreground px-2 py-3 text-center text-sm">Aucun formateur trouvé</p>
+									{/if}
+								</div>
+							</Popover.Content>
+						</Popover.Root>
 					</div>
 
 					<!-- Objectives -->

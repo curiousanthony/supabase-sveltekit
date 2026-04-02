@@ -365,7 +365,8 @@ export const modules = pgTable(
 		sourceModuleId: uuid('source_module_id'),
 		orderIndex: integer('order_index'),
 		createdBy: uuid('created_by').notNull(),
-		courseId: uuid('course_id').notNull()
+		courseId: uuid('course_id').notNull(),
+		formateurId: uuid('formateur_id')
 	},
 	(table) => [
 		foreignKey({
@@ -386,7 +387,12 @@ export const modules = pgTable(
 			name: 'modules_source_module_id_fkey'
 		})
 			.onUpdate('cascade')
-			.onDelete('set null')
+			.onDelete('set null'),
+		foreignKey({
+			columns: [table.formateurId],
+			foreignColumns: [formateurs.id],
+			name: 'modules_formateur_id_fkey'
+		}).onDelete('set null')
 	]
 );
 

@@ -51,10 +51,17 @@ export const load = (async ({ params, depends }) => {
 					contenu: true,
 					modaliteEvaluation: true,
 					sourceModuleId: true,
-					orderIndex: true
+					orderIndex: true,
+					formateurId: true
 				},
 				orderBy: (m, { asc }) => [asc(m.orderIndex)],
 				with: {
+					formateur: {
+						columns: { id: true },
+						with: {
+							user: { columns: { id: true, firstName: true, lastName: true, avatarUrl: true } }
+						}
+					},
 					moduleSupports: {
 						with: {
 							support: {
@@ -170,7 +177,7 @@ export const load = (async ({ params, depends }) => {
 						}
 					},
 					emargements: {
-						columns: { id: true, contactId: true, signedAt: true, signatureToken: true }
+						columns: { id: true, contactId: true, formateurId: true, signerType: true, period: true, signedAt: true, signatureToken: true }
 					}
 				}
 			},

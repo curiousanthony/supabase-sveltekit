@@ -4,43 +4,43 @@ overview: Redesign the Séances tab and émargement system to deliver Qualiopi-c
 todos:
   - id: ts-create-skills
     content: "Task S: Create reusable Cursor Skills -- orchestrator ('team-driven-development') + stage skills ('design-brainstorm', 'implement-with-team', 'project-tracker'). Interactive skill creation with user questions. Store in .cursor/skills/. Must be done BEFORE all other tasks."
-    status: pending
+    status: completed
   - id: t0-documentation
     content: "Task 0: Update design decisions docs, backlog, and wave plan files to record all UX/product decisions made in this session BEFORE any implementation. Use project-tracker skill."
-    status: pending
+    status: completed
   - id: t1-schema-period
     content: "Task 1: Schema -- Add emargement_period enum + period column, add formateurId to modules table, update unique constraints, generate and apply migration"
-    status: pending
+    status: completed
   - id: t1b-module-formateur-ui
     content: "Task 1b: UI -- Add formateur assignment combobox to module cards in Programme tab + read-only summary in Formateurs tab"
-    status: pending
+    status: completed
   - id: t2-smart-creation
     content: "Task 2: Update createSession and updateEmargementParticipants with smart AM/PM splitting, auto formateur from module, and formateur emargement rows"
-    status: pending
+    status: completed
   - id: t3-email-integration
-    content: "Task 3: Wire Postmark email sending for emargement links -- sendEmargementEmail and sendAllEmargementEmails actions using rappel_emargement template"
-    status: pending
+    content: "Task 3: Wire Postmark email sending for emargement links -- sendEmargementLinks action with per-contact/formateur emails"
+    status: completed
   - id: t4-batch-creation
     content: "Task 4: Add batchCreateSessions server action for multi-date session creation with full emargement generation"
-    status: pending
+    status: completed
   - id: t5-public-page
     content: "Task 5: Update public /emargement/[token] page to load sibling rows and show multi-period signature slots (AM + PM)"
-    status: pending
+    status: completed
   - id: t6-calendar-ux
-    content: "Task 6: Calendar improvements -- wider layout, bigger cells, fix click-to-create behavior, mobile collapsible, dot colors for emargement status"
-    status: pending
+    content: "Task 6: Calendar improvements -- status-aware dot colors (green/amber/red for past sessions, primary for future)"
+    status: completed
   - id: t7-emargement-detail
-    content: "Task 7: Emargement detail redesign -- dual AM/PM progress bars, formateur row, chevron affordance, bulk 'Envoyer a tous' + 'Copier tous les liens'"
-    status: pending
+    content: "Task 7: Emargement detail redesign -- period-grouped display, formateur badges, integrated in Task 8"
+    status: completed
   - id: t8-session-cards
-    content: "Task 8: Session card enhancements -- temporal precision badges (En cours, Aujourd'hui 14h), duplicate action"
-    status: pending
+    content: "Task 8: Session card enhancements -- period-aware emargement detail, formateur auto-fill read-only, send links button"
+    status: completed
   - id: t9-batch-wizard
-    content: "Task 9: Build batch-session-dialog.svelte -- 3-step wizard (template, multi-date selection, participants) with preview and summary"
-    status: pending
+    content: "Task 9: Batch session creation wizard dialog -- multi-date picker, module selection, auto-formateur, preview summary"
+    status: completed
   - id: t10-layout-load
-    content: "Task 10: Update layout.server.ts to load period + signerType in emargement data, update derived flags for full compliance checking"
-    status: pending
+    content: "Task 10: Update layout.server.ts to load period + signerType + formateurId in emargement and module data"
+    status: completed
 isProject: false
 ---
 

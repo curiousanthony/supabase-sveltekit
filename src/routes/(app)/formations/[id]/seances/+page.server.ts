@@ -1,10 +1,60 @@
 import { fail } from '@sveltejs/kit';
+import { fromDate } from '@internationalized/date';
 import { db } from '$lib/db';
-import { formations, seances, emargements } from '$lib/db/schema';
+import { formations, modules, seances, emargements, contacts, formateurs } from '$lib/db/schema';
 import { eq, and, inArray, isNull } from 'drizzle-orm';
 import { getUserWorkspace } from '$lib/auth';
+import {
+	FORMATION_SCHEDULE_TIMEZONE,
+	seanceFormInputToUtcIso
+} from '$lib/datetime/seance-schedule';
 import { logAuditEvent } from '$lib/services/audit-log';
+import { sendFormationEmail, buildEmailHtml } from '$lib/services/email-service';
+import { env } from '$env/dynamic/private';
 import type { Actions } from './$types';
+
+type EmargementPeriod = 'morning' | 'afternoon';
+
+function getPeriodsForSession(startAt: string, endAt: string): EmargementPeriod[] {
+	const start = new Date(startAt);
+	const end = new Date(endAt);
+	const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+	if (durationHours > 4) {
+		return ['morning', 'afternoon'];
+	}
+	const zoned = fromDate(start, FORMATION_SCHEDULE_TIMEZONE);
+	return [zoned.hour < 13 ? 'morning' : 'afternoon'];
+}
+
+function buildEmargementRows(
+	seanceId: string,
+	contactIds: string[],
+	periods: EmargementPeriod[],
+	formateurId: string | null
+) {
+	const rows: Array<{
+		seanceId: string;
+		contactId?: string;
+		formateurId?: string;
+		signerType: 'apprenant' | 'formateur';
+		period: EmargementPeriod;
+	}> = [];
+
+	for (const contactId of contactIds) {
+		for (const period of periods) {
+			rows.push({ seanceId, contactId, signerType: 'apprenant', period });
+		}
+	}
+
+	if (formateurId) {
+		for (const period of periods) {
+			rows.push({ seanceId, formateurId, signerType: 'formateur', period });
+		}
+	}
+
+	return rows;
+}
 
 async function verifyFormationOwnership(params: { id: string }, workspaceId: string) {
 	const formation = await db.query.formations.findFirst({
@@ -12,6 +62,20 @@ async function verifyFormationOwnership(params: { id: string }, workspaceId: str
 		columns: { id: true }
 	});
 	return !!formation;
+}
+
+/** Lieu/salle only for Présentiel / Hybride; effective modality = override ?? formation (same as UI). */
+function normalizeVenueForModality(
+	modalityOverride: string | null,
+	formationModalite: string | null,
+	location: string | null,
+	room: string | null
+): { location: string | null; room: string | null } {
+	const effective = modalityOverride || formationModalite;
+	if (effective === 'Présentiel' || effective === 'Hybride') {
+		return { location, room };
+	}
+	return { location: null, room: null };
 }
 
 export const actions: Actions = {
@@ -31,7 +95,6 @@ export const actions: Actions = {
 		const endAt = formData.get('endAt') as string | null;
 		const location = (formData.get('location') as string | null) || null;
 		const room = (formData.get('room') as string | null) || null;
-		const formateurId = (formData.get('formateurId') as string | null) || null;
 		const modalityOverride =
 			(formData.get('modalityOverride') as string | null) || null;
 		const contactIds = formData.getAll('contactIds') as string[];
@@ -39,33 +102,60 @@ export const actions: Actions = {
 		if (!moduleId) return fail(400, { message: 'Module requis' });
 		if (!startAt || !endAt) return fail(400, { message: 'Dates requises' });
 
-		if (new Date(endAt) <= new Date(startAt)) {
+		let startUtc: string;
+		let endUtc: string;
+		try {
+			startUtc = seanceFormInputToUtcIso(startAt);
+			endUtc = seanceFormInputToUtcIso(endAt);
+		} catch {
+			return fail(400, { message: 'Dates invalides' });
+		}
+
+		if (new Date(endUtc) <= new Date(startUtc)) {
 			return fail(400, { message: 'La fin doit être après le début' });
 		}
 
 		try {
+			const formationRow = await db.query.formations.findFirst({
+				where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
+				columns: { modalite: true }
+			});
+			const { location: venueLocation, room: venueRoom } = normalizeVenueForModality(
+				modalityOverride,
+				formationRow?.modalite ?? null,
+				location,
+				room
+			);
+
+			let formateurId: string | null = null;
+			const mod = await db.query.modules.findFirst({
+				where: eq(modules.id, moduleId),
+				columns: { formateurId: true }
+			});
+			if (mod?.formateurId) {
+				formateurId = mod.formateurId;
+			}
+
 			const [created] = await db
 				.insert(seances)
 				.values({
 					formationId: params.id,
 					createdBy: user.id,
 					moduleId,
-					startAt,
-					endAt,
-					location,
-					room,
+					startAt: startUtc,
+					endAt: endUtc,
+					location: venueLocation,
+					room: venueRoom,
 					formateurId,
 					modalityOverride: modalityOverride as typeof seances.$inferInsert.modalityOverride
 				})
 				.returning({ id: seances.id });
 
-			if (contactIds.length > 0) {
-				await db.insert(emargements).values(
-					contactIds.map((contactId) => ({
-						seanceId: created.id,
-						contactId
-					}))
-				);
+			const periods = getPeriodsForSession(startUtc, endUtc);
+			const emargementRows = buildEmargementRows(created.id, contactIds, periods, formateurId);
+
+			if (emargementRows.length > 0) {
+				await db.insert(emargements).values(emargementRows);
 			}
 
 			await logAuditEvent({
@@ -80,6 +170,120 @@ export const actions: Actions = {
 		} catch (e: unknown) {
 			console.error('[createSession]', e);
 			return fail(500, { message: 'Erreur lors de la création' });
+		}
+	},
+
+	batchCreateSessions: async ({ request, locals, params }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		if (!(await verifyFormationOwnership(params, workspaceId))) {
+			return fail(403, { message: 'Accès refusé' });
+		}
+
+		const formData = await request.formData();
+		const rawSessions = formData.get('sessions') as string | null;
+		const rawContactIds = formData.getAll('contactIds') as string[];
+
+		if (!rawSessions) return fail(400, { message: 'Sessions requises' });
+
+		let sessionEntries: Array<{
+			date: string;
+			startTime: string;
+			endTime: string;
+			moduleId: string;
+			location?: string;
+			room?: string;
+			modalityOverride?: string;
+		}>;
+
+		try {
+			sessionEntries = JSON.parse(rawSessions);
+		} catch {
+			return fail(400, { message: 'Format de sessions invalide' });
+		}
+
+		if (sessionEntries.length === 0) return fail(400, { message: 'Au moins une séance requise' });
+
+		try {
+			const formationRow = await db.query.formations.findFirst({
+				where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
+				columns: { modalite: true }
+			});
+			const formationModalite = formationRow?.modalite ?? null;
+
+			const createdIds: string[] = [];
+
+			for (const entry of sessionEntries) {
+				const naiveStart = `${entry.date}T${entry.startTime}:00`;
+				const naiveEnd = `${entry.date}T${entry.endTime}:00`;
+				let startUtc: string;
+				let endUtc: string;
+				try {
+					startUtc = seanceFormInputToUtcIso(naiveStart);
+					endUtc = seanceFormInputToUtcIso(naiveEnd);
+				} catch {
+					continue;
+				}
+
+				if (new Date(endUtc) <= new Date(startUtc)) continue;
+
+				let formateurId: string | null = null;
+				if (entry.moduleId) {
+					const mod = await db.query.modules.findFirst({
+						where: eq(modules.id, entry.moduleId),
+						columns: { formateurId: true }
+					});
+					if (mod?.formateurId) formateurId = mod.formateurId;
+				}
+
+				const entryModalityOverride = (entry.modalityOverride || null) as typeof seances.$inferInsert.modalityOverride;
+				const { location: venueLocation, room: venueRoom } = normalizeVenueForModality(
+					entryModalityOverride,
+					formationModalite,
+					entry.location || null,
+					entry.room || null
+				);
+
+				const [created] = await db
+					.insert(seances)
+					.values({
+						formationId: params.id,
+						createdBy: user.id,
+						moduleId: entry.moduleId,
+						startAt: startUtc,
+						endAt: endUtc,
+						location: venueLocation,
+						room: venueRoom,
+						formateurId,
+						modalityOverride: entryModalityOverride
+					})
+					.returning({ id: seances.id });
+
+				const periods = getPeriodsForSession(startUtc, endUtc);
+				const emargementRows = buildEmargementRows(created.id, rawContactIds, periods, formateurId);
+
+				if (emargementRows.length > 0) {
+					await db.insert(emargements).values(emargementRows);
+				}
+
+				createdIds.push(created.id);
+			}
+
+			await logAuditEvent({
+				formationId: params.id,
+				userId: user.id,
+				actionType: 'sessions_batch_created',
+				entityType: 'seance',
+				newValue: { count: createdIds.length }
+			});
+
+			return { success: true, createdCount: createdIds.length };
+		} catch (e: unknown) {
+			console.error('[batchCreateSessions]', e);
+			return fail(500, { message: 'Erreur lors de la création par lot' });
 		}
 	},
 
@@ -102,26 +306,54 @@ export const actions: Actions = {
 		const endAt = formData.get('endAt') as string | null;
 		const location = (formData.get('location') as string | null) || null;
 		const room = (formData.get('room') as string | null) || null;
-		const formateurId = (formData.get('formateurId') as string | null) || null;
 		const modalityOverride =
 			(formData.get('modalityOverride') as string | null) || null;
 
 		if (!moduleId) return fail(400, { message: 'Module requis' });
 		if (!startAt || !endAt) return fail(400, { message: 'Dates requises' });
 
-		if (new Date(endAt) <= new Date(startAt)) {
+		let startUtc: string;
+		let endUtc: string;
+		try {
+			startUtc = seanceFormInputToUtcIso(startAt);
+			endUtc = seanceFormInputToUtcIso(endAt);
+		} catch {
+			return fail(400, { message: 'Dates invalides' });
+		}
+
+		if (new Date(endUtc) <= new Date(startUtc)) {
 			return fail(400, { message: 'La fin doit être après le début' });
 		}
 
 		try {
+			const formationRow = await db.query.formations.findFirst({
+				where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
+				columns: { modalite: true }
+			});
+			const { location: venueLocation, room: venueRoom } = normalizeVenueForModality(
+				modalityOverride,
+				formationRow?.modalite ?? null,
+				location,
+				room
+			);
+
+			let formateurId: string | null = null;
+			const mod = await db.query.modules.findFirst({
+				where: eq(modules.id, moduleId),
+				columns: { formateurId: true }
+			});
+			if (mod?.formateurId) {
+				formateurId = mod.formateurId;
+			}
+
 			const result = await db
 				.update(seances)
 				.set({
 					moduleId,
-					startAt,
-					endAt,
-					location,
-					room,
+					startAt: startUtc,
+					endAt: endUtc,
+					location: venueLocation,
+					room: venueRoom,
 					formateurId,
 					modalityOverride: modalityOverride as typeof seances.$inferInsert.modalityOverride
 				})
@@ -203,10 +435,19 @@ export const actions: Actions = {
 		const selectedContactIds = formData.getAll('contactIds') as string[];
 
 		try {
+			const seanceRow = await db.query.seances.findFirst({
+				where: eq(seances.id, seanceId),
+				columns: { startAt: true, endAt: true }
+			});
+			if (!seanceRow) return fail(404, { message: 'Séance introuvable' });
+
+			const periods = getPeriodsForSession(seanceRow.startAt, seanceRow.endAt);
+
 			const existing = await db
 				.select({
 					id: emargements.id,
 					contactId: emargements.contactId,
+					period: emargements.period,
 					signedAt: emargements.signedAt
 				})
 				.from(emargements)
@@ -217,9 +458,11 @@ export const actions: Actions = {
 					)
 				);
 
-			const existingContactIds = existing
-				.map((e) => e.contactId)
-				.filter((contactId): contactId is string => contactId !== null);
+			const existingContactIds = [...new Set(
+				existing
+					.map((e) => e.contactId)
+					.filter((contactId): contactId is string => contactId !== null)
+			)];
 
 			const toAdd = selectedContactIds.filter((id) => !existingContactIds.includes(id));
 			const toRemove = existing.filter(
@@ -227,24 +470,25 @@ export const actions: Actions = {
 			);
 
 			if (toAdd.length > 0) {
-				await db.insert(emargements).values(
-					toAdd.map((contactId) => ({
-						seanceId,
-						contactId
-					}))
-				);
+				const newRows: Array<{
+					seanceId: string;
+					contactId: string;
+					signerType: 'apprenant';
+					period: EmargementPeriod;
+				}> = [];
+				for (const contactId of toAdd) {
+					for (const period of periods) {
+						newRows.push({ seanceId, contactId, signerType: 'apprenant', period });
+					}
+				}
+				await db.insert(emargements).values(newRows);
 			}
 
 			if (toRemove.length > 0) {
-				const removableContactIds = toRemove
-					.map((e) => e.contactId)
-					.filter((contactId): contactId is string => contactId !== null);
-
+				const removableIds = toRemove.map((e) => e.id);
 				await db.delete(emargements).where(
 					and(
-						eq(emargements.seanceId, seanceId),
-						eq(emargements.signerType, 'apprenant'),
-						inArray(emargements.contactId, removableContactIds),
+						inArray(emargements.id, removableIds),
 						isNull(emargements.signedAt)
 					)
 				);
@@ -263,6 +507,150 @@ export const actions: Actions = {
 		} catch (e: unknown) {
 			console.error('[updateEmargementParticipants]', e);
 			return fail(500, { message: 'Erreur lors de la mise à jour des participants' });
+		}
+	},
+
+	sendEmargementLinks: async ({ request, locals, params, url }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		if (!(await verifyFormationOwnership(params, workspaceId))) {
+			return fail(403, { message: 'Accès refusé' });
+		}
+
+		const formData = await request.formData();
+		const seanceId = formData.get('seanceId') as string | null;
+		if (!seanceId) return fail(400, { message: 'ID séance requis' });
+
+		try {
+			const seanceRow = await db.query.seances.findFirst({
+				where: and(eq(seances.id, seanceId), eq(seances.formationId, params.id)),
+				columns: { id: true, startAt: true, endAt: true, location: true },
+				with: {
+					formation: { columns: { id: true, name: true } },
+					emargements: {
+						columns: { id: true, contactId: true, formateurId: true, signatureToken: true, signedAt: true, signerType: true },
+						where: isNull(emargements.signedAt)
+					}
+				}
+			});
+
+			if (!seanceRow) return fail(404, { message: 'Séance introuvable' });
+
+			const unsignedEmargements = seanceRow.emargements;
+			if (unsignedEmargements.length === 0) {
+				return fail(400, { message: 'Tous les émargements sont déjà signés' });
+			}
+
+			const contactIds = [...new Set(unsignedEmargements
+				.filter((e) => e.contactId)
+				.map((e) => e.contactId!))];
+			const formateurIds = [...new Set(unsignedEmargements
+				.filter((e) => e.formateurId)
+				.map((e) => e.formateurId!))];
+
+			const contactList = contactIds.length > 0
+				? await db.query.contacts.findMany({
+						where: inArray(contacts.id, contactIds),
+						columns: { id: true, firstName: true, lastName: true, email: true }
+					})
+				: [];
+
+			const formateurList = formateurIds.length > 0
+				? await db.query.formateurs.findMany({
+						where: inArray(formateurs.id, formateurIds),
+						columns: { id: true },
+						with: { user: { columns: { id: true, firstName: true, lastName: true, email: true } } }
+					})
+				: [];
+
+			const origin = url.origin || env.PUBLIC_SITE_URL || 'https://app.mentoremanager.fr';
+			const formationName = seanceRow.formation?.name ?? 'Formation';
+			const sessionDate = new Date(seanceRow.startAt).toLocaleDateString('fr-FR', {
+				weekday: 'long',
+				day: 'numeric',
+				month: 'long',
+				year: 'numeric',
+				timeZone: FORMATION_SCHEDULE_TIMEZONE
+			});
+
+			let sentCount = 0;
+
+			for (const contact of contactList) {
+				if (!contact.email) continue;
+				const firstToken = unsignedEmargements.find((e) => e.contactId === contact.id)?.signatureToken;
+				if (!firstToken) continue;
+
+				const signingUrl = `${origin}/emargement/${firstToken}`;
+				const learnerName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Participant';
+
+				await sendFormationEmail(
+					{
+						to: contact.email,
+						toName: learnerName,
+						subject: `Émargement — ${formationName}`,
+						htmlBody: buildEmailHtml({
+							greeting: `Bonjour ${learnerName},`,
+							bodyLines: [
+								`Veuillez signer votre feuille d'émargement pour la formation "${formationName}".`,
+								`Séance du ${sessionDate}.`
+							],
+							ctaText: 'Signer mon émargement',
+							ctaUrl: signingUrl
+						}),
+						tag: 'emargement_link'
+					},
+					params.id,
+					{ type: 'emargement_link', recipientType: 'apprenant', createdBy: user.id }
+				);
+				sentCount++;
+			}
+
+			for (const f of formateurList) {
+				if (!f.user?.email) continue;
+				const firstToken = unsignedEmargements.find((e) => e.formateurId === f.id)?.signatureToken;
+				if (!firstToken) continue;
+
+				const signingUrl = `${origin}/emargement/${firstToken}`;
+				const fName = [f.user.firstName, f.user.lastName].filter(Boolean).join(' ') || 'Formateur';
+
+				await sendFormationEmail(
+					{
+						to: f.user.email,
+						toName: fName,
+						subject: `Émargement formateur — ${formationName}`,
+						htmlBody: buildEmailHtml({
+							greeting: `Bonjour ${fName},`,
+							bodyLines: [
+								`Veuillez signer votre feuille d'émargement formateur pour la formation "${formationName}".`,
+								`Séance du ${sessionDate}.`
+							],
+							ctaText: 'Signer mon émargement',
+							ctaUrl: signingUrl
+						}),
+						tag: 'emargement_link_formateur'
+					},
+					params.id,
+					{ type: 'emargement_link', recipientType: 'formateur', createdBy: user.id }
+				);
+				sentCount++;
+			}
+
+			await logAuditEvent({
+				formationId: params.id,
+				userId: user.id,
+				actionType: 'emargement_links_sent',
+				entityType: 'seance',
+				entityId: seanceId,
+				newValue: { sentCount }
+			});
+
+			return { success: true, sentCount };
+		} catch (e: unknown) {
+			console.error('[sendEmargementLinks]', e);
+			return fail(500, { message: "Erreur lors de l'envoi des liens" });
 		}
 	}
 };

@@ -9,7 +9,7 @@ import {
 	unique,
 	index
 } from 'drizzle-orm/pg-core';
-import { emargementSignerType, modalites } from './enums';
+import { emargementPeriod, emargementSignerType, modalites } from './enums';
 import { users } from './users';
 import { formations, modules } from './formations';
 import { formateurs } from './formateurs';
@@ -71,6 +71,7 @@ export const emargements = pgTable(
 		signedAt: timestamp('signed_at', { withTimezone: true, mode: 'string' }),
 		signatureImageUrl: text('signature_image_url'),
 		signatureToken: uuid('signature_token').defaultRandom().notNull(),
+		period: emargementPeriod('period').notNull().default('morning'),
 		signerIp: text('signer_ip'),
 		signerUserAgent: text('signer_user_agent'),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
@@ -106,8 +107,8 @@ export const emargements = pgTable(
 				(${table.signerType} = 'formateur' AND ${table.formateurId} IS NOT NULL AND ${table.contactId} IS NULL)
 			)`
 		),
-		unique('unique_emargement_seance_contact').on(table.seanceId, table.contactId),
-		unique('unique_emargement_seance_formateur').on(table.seanceId, table.formateurId),
+		unique('unique_emargement_seance_contact_period').on(table.seanceId, table.contactId, table.period),
+		unique('unique_emargement_seance_formateur_period').on(table.seanceId, table.formateurId, table.period),
 		unique('unique_emargement_signature_token').on(table.signatureToken),
 		index('emargements_signature_token_idx').on(table.signatureToken)
 	]

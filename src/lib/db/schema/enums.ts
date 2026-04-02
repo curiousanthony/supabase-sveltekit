@@ -116,3 +116,4 @@ export const typeQuestionnaire = pgEnum('type_questionnaire', [
 ]);
 export const questPhase = pgEnum('quest_phase', ['conception', 'deploiement', 'evaluation']);
 export const emargementSignerType = pgEnum('emargement_signer_type', ['apprenant', 'formateur']);
+export const emargementPeriod = pgEnum('emargement_period', ['morning', 'afternoon']);

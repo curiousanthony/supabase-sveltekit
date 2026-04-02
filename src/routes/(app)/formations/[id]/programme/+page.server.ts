@@ -3,6 +3,8 @@ import { db } from '$lib/db';
 import {
 	modules,
 	formations,
+	formationFormateurs,
+	formateurs,
 	biblioProgrammes,
 	biblioProgrammeModules,
 	biblioModules,
@@ -76,7 +78,30 @@ export const load = (async ({ parent, locals }) => {
 		}));
 	}
 
-	return { formationModules, programmeSource, availableProgrammes, programmeSourceUpdatedSinceLink: parentData.programmeSourceUpdatedSinceLink };
+	let workspaceFormateurs: Array<{
+		id: string;
+		user: { id: string; firstName: string | null; lastName: string | null; avatarUrl: string | null; email: string | null };
+	}> = [];
+
+	if (workspaceId) {
+		workspaceFormateurs = await db.query.formateurs.findMany({
+			where: eq(formateurs.workspaceId, workspaceId),
+			columns: { id: true },
+			with: {
+				user: {
+					columns: { id: true, firstName: true, lastName: true, avatarUrl: true, email: true }
+				}
+			}
+		});
+	}
+
+	return {
+		formationModules,
+		programmeSource,
+		availableProgrammes,
+		programmeSourceUpdatedSinceLink: parentData.programmeSourceUpdatedSinceLink,
+		workspaceFormateurs
+	};
 }) satisfies PageServerLoad;
 
 export const actions: Actions = {
@@ -878,6 +903,51 @@ export const actions: Actions = {
 		} catch (e) {
 			console.error('[detachProgramme]', e);
 			return fail(500, { message: 'Erreur lors du détachement' });
+		}
+	},
+
+	assignModuleFormateur: async ({ request, locals, params }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		if (!(await verifyFormationOwnership(params.id, workspaceId))) {
+			return fail(403, { message: 'Accès refusé' });
+		}
+
+		const formData = await request.formData();
+		const moduleId = formData.get('moduleId') as string;
+		const formateurId = (formData.get('formateurId') as string) || null;
+
+		if (!moduleId) return fail(400, { message: 'ID du module requis' });
+
+		try {
+			await db
+				.update(modules)
+				.set({ formateurId })
+				.where(and(eq(modules.id, moduleId), eq(modules.courseId, params.id)));
+
+			if (formateurId) {
+				await db
+					.insert(formationFormateurs)
+					.values({ formationId: params.id, formateurId })
+					.onConflictDoNothing();
+			}
+
+			await logAuditEvent({
+				formationId: params.id,
+				userId: user.id,
+				actionType: 'module_formateur_assigned',
+				entityType: 'module',
+				entityId: moduleId,
+				newValue: { formateurId }
+			});
+
+			return { success: true };
+		} catch (e) {
+			console.error('[assignModuleFormateur]', e);
+			return fail(500, { message: 'Erreur lors de l\'assignation du formateur' });
 		}
 	}
 };

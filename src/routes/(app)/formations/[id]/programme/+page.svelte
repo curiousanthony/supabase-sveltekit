@@ -28,6 +28,8 @@
 	const programmeSource = $derived(formation?.programmeSource ?? null);
 	const formationId = $derived(formation?.id ?? '');
 	const statut = $derived(formation?.statut ?? '');
+	const formationFormateurs = $derived(formation?.formationFormateurs ?? []);
+	const workspaceFormateurs = $derived(data.workspaceFormateurs ?? []);
 
 	let showAddForm = $state(false);
 	let editingModuleId = $state<string | null>(null);
@@ -176,6 +178,8 @@
 							editing={editingModuleId === mod.id}
 							{formationId}
 							{submitting}
+							{formationFormateurs}
+							{workspaceFormateurs}
 							onStartEdit={() => (editingModuleId = mod.id)}
 							onCancelEdit={() => (editingModuleId = null)}
 							onMoveUp={() => moveModule(i, 'up')}

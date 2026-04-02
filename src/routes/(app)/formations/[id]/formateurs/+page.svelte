@@ -17,6 +17,7 @@
 	import Mail from '@lucide/svelte/icons/mail';
 	import Search from '@lucide/svelte/icons/search';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
+	import BookOpen from '@lucide/svelte/icons/book-open';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Euro from '@lucide/svelte/icons/euro';
@@ -100,6 +101,11 @@
 	const docSubActions = $derived(docAction?.subActions ?? []);
 
 	const formationSeances = $derived(formation?.seances ?? []);
+	const formationModules = $derived(formation?.modules ?? []);
+
+	function modulesForFormateur(formateurId: string) {
+		return formationModules.filter((m) => m.formateurId === formateurId);
+	}
 
 	function seancesForFormateur(formateurId: string) {
 		return formationSeances.filter((s) => s.formateurId === formateurId);
@@ -529,13 +535,34 @@
 								</div>
 							{/if}
 
-							<!-- Row 4: Sessions -->
+						<!-- Row 4: Module Assignments (read-only) -->
+						{#if modulesForFormateur(f.id).length > 0}
 							<Separator />
 							<div class="px-4 py-3">
 								<div class="mb-2 flex items-center gap-2">
-									<CalendarDays class="size-4 text-muted-foreground" />
-									<span class="text-xs font-medium text-muted-foreground">Séances assignées</span>
+									<BookOpen class="size-4 text-muted-foreground" />
+									<span class="text-xs font-medium text-muted-foreground">Modules assignés</span>
 								</div>
+								<div class="flex flex-wrap gap-1.5">
+									{#each modulesForFormateur(f.id) as mod (mod.id)}
+										<Badge variant="outline" class="gap-1 text-xs">
+											{mod.name}
+											{#if mod.durationHours}
+												<span class="text-muted-foreground">({mod.durationHours}h)</span>
+											{/if}
+										</Badge>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<!-- Row 5: Sessions -->
+						<Separator />
+						<div class="px-4 py-3">
+							<div class="mb-2 flex items-center gap-2">
+								<CalendarDays class="size-4 text-muted-foreground" />
+								<span class="text-xs font-medium text-muted-foreground">Séances assignées</span>
+							</div>
 
 								{#if seancesForFormateur(f.id).length > 0}
 									<div class="mb-2 space-y-1">

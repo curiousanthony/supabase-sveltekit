@@ -4,10 +4,10 @@ overview: Implement the 24 Mar backlog through dependency-safe, small waves that
 todos:
   - id: wave1-programme-modules
     content: Implement Wave 1 (programme linking + module alignment + two-way explicit sync + supports/questionnaires visibility)
-    status: pending
+    status: completed
   - id: wave2-seances-emargement
-    content: Implement Wave 2 (calendar UX/CRUD hardening + public emargement link visibility/copy/send)
-    status: pending
+    content: "Implement Wave 2 (calendar UX/CRUD hardening + public emargement link visibility/copy/send + smart AM/PM splitting + Module-Formateur linking + batch creation + Postmark email integration)"
+    status: completed
   - id: wave3-documents
     content: Implement Wave 3 (documents generation reliability + uploads + preview integrity)
     status: pending

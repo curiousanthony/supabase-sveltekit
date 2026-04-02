@@ -250,6 +250,10 @@ export const modulesRelations = relations(modules, ({ one, many }) => ({
 		fields: [modules.sourceModuleId],
 		references: [biblioModules.id]
 	}),
+	formateur: one(formateurs, {
+		fields: [modules.formateurId],
+		references: [formateurs.id]
+	}),
 	seances: many(seances),
 	moduleSupports: many(moduleSupports),
 	moduleQuestionnaires: many(moduleQuestionnaires)
