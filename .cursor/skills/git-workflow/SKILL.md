@@ -1,6 +1,7 @@
 ---
 name: git-workflow
-description: description: Executes Git workflows for main/develop/feature branching. Use when the user says "start feature", "commit", "push", "integrate", "merge", "release", "ship to prod", "/push-to-prod", "/hotfix", "hotfix", "bug in prod", "fix production", "work on issue", "work on [...]", "stash", "rollback", or when the agent is about to run any git commands.
+description: Executes Git workflows for main/develop/feature branching. Use when the user says "start feature", "commit", "push", "integrate", "merge", "release", "ship to prod", "/push-to-prod", "/hotfix", "hotfix", "bug in prod", "fix production", "work on issue", "work on [...]", "stash", "rollback", or when the agent is about to run any git commands.
+disable-model-invocation: true
 ---
 
 # Git Workflow

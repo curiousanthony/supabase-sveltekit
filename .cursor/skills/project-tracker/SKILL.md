@@ -8,6 +8,7 @@ description: >
   "what's left", "update the backlog", "document this decision", "mark as done",
   "update the plan". Complements the Notion-based suivi-de-projet skill with repo-local
   documentation that persists across sessions.
+disable-model-invocation: true
 ---
 
 # Project Tracker

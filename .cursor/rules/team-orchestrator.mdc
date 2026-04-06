@@ -1,0 +1,77 @@
+---
+description: Orchestrates the subagent team for feature development. Classifies tasks, assembles the right team, and enforces quality gates including mandatory QA.
+alwaysApply: true
+---
+
+# Team Orchestrator
+
+When the user asks to build, implement, design, or fix something non-trivial, orchestrate the subagent team.
+
+## Skip Conditions
+
+Handle directly (no subagents) when:
+- Single-file fix, typo, variable rename, config change
+- Running a command, answering a question
+- Task is fully specified with no design decisions needed
+
+## Task Classification
+
+Analyze the task and pick a recipe:
+
+| Task Type | Subagents | Phases |
+|-----------|-----------|--------|
+| **New feature with UI** | ux-designer, product-analyst, architect, test-engineer, implementer, reviewer, security-analyst, qa-tester, project-manager | All 7 |
+| **Schema-only change** | architect, implementer, security-analyst, reviewer | 2→4→5 |
+| **Bug fix with UX impact** | ux-designer (quick), test-engineer, implementer, qa-tester | 1→3→4→6 |
+| **Small bug fix (no UI)** | test-engineer, implementer, reviewer | 3→4→5 |
+| **Documentation / project update** | project-manager | 7 only |
+| **Meeting digest** | project-manager | 7 only |
+| **Team improvement** | team-architect | Meta |
+
+## 7-Phase Sequence
+
+### 1. Brainstorm (parallel)
+Launch `ux-designer` + `product-analyst` as parallel subagents. After both return, synthesize: identify consensus, surface tensions between UX and compliance, present design choices to user via AskQuestion. **User must approve design direction before proceeding.**
+
+### 2. Design
+Launch `architect` when task touches DB or creates new entities. Present schema design to user. **User must approve schema before proceeding.**
+
+### 3. Test Writing (TDD)
+Launch `test-engineer`. Reads design + architecture artifacts. Writes failing tests that define acceptance criteria. Confirm tests fail before proceeding.
+
+### 4. Build
+Launch `implementer`. Must follow the plan and make all tests pass. Uses shadcn-svelte MCP for all UI elements.
+
+### 5. Review (parallel)
+Launch `reviewer` + `security-analyst` in parallel. Reviewer does code quality + shadcn audit. Security analyst checks RLS, auth, data access. Fix Critical/High findings before proceeding.
+
+### 6. Acceptance (mandatory gate)
+Launch `qa-tester`. Reads design artifacts, then tests the running app as Marie using Browser MCP. **No UI-facing feature ships without passing QA.** If QA fails, loop back to phase 4 with findings.
+
+### 7. Document
+Launch `project-manager`. Updates `docs/project/` files, records decisions, writes feature documentation.
+
+## Phase Gates
+
+- After phase 1: user approves design direction
+- After phase 2: user approves schema
+- After phase 5: Critical/High review findings must be fixed
+- After phase 6: QA must PASS (or loop back to phase 4)
+
+## Artifact Protocol
+
+Each subagent writes findings to `docs/team-artifacts/<team>/` as dated markdown files. Subsequent subagents are instructed to read relevant artifacts before starting:
+
+- `test-engineer` reads `design/` + `architecture/`
+- `implementer` reads `architecture/` + `testing/`
+- `reviewer` reads `design/`
+- `qa-tester` reads `design/`
+- `project-manager` reads all relevant artifacts
+
+## Synthesis Protocol
+
+After parallel subagents return, synthesize their findings:
+1. Identify consensus across specialists
+2. Surface tensions (UX vs compliance, speed vs security)
+3. Present structured choices via AskQuestion when decisions are needed
+4. Record decisions in `docs/decisions/` for significant choices

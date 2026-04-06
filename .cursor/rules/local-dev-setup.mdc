@@ -1,0 +1,44 @@
+---
+description: Local development setup, environment config, service startup, auth testing, known issues. Use when starting services, debugging setup, configuring env vars, running tests, encountering migration or linter errors, or setting up a Cloud VM.
+alwaysApply: false
+---
+
+# Local Development Setup
+
+## Starting Services
+
+1. **Docker** must be running before Supabase can start.
+2. **Supabase local stack**: `supabase start` (pulls/starts ~12 Docker containers; first run is slow). Use `supabase status` to get API keys.
+3. **SvelteKit dev server**: `bun run dev --host` (port 5173).
+
+## Environment
+
+The `.env` file is created from `.env.dev.example`. Required keys:
+- `PUBLIC_SUPABASE_PUBLISHABLE_KEY` (from `supabase status`)
+- `SUPABASE_SERVICE_ROLE_KEY` (from `supabase status`)
+- `INVITE_TOKEN_SECRET` (any random hex: `openssl rand -hex 32`)
+
+OAuth keys (`GITHUB_*`, `GOOGLE_*`) are optional for local dev.
+
+## Authentication
+
+Only **Google OAuth** is implemented. To test without a real Google account:
+
+1. Create a confirmed test user: `POST $API_URL/auth/v1/admin/users` with `Authorization: Bearer <SERVICE_ROLE_KEY>`, body `{"email":"test@mentore.dev","password":"Test1234!","email_confirm":true}`. Get `API_URL`, `SERVICE_ROLE_KEY`, `ANON_KEY` from `supabase status`.
+2. In browser console on `/auth/login`: import `@supabase/supabase-js`, create client with `API_URL` + `ANON_KEY`, call `signInWithPassword()`, then `window.location.href = '/'`.
+
+## Testing
+
+- `bun run test` — Vitest
+- `bun run lint` — Prettier + ESLint
+- `bun run check` — `svelte-check` for type errors
+
+## Known Issues
+
+- **Duplicate migration**: `20260226110000_bibliotheque_tables.sql` overlaps with `20260225190000_bibliotheque_tables.sql`. Made idempotent with `IF NOT EXISTS` / `EXCEPTION WHEN duplicate_object`.
+- **Prettier errors**: Two files (`src/lib/_archived/ajouter/+page.svelte`, `src/routes/test-card-checkbox/+page.svelte`) cause `TypeError: getVisitorKeys is not a function`. Pre-existing, not a blocker.
+- **`svelte-check` ~46 errors**: Mostly Zod/Superforms type mismatches. Pre-existing; does not block dev or build.
+
+## Docker in Cloud Agent VM
+
+Docker runs in a nested container environment requiring `fuse-overlayfs` and `iptables-legacy`. After VM restart: `sudo dockerd &>/tmp/dockerd.log &` then `sudo chmod 666 /var/run/docker.sock`.

@@ -1,6 +1,7 @@
 ---
 name: crud-services
 description: Guides agents on the shared CRUD service layer in Mentore Manager. Use when implementing a DB operation that might already exist, when the same insert/update/delete logic appears in more than one route, when adding a new creation or mutation action to a +page.server.ts, or when asked about centralizing database logic.
+disable-model-invocation: true
 ---
 
 # Shared CRUD Services

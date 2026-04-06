@@ -1,6 +1,7 @@
 ---
 name: playground-pages
 description: Creates and maintains SvelteKit playground pages for UI/components under src/routes/playground. Use when adding or updating test/demo pages for components, layouts, or interactions.
+disable-model-invocation: true
 ---
 
 # Playground & Component Test Pages

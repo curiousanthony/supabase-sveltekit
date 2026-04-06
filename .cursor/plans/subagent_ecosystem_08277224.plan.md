@@ -4,58 +4,58 @@ overview: "Replace the current 17-skill system (1,700+ lines of overlapping orch
 todos:
   - id: create-dirs
     content: "Create directories: .cursor/agents/, docs/team-artifacts/{design,product,architecture,testing,qa,security,management}, docs/project/, meetings/"
-    status: pending
+    status: completed
   - id: gitignore-meetings
     content: Add meetings/ to .gitignore
-    status: pending
+    status: completed
   - id: orchestrator-rule
     content: "Create .cursor/rules/team-orchestrator.mdc -- lean orchestrator rule (~80 lines) with task classification, 7-phase sequence, team recipes, QA gate, synthesis protocol"
-    status: pending
+    status: completed
   - id: subagent-ux-designer
     content: "Create .cursor/agents/ux-designer.md -- Senior UX Designer, behavioral psychology, Marie persona, writes findings to docs/team-artifacts/design/"
-    status: pending
+    status: completed
   - id: subagent-product-analyst
     content: "Create .cursor/agents/product-analyst.md -- Foundation guardian + Qualiopi analyst, writes reports to docs/team-artifacts/product/"
-    status: pending
+    status: completed
   - id: subagent-architect
     content: "Create .cursor/agents/architect.md -- Schema/API architect, schema-first workflow, writes designs to docs/team-artifacts/architecture/"
-    status: pending
+    status: completed
   - id: subagent-test-engineer
     content: "Create .cursor/agents/test-engineer.md -- TDD specialist, Vitest + Playwright, edge case thinking, writes test plans to docs/team-artifacts/testing/"
-    status: pending
+    status: completed
   - id: subagent-implementer
     content: "Create .cursor/agents/implementer.md -- Senior SvelteKit 5 developer, shadcn-svelte MCP mandate, must make tests pass"
-    status: pending
+    status: completed
   - id: subagent-reviewer
     content: "Create .cursor/agents/reviewer.md -- Code reviewer, shadcn-svelte audit via MCP, prioritized feedback"
-    status: pending
+    status: completed
   - id: subagent-security-analyst
     content: "Create .cursor/agents/security-analyst.md -- RLS policies, auth flows, data access audit, writes reports to docs/team-artifacts/security/"
-    status: pending
+    status: completed
   - id: subagent-qa-tester
     content: "Create .cursor/agents/qa-tester.md -- Persona-based acceptance testing via Browser MCP, mandatory gate before shipping"
-    status: pending
+    status: completed
   - id: subagent-project-manager
     content: "Create .cursor/agents/project-manager.md -- File-based PM (docs/project/), meeting digest workflow, writes to docs/team-artifacts/management/"
-    status: pending
+    status: completed
   - id: subagent-team-architect
     content: "Create .cursor/agents/team-architect.md -- Meta-agent, auto-improves subagent definitions, maintains docs/team-changelog.md"
-    status: pending
+    status: completed
   - id: project-management-files
     content: "Create initial docs/project/ files: backlog.md, current-sprint.md, shipped.md, roadmap.md"
-    status: pending
+    status: completed
   - id: digest-meeting-command
     content: "Create .cursor/commands/digest-meeting.md slash command for triggering meeting transcript processing"
-    status: pending
+    status: completed
   - id: archive-skills
     content: "Move 9 retired skills to .cursor/skills/_archived/ (team-driven-development, design-brainstorm, implement-with-team, ux-reviewer, ui-ux-design-review, feature-documentation, session-recap, suivi-de-projet, mentore-manager-notion)"
-    status: pending
+    status: completed
   - id: disable-knowledge-skills
     content: "Add disable-model-invocation: true to 6 knowledge skills (svelte5-stack, supabase-database-migration, crud-services, playground-pages, git-workflow, project-tracker)"
-    status: pending
+    status: completed
   - id: update-agents-md
     content: "Update AGENTS.md: document subagent ecosystem, artifact system, file-based PM, meeting digest workflow, Superpowers compatibility note"
-    status: pending
+    status: completed
 isProject: false
 ---
 

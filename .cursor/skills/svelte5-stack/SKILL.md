@@ -1,6 +1,7 @@
 ---
 name: svelte5-stack
 description: Enforces the SvelteKit 5 + shadcn-svelte + Tailwind + Drizzle + Supabase stack conventions. Use when adding or editing Svelte components/routes, UI, forms, or server logic in this project.
+disable-model-invocation: true
 ---
 
 # Svelte 5 Application Stack
