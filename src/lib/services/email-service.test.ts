@@ -30,8 +30,26 @@ globalThis.fetch = mockFetch;
 
 const {
 	EMAIL_TYPE_TO_TEMPLATE,
+	POSTMARK_SANDBOX_PROVIDER_HINT,
+	resetPostmarkServerMetadataCacheForTests,
 	sendFormationTemplateEmail
 } = await import('$lib/services/email-service');
+
+/** Successful withTemplate + GET /server (delivery type). */
+function mockPostmarkTemplateThenServer(
+	messageId: string,
+	deliveryType: 'Live' | 'Sandbox' = 'Live'
+): void {
+	mockFetch
+		.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({ MessageID: messageId })
+		})
+		.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({ DeliveryType: deliveryType })
+		});
+}
 
 describe('EMAIL_TYPE_TO_TEMPLATE', () => {
 	it('maps all 22 email types to template aliases', () => {
@@ -76,6 +94,7 @@ describe('EMAIL_TYPE_TO_TEMPLATE', () => {
 
 describe('sendFormationTemplateEmail', () => {
 	beforeEach(() => {
+		resetPostmarkServerMetadataCacheForTests();
 		mockFetch.mockReset();
 		mockDbInsert.mockClear();
 		valuesFn.mockClear();
@@ -83,10 +102,7 @@ describe('sendFormationTemplateEmail', () => {
 	});
 
 	it('sends via /email/withTemplate with correct alias and model', async () => {
-		mockFetch.mockResolvedValueOnce({
-			ok: true,
-			json: async () => ({ MessageID: 'pm-msg-123' })
-		});
+		mockPostmarkTemplateThenServer('pm-msg-123');
 
 		const result = await sendFormationTemplateEmail(
 			{
@@ -105,7 +121,7 @@ describe('sendFormationTemplateEmail', () => {
 			{ type: 'emargement_link', recipientType: 'apprenant', createdBy: 'user-id' }
 		);
 
-		expect(mockFetch).toHaveBeenCalledTimes(1);
+		expect(mockFetch).toHaveBeenCalledTimes(2);
 		const [url, options] = mockFetch.mock.calls[0];
 		expect(url).toBe('https://api.postmarkapp.com/email/withTemplate');
 
@@ -119,16 +135,15 @@ describe('sendFormationTemplateEmail', () => {
 		expect(body.Tag).toBe('emargement_link');
 		expect(body.TrackOpens).toBe(true);
 
+		expect(mockFetch.mock.calls[1][0]).toBe('https://api.postmarkapp.com/server');
+
 		expect(result.postmarkMessageId).toBe('pm-msg-123');
 		expect(result.emailId).toBe('email-record-id');
 		expect(result.sendStatus).toBe('sent');
 	});
 
 	it('logs to formation_emails with status sent on success', async () => {
-		mockFetch.mockResolvedValueOnce({
-			ok: true,
-			json: async () => ({ MessageID: 'pm-msg-456' })
-		});
+		mockPostmarkTemplateThenServer('pm-msg-456');
 
 		await sendFormationTemplateEmail(
 			{
@@ -193,10 +208,7 @@ describe('sendFormationTemplateEmail', () => {
 	});
 
 	it('includes showMentoreBranding and siteUrl in template model', async () => {
-		mockFetch.mockResolvedValueOnce({
-			ok: true,
-			json: async () => ({ MessageID: 'pm-msg-789' })
-		});
+		mockPostmarkTemplateThenServer('pm-msg-789');
 
 		await sendFormationTemplateEmail(
 			{
@@ -212,5 +224,24 @@ describe('sendFormationTemplateEmail', () => {
 		expect(body.TemplateModel.showMentoreBranding).toBe(true);
 		expect(body.TemplateModel.siteUrl).toBe('https://app.test.com');
 	});
-});
 
+	it('uses sendStatus sandbox when Postmark server is Sandbox (no real delivery)', async () => {
+		mockPostmarkTemplateThenServer('pm-sandbox-1', 'Sandbox');
+
+		const result = await sendFormationTemplateEmail(
+			{
+				to: 'test@test.com',
+				templateAlias: 'convocation',
+				templateModel: { recipientName: 'Test', formationName: 'F1' }
+			},
+			'formation-id',
+			{ type: 'convocation', recipientType: 'apprenant', createdBy: 'user-id' }
+		);
+
+		expect(result.sendStatus).toBe('sandbox');
+		expect(result.providerError).toBe(POSTMARK_SANDBOX_PROVIDER_HINT);
+		const insertedValues = valuesFn.mock.calls[0][0];
+		expect(insertedValues.status).toBe('sandbox');
+		expect(insertedValues.sentAt).toBeNull();
+	});
+});

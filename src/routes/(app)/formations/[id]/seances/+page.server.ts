@@ -9,7 +9,7 @@ import {
 	seanceFormInputToUtcIso
 } from '$lib/datetime/seance-schedule';
 import { logAuditEvent } from '$lib/services/audit-log';
-import { sendFormationTemplateEmail } from '$lib/services/email-service';
+import { POSTMARK_SANDBOX_PROVIDER_HINT, sendFormationTemplateEmail } from '$lib/services/email-service';
 import { workspaces } from '$lib/db/schema';
 import { env } from '$env/dynamic/private';
 import type { Actions } from './$types';
@@ -587,6 +587,7 @@ export const actions: Actions = {
 
 			let sentCount = 0;
 			let failedCount = 0;
+			let sandboxCount = 0;
 			let sendAttempts = 0;
 			let firstError: string | undefined;
 
@@ -620,6 +621,9 @@ export const actions: Actions = {
 				);
 				if (sendResult.sendStatus === 'sent') {
 					sentCount++;
+				} else if (sendResult.sendStatus === 'sandbox') {
+					sandboxCount++;
+					firstError ??= sendResult.providerError ?? POSTMARK_SANDBOX_PROVIDER_HINT;
 				} else {
 					failedCount++;
 					firstError ??=
@@ -660,6 +664,9 @@ export const actions: Actions = {
 				);
 				if (sendResult.sendStatus === 'sent') {
 					sentCount++;
+				} else if (sendResult.sendStatus === 'sandbox') {
+					sandboxCount++;
+					firstError ??= sendResult.providerError ?? POSTMARK_SANDBOX_PROVIDER_HINT;
 				} else {
 					failedCount++;
 					firstError ??=
@@ -671,6 +678,12 @@ export const actions: Actions = {
 			}
 
 			if (sendAttempts > 0 && sentCount === 0) {
+				if (sandboxCount === sendAttempts && failedCount === 0) {
+					return fail(502, {
+						message:
+							'Votre jeton Postmark provient d’un serveur « bac à sable » : l’API accepte les envois mais aucun e-mail n’est livré dans une vraie boîte. Créez un serveur de transaction « Live » dans Postmark (le type ne peut pas être changé après création) et utilisez son jeton dans POSTMARK_SERVER_TOKEN.'
+					});
+				}
 				return fail(502, {
 					message:
 						firstError?.slice(0, 280) ??
@@ -691,7 +704,7 @@ export const actions: Actions = {
 				actionType: 'emargement_links_sent',
 				entityType: 'seance',
 				entityId: seanceId,
-				newValue: { sentCount, failedCount, sendAttempts }
+				newValue: { sentCount, failedCount, sandboxCount, sendAttempts }
 			});
 
 			return { success: true, sentCount, failedCount };

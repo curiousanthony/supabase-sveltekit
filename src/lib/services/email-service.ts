@@ -4,6 +4,63 @@ import { env } from '$env/dynamic/private';
 
 const DEFAULT_POSTMARK_FETCH_TIMEOUT_MS = 30_000;
 
+/** Shown when Postmark accepts the API call but the server is Sandbox (no real inbox delivery). */
+export const POSTMARK_SANDBOX_PROVIDER_HINT =
+	'Serveur Postmark « bac à sable » : l’API accepte l’envoi mais aucun message n’est livré dans une vraie boîte mail. Utilisez un serveur de transaction « Live » et son jeton API.';
+
+let postmarkDeliveryTypePromise: Promise<'Live' | 'Sandbox' | null> | null = null;
+
+/** Clears cached GET /server result (Vitest only). */
+export function resetPostmarkServerMetadataCacheForTests(): void {
+	postmarkDeliveryTypePromise = null;
+}
+
+/**
+ * Resolves whether the configured server token points to a Live or Sandbox Postmark server.
+ * Cached for the lifetime of the process. Optional env `POSTMARK_SERVER_DELIVERY_TYPE` forces the value (tests).
+ */
+async function getPostmarkServerDeliveryType(): Promise<'Live' | 'Sandbox' | null> {
+	const override = env.POSTMARK_SERVER_DELIVERY_TYPE;
+	if (override === 'Live' || override === 'Sandbox') {
+		return override;
+	}
+
+	const token = env.POSTMARK_SERVER_TOKEN;
+	if (!token) return null;
+
+	if (!postmarkDeliveryTypePromise) {
+		postmarkDeliveryTypePromise = (async () => {
+			try {
+				const timeoutMs = Math.min(getPostmarkFetchTimeoutMs(), 10_000);
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+				let response: Response;
+				try {
+					response = await fetch('https://api.postmarkapp.com/server', {
+						method: 'GET',
+						headers: {
+							Accept: 'application/json',
+							'X-Postmark-Server-Token': token
+						},
+						signal: controller.signal
+					});
+				} finally {
+					clearTimeout(timeoutId);
+				}
+				if (!response.ok) return null;
+				const j = (await response.json()) as { DeliveryType?: string };
+				if (j.DeliveryType === 'Sandbox') return 'Sandbox';
+				if (j.DeliveryType === 'Live') return 'Live';
+				return null;
+			} catch (e) {
+				console.warn('[postmark] Impossible de lire DeliveryType du serveur :', e);
+				return null;
+			}
+		})();
+	}
+	return postmarkDeliveryTypePromise;
+}
+
 function getPostmarkFetchTimeoutMs(): number {
 	const raw = env.POSTMARK_FETCH_TIMEOUT_MS;
 	const parsed = raw != null && raw !== '' ? Number.parseInt(raw, 10) : NaN;
@@ -35,14 +92,18 @@ export interface TemplateEmailPayload {
 	tag?: string;
 }
 
-export type EmailSendStatus = 'sent' | 'failed' | 'logged';
+export type EmailSendStatus = 'sent' | 'failed' | 'logged' | 'sandbox';
 
 export interface SendEmailResult {
 	emailId: string;
 	postmarkMessageId?: string;
-	/** Whether Postmark accepted the message (`sent`), rejected it (`failed`), or no API call was made (`logged`). */
+	/**
+	 * `sent` = Live server accepted and message will be delivered.
+	 * `sandbox` = Postmark API accepted but server is Sandbox (no real inbox delivery).
+	 * `failed` / `logged` = rejected or not sent via API.
+	 */
 	sendStatus: EmailSendStatus;
-	/** Postmark error message when sendStatus is `failed`. */
+	/** Postmark error or sandbox hint when sendStatus is `failed` or `sandbox`. */
 	providerError?: string;
 }
 
@@ -140,7 +201,13 @@ export async function sendFormationEmail(
 			if (response.ok) {
 				const result = (await response.json()) as { MessageID?: string };
 				postmarkMessageId = result.MessageID;
-				status = 'sent';
+				const deliveryType = await getPostmarkServerDeliveryType();
+				if (deliveryType === 'Sandbox') {
+					status = 'sandbox';
+					providerError = POSTMARK_SANDBOX_PROVIDER_HINT;
+				} else {
+					status = 'sent';
+				}
 			} else {
 				const errorText = await response.text();
 				console.error('Postmark send failed:', errorText);
@@ -190,7 +257,7 @@ export async function sendFormationEmail(
 		emailId: emailRecord.id,
 		postmarkMessageId,
 		sendStatus,
-		...(sendStatus === 'failed' && providerError ? { providerError } : {})
+		...((sendStatus === 'failed' || sendStatus === 'sandbox') && providerError ? { providerError } : {})
 	};
 }
 
@@ -267,7 +334,13 @@ export async function sendFormationTemplateEmail(
 			if (response.ok) {
 				const result = (await response.json()) as { MessageID?: string };
 				postmarkMessageId = result.MessageID;
-				status = 'sent';
+				const deliveryType = await getPostmarkServerDeliveryType();
+				if (deliveryType === 'Sandbox') {
+					status = 'sandbox';
+					providerError = POSTMARK_SANDBOX_PROVIDER_HINT;
+				} else {
+					status = 'sent';
+				}
 			} else {
 				const errorText = await response.text();
 				console.error('Postmark template send failed:', errorText);
@@ -319,7 +392,7 @@ export async function sendFormationTemplateEmail(
 		emailId: emailRecord.id,
 		postmarkMessageId,
 		sendStatus,
-		...(sendStatus === 'failed' && providerError ? { providerError } : {})
+		...((sendStatus === 'failed' || sendStatus === 'sandbox') && providerError ? { providerError } : {})
 	};
 }
 
