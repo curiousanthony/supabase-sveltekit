@@ -30,7 +30,6 @@ globalThis.fetch = mockFetch;
 
 const {
 	EMAIL_TYPE_TO_TEMPLATE,
-	sendFormationEmail,
 	sendFormationTemplateEmail
 } = await import('$lib/services/email-service');
 
@@ -191,32 +190,3 @@ describe('sendFormationTemplateEmail', () => {
 	});
 });
 
-describe('sendFormationEmail (legacy inline HTML)', () => {
-	beforeEach(() => {
-		mockFetch.mockReset();
-		mockDbInsert.mockClear();
-		valuesFn.mockClear();
-		returningFn.mockClear().mockResolvedValue([{ id: 'email-record-id' }]);
-	});
-
-	it('still works with inline HTML payload', async () => {
-		mockFetch.mockResolvedValueOnce({
-			ok: true,
-			json: async () => ({ MessageID: 'pm-legacy-1' })
-		});
-
-		const result = await sendFormationEmail(
-			{
-				to: 'test@test.com',
-				subject: 'Test Subject',
-				htmlBody: '<p>Hello</p>'
-			},
-			'formation-id',
-			{ type: 'test_type', recipientType: 'apprenant', createdBy: 'user-id' }
-		);
-
-		const [url] = mockFetch.mock.calls[0];
-		expect(url).toBe('https://api.postmarkapp.com/email');
-		expect(result.postmarkMessageId).toBe('pm-legacy-1');
-	});
-});

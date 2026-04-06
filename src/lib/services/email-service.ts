@@ -16,30 +16,6 @@ function isAbortError(err: unknown): boolean {
 	return false;
 }
 
-function escapeHtml(text: string): string {
-	return text
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#39;');
-}
-
-/** Only http(s) and mailto — rejects javascript:, data:, etc. */
-function sanitizeEmailHref(url: string | undefined): string | null {
-	if (url == null || typeof url !== 'string') return null;
-	const trimmed = url.trim();
-	if (!trimmed) return null;
-	try {
-		const parsed = new URL(trimmed);
-		const allowed = new Set(['http:', 'https:', 'mailto:']);
-		if (!allowed.has(parsed.protocol)) return null;
-		return parsed.href;
-	} catch {
-		return null;
-	}
-}
-
 export interface EmailPayload {
 	to: string;
 	toName?: string;
@@ -315,48 +291,6 @@ export async function sendFormationTemplateEmail(
 	};
 }
 
-/**
- * Build a simple HTML email body from components.
- * @deprecated Use Postmark templates via sendFormationTemplateEmail instead.
- */
-export function buildEmailHtml(options: {
-	greeting: string;
-	bodyLines: string[];
-	ctaText?: string;
-	ctaUrl?: string;
-	signoff?: string;
-	orgName?: string;
-}): string {
-	const { greeting, bodyLines, ctaText, ctaUrl, signoff, orgName } = options;
-
-	const escGreeting = escapeHtml(greeting);
-	const bodyHtml = bodyLines
-		.map((line) => `<p style="margin:0 0 12px 0;">${escapeHtml(line)}</p>`)
-		.join('');
-
-	const safeCtaHref = sanitizeEmailHref(ctaUrl);
-	const escCtaText = ctaText != null ? escapeHtml(ctaText) : '';
-	const ctaHtml =
-		escCtaText && safeCtaHref
-			? `<p style="margin:24px 0;"><a href="${escapeHtml(safeCtaHref)}" style="display:inline-block;padding:12px 24px;background-color:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">${escCtaText}</a></p>`
-			: '';
-
-	const escSignoff = escapeHtml(signoff ?? 'Cordialement,');
-	const escOrgName = orgName != null ? escapeHtml(orgName) : '';
-
-	return `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="utf-8"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;padding:20px;">
-  <p style="font-size:16px;margin-bottom:16px;">${escGreeting}</p>
-  ${bodyHtml}
-  ${ctaHtml}
-  <p style="margin-top:24px;">${escSignoff}</p>
-  ${escOrgName ? `<p style="font-weight:600;">${escOrgName}</p>` : ''}
-</body>
-</html>`;
-}
-
 function stripHtml(html: string): string {
 	return html
 		.replace(/<br\s*\/?>/gi, '\n')
@@ -369,67 +303,3 @@ function stripHtml(html: string): string {
 		.replace(/\n{3,}/g, '\n\n')
 		.trim();
 }
-
-/**
- * Pre-built email templates for common formation emails.
- */
-export const EMAIL_TEMPLATES = {
-	convention_envoi: (formation: { name: string }, orgName: string) => ({
-		subject: `Convention de formation — ${formation.name}`,
-		html: buildEmailHtml({
-			greeting: 'Bonjour,',
-			bodyLines: [
-				`Veuillez trouver ci-joint la convention de formation pour ${formation.name}.`,
-				'Merci de bien vouloir en prendre connaissance, la signer et nous la retourner dans les meilleurs délais.'
-			],
-			signoff: 'Cordialement,',
-			orgName
-		})
-	}),
-
-	convocation: (
-		formation: { name: string; dateDebut: string | null },
-		learnerName: string,
-		orgName: string
-	) => ({
-		subject: `Convocation — ${formation.name}`,
-		html: buildEmailHtml({
-			greeting: `Bonjour ${learnerName},`,
-			bodyLines: [
-				`Nous avons le plaisir de vous confirmer votre inscription à la formation ${formation.name}.`,
-				formation.dateDebut && !isNaN(Date.parse(formation.dateDebut))
-					? `La formation débutera le ${new Date(formation.dateDebut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}.`
-					: '',
-				'Veuillez trouver ci-joint votre convocation avec toutes les informations pratiques.'
-			].filter(Boolean),
-			signoff: 'Cordialement,',
-			orgName
-		})
-	}),
-
-	certificat_realisation: (formation: { name: string }, learnerName: string, orgName: string) => ({
-		subject: `Certificat de réalisation — ${formation.name}`,
-		html: buildEmailHtml({
-			greeting: `Bonjour ${learnerName},`,
-			bodyLines: [
-				`Suite à votre participation à la formation ${formation.name}, veuillez trouver ci-joint votre certificat de réalisation.`,
-				"Ce document atteste de votre participation effective à l'action de formation."
-			],
-			signoff: 'Cordialement,',
-			orgName
-		})
-	}),
-
-	rappel_emargement: (formation: { name: string }, orgName: string) => ({
-		subject: `Rappel — Signature d'émargement — ${formation.name}`,
-		html: buildEmailHtml({
-			greeting: 'Bonjour,',
-			bodyLines: [
-				`Nous vous rappelons de bien vouloir signer votre feuille d'émargement pour la formation ${formation.name}.`,
-				'Votre signature est obligatoire pour attester de votre présence.'
-			],
-			signoff: 'Cordialement,',
-			orgName
-		})
-	})
-} as const;
