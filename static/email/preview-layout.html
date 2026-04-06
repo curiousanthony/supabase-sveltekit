@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mentore Manager — Email Layout Preview</title>
+<style>
+  body { background: #f1f1f1; margin: 0; padding: 40px 20px; font-family: 'Circular Std', ui-sans-serif, system-ui, sans-serif; }
+  .preview-label { text-align: center; color: #888; font-size: 12px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<p class="preview-label">Postmark Layout Preview — mentore-manager</p>
+
+<!-- ===== BEGIN POSTMARK LAYOUT HTML ===== -->
+<div style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Circular Std',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;color:#1a1a2e;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f5;">
+    <tr>
+      <td align="center" style="padding:32px 16px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+
+          <!-- Content area -->
+          <tr>
+            <td style="padding:36px 32px 28px;font-family:'Circular Std',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+
+              <!-- SAMPLE TEMPLATE CONTENT (replaces {{{content}}} in Postmark) -->
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#1a1a2e;">Bonjour Jean-Pierre,</p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151;">Votre feuille d'émargement pour la formation <strong>&laquo;&nbsp;Techniques de vente B2B&nbsp;&raquo;</strong> est prête.</p>
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#374151;">Séance du <strong>jeudi 10 avril 2026</strong>.</p>
+
+              <!-- CTA Button -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 12px;">
+                <tr>
+                  <td align="center" style="border-radius:8px;background-color:#EE2B47;">
+                    <a href="#" target="_blank" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;background-color:#EE2B47;font-family:'Circular Std',ui-sans-serif,system-ui,sans-serif;">Signer mon émargement</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#374151;">À très vite !</p>
+              <!-- END SAMPLE TEMPLATE CONTENT -->
+
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 32px;">
+              <div style="border-top:1px solid #e5e7eb;"></div>
+            </td>
+          </tr>
+
+          <!-- Footer: workspace branding + info -->
+          <tr>
+            <td style="padding:20px 32px 24px;">
+              <img src="https://placehold.co/140x40/f4f4f5/374151?text=Logo+Centre" alt="Centre de Formation ABC" width="140" style="display:block;border:0;outline:none;margin-bottom:10px;" />
+              <p style="margin:0;font-size:13px;line-height:1.5;color:#6b7280;font-family:'Circular Std',ui-sans-serif,system-ui,sans-serif;">Centre de Formation ABC</p>
+              <p style="margin:2px 0 0;font-size:12px;line-height:1.5;color:#9ca3af;font-family:'Circular Std',ui-sans-serif,system-ui,sans-serif;">12 rue de la Formation, 75001 Paris</p>
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- Micro-text -->
+        <p style="margin:16px 0 0;font-size:11px;color:#9ca3af;text-align:center;font-family:'Circular Std',ui-sans-serif,system-ui,sans-serif;">
+          Cet e-mail a été envoyé automatiquement. Veuillez ne pas y répondre directement.
+        </p>
+
+        <!-- Mentore Manager branding (below micro-text, centered, separated from workspace) -->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:12px auto 0;" align="center">
+          <tr>
+            <td align="center" style="vertical-align:middle;">
+              <img src="/email/mentore-manager-logo.png" alt="Mentore Manager" width="90" height="19" style="display:block;border:0;outline:none;opacity:1;" />
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</div>
+<!-- ===== END POSTMARK LAYOUT HTML ===== -->
+
+</body>
+</html>
