@@ -35,9 +35,15 @@ export interface TemplateEmailPayload {
 	tag?: string;
 }
 
+export type EmailSendStatus = 'sent' | 'failed' | 'logged';
+
 export interface SendEmailResult {
 	emailId: string;
 	postmarkMessageId?: string;
+	/** Whether Postmark accepted the message (`sent`), rejected it (`failed`), or no API call was made (`logged`). */
+	sendStatus: EmailSendStatus;
+	/** Postmark error message when sendStatus is `failed`. */
+	providerError?: string;
 }
 
 export const EMAIL_TYPE_TO_TEMPLATE: Record<string, string> = {
@@ -83,6 +89,7 @@ export async function sendFormationEmail(
 ): Promise<SendEmailResult> {
 	let postmarkMessageId: string | undefined;
 	let status = 'logged';
+	let providerError: string | undefined;
 
 	const postmarkToken = env.POSTMARK_SERVER_TOKEN;
 	if (postmarkToken) {
@@ -138,18 +145,28 @@ export async function sendFormationEmail(
 				const errorText = await response.text();
 				console.error('Postmark send failed:', errorText);
 				status = 'failed';
+				try {
+					const j = JSON.parse(errorText) as { Message?: string };
+					if (j.Message) providerError = j.Message;
+				} catch {
+					if (errorText) providerError = errorText.slice(0, 500);
+				}
 			}
 		} catch (err) {
 			if (isAbortError(err)) {
 				console.error(
 					`Postmark send error: délai dépassé (${getPostmarkFetchTimeoutMs()} ms, configurable via POSTMARK_FETCH_TIMEOUT_MS)`
 				);
+				providerError = `Délai dépassé (${getPostmarkFetchTimeoutMs()} ms)`;
 			} else {
 				console.error('Postmark send error:', err);
+				providerError = err instanceof Error ? err.message : 'Erreur réseau';
 			}
 			status = 'failed';
 		}
 	}
+
+	const sendStatus: EmailSendStatus = status as EmailSendStatus;
 
 	const [emailRecord] = await db
 		.insert(formationEmails)
@@ -171,7 +188,9 @@ export async function sendFormationEmail(
 
 	return {
 		emailId: emailRecord.id,
-		postmarkMessageId
+		postmarkMessageId,
+		sendStatus,
+		...(sendStatus === 'failed' && providerError ? { providerError } : {})
 	};
 }
 
@@ -193,6 +212,7 @@ export async function sendFormationTemplateEmail(
 ): Promise<SendEmailResult> {
 	let postmarkMessageId: string | undefined;
 	let status = 'logged';
+	let providerError: string | undefined;
 
 	const postmarkToken = env.POSTMARK_SERVER_TOKEN;
 	if (postmarkToken) {
@@ -252,18 +272,28 @@ export async function sendFormationTemplateEmail(
 				const errorText = await response.text();
 				console.error('Postmark template send failed:', errorText);
 				status = 'failed';
+				try {
+					const j = JSON.parse(errorText) as { Message?: string };
+					if (j.Message) providerError = j.Message;
+				} catch {
+					if (errorText) providerError = errorText.slice(0, 500);
+				}
 			}
 		} catch (err) {
 			if (isAbortError(err)) {
 				console.error(
 					`Postmark template send error: délai dépassé (${getPostmarkFetchTimeoutMs()} ms)`
 				);
+				providerError = `Délai dépassé (${getPostmarkFetchTimeoutMs()} ms)`;
 			} else {
 				console.error('Postmark template send error:', err);
+				providerError = err instanceof Error ? err.message : 'Erreur réseau';
 			}
 			status = 'failed';
 		}
 	}
+
+	const sendStatus: EmailSendStatus = status as EmailSendStatus;
 
 	const subjectForLog = `[template:${payload.templateAlias}] ${meta.type}`;
 
@@ -287,7 +317,9 @@ export async function sendFormationTemplateEmail(
 
 	return {
 		emailId: emailRecord.id,
-		postmarkMessageId
+		postmarkMessageId,
+		sendStatus,
+		...(sendStatus === 'failed' && providerError ? { providerError } : {})
 	};
 }
 

@@ -500,8 +500,21 @@
 															use:enhance={() => {
 																return async ({ result, update }) => {
 																	if (result.type === 'success') {
-																		const count = (result.data as { sentCount?: number })?.sentCount ?? 0;
-																		toast.success(`${count} lien${count > 1 ? 's' : ''} envoyé${count > 1 ? 's' : ''}`);
+																		const data = result.data as {
+																			sentCount?: number;
+																			failedCount?: number;
+																		};
+																		const sent = data?.sentCount ?? 0;
+																		const failed = data?.failedCount ?? 0;
+																		if (failed > 0) {
+																			toast.warning(
+																				`${sent} lien${sent > 1 ? 's' : ''} envoyé${sent > 1 ? 's' : ''}, ${failed} échec${failed > 1 ? 's' : ''}`
+																			);
+																		} else {
+																			toast.success(
+																				`${sent} lien${sent > 1 ? 's' : ''} envoyé${sent > 1 ? 's' : ''}`
+																			);
+																		}
 																		await update();
 																	} else if (result.type === 'failure') {
 																		toast.error((result.data as { message?: string })?.message ?? 'Erreur');

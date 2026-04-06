@@ -586,6 +586,9 @@ export const actions: Actions = {
 			const workspaceAddress = [ws?.address, ws?.postalCode, ws?.city].filter(Boolean).join(', ');
 
 			let sentCount = 0;
+			let failedCount = 0;
+			let sendAttempts = 0;
+			let firstError: string | undefined;
 
 			for (const contact of contactList) {
 				if (!contact.email) continue;
@@ -595,7 +598,8 @@ export const actions: Actions = {
 				const signingUrl = `${origin}/emargement/${firstToken}`;
 				const learnerName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Participant';
 
-				await sendFormationTemplateEmail(
+				sendAttempts++;
+				const sendResult = await sendFormationTemplateEmail(
 					{
 						to: contact.email,
 						toName: learnerName,
@@ -614,7 +618,16 @@ export const actions: Actions = {
 					params.id,
 					{ type: 'emargement_link', recipientType: 'apprenant', createdBy: user.id }
 				);
-				sentCount++;
+				if (sendResult.sendStatus === 'sent') {
+					sentCount++;
+				} else {
+					failedCount++;
+					firstError ??=
+						sendResult.providerError ??
+						(sendResult.sendStatus === 'logged'
+							? 'Envoi e-mail non configuré (jeton Postmark manquant).'
+							: "L'envoi a échoué.");
+				}
 			}
 
 			for (const f of formateurList) {
@@ -625,7 +638,8 @@ export const actions: Actions = {
 				const signingUrl = `${origin}/emargement/${firstToken}`;
 				const fName = [f.user.firstName, f.user.lastName].filter(Boolean).join(' ') || 'Formateur';
 
-				await sendFormationTemplateEmail(
+				sendAttempts++;
+				const sendResult = await sendFormationTemplateEmail(
 					{
 						to: f.user.email,
 						toName: fName,
@@ -644,7 +658,31 @@ export const actions: Actions = {
 					params.id,
 					{ type: 'emargement_link', recipientType: 'formateur', createdBy: user.id }
 				);
-				sentCount++;
+				if (sendResult.sendStatus === 'sent') {
+					sentCount++;
+				} else {
+					failedCount++;
+					firstError ??=
+						sendResult.providerError ??
+						(sendResult.sendStatus === 'logged'
+							? 'Envoi e-mail non configuré (jeton Postmark manquant).'
+							: "L'envoi a échoué.");
+				}
+			}
+
+			if (sendAttempts > 0 && sentCount === 0) {
+				return fail(502, {
+					message:
+						firstError?.slice(0, 280) ??
+						"Aucun e-mail n'a pu être envoyé. Vérifiez l'expéditeur Postmark, les signatures d'envoi et les modèles."
+				});
+			}
+
+			if (sendAttempts === 0) {
+				return fail(400, {
+					message:
+						'Aucun destinataire pour ces liens. Vérifiez les e-mails des apprenants et du formateur.'
+				});
 			}
 
 			await logAuditEvent({
@@ -653,10 +691,10 @@ export const actions: Actions = {
 				actionType: 'emargement_links_sent',
 				entityType: 'seance',
 				entityId: seanceId,
-				newValue: { sentCount }
+				newValue: { sentCount, failedCount, sendAttempts }
 			});
 
-			return { success: true, sentCount };
+			return { success: true, sentCount, failedCount };
 		} catch (e: unknown) {
 			console.error('[sendEmargementLinks]', e);
 			return fail(500, { message: "Erreur lors de l'envoi des liens" });

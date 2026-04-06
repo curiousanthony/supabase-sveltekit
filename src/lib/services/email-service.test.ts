@@ -121,6 +121,7 @@ describe('sendFormationTemplateEmail', () => {
 
 		expect(result.postmarkMessageId).toBe('pm-msg-123');
 		expect(result.emailId).toBe('email-record-id');
+		expect(result.sendStatus).toBe('sent');
 	});
 
 	it('logs to formation_emails with status sent on success', async () => {
@@ -154,7 +155,7 @@ describe('sendFormationTemplateEmail', () => {
 			text: async () => 'Server Error'
 		});
 
-		await sendFormationTemplateEmail(
+		const result = await sendFormationTemplateEmail(
 			{
 				to: 'test@test.com',
 				templateAlias: 'devis-envoi',
@@ -166,6 +167,29 @@ describe('sendFormationTemplateEmail', () => {
 
 		const insertedValues = valuesFn.mock.calls[0][0];
 		expect(insertedValues.status).toBe('failed');
+		expect(result.sendStatus).toBe('failed');
+		expect(result.providerError).toBe('Server Error');
+	});
+
+	it('parses Postmark JSON error Message into providerError', async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: false,
+			status: 422,
+			text: async () => JSON.stringify({ Message: 'Invalid From' })
+		});
+
+		const result = await sendFormationTemplateEmail(
+			{
+				to: 'test@test.com',
+				templateAlias: 'devis-envoi',
+				templateModel: { recipientName: 'Test', formationName: 'F1' }
+			},
+			'formation-id',
+			{ type: 'devis_envoi', recipientType: 'client', createdBy: 'user-id' }
+		);
+
+		expect(result.sendStatus).toBe('failed');
+		expect(result.providerError).toBe('Invalid From');
 	});
 
 	it('includes showMentoreBranding and siteUrl in template model', async () => {

@@ -510,7 +510,7 @@ export const actions: Actions = {
 		const templateAlias = EMAIL_TYPE_TO_TEMPLATE[emailType];
 
 		try {
-			await sendFormationTemplateEmail(
+			const sendResult = await sendFormationTemplateEmail(
 				{
 					to: recipientEmail,
 					toName: typeof recipientName === 'string' ? recipientName : undefined,
@@ -531,6 +531,16 @@ export const actions: Actions = {
 				params.id,
 				{ type: emailType, recipientType, createdBy: user.id }
 			);
+
+			if (sendResult.sendStatus !== 'sent') {
+				return fail(502, {
+					message:
+						sendResult.providerError?.slice(0, 280) ??
+						(sendResult.sendStatus === 'logged'
+							? 'Envoi e-mail non configuré (jeton Postmark manquant).'
+							: "L'e-mail n'a pas pu être envoyé.")
+				});
+			}
 
 			if (subActionId && typeof subActionId === 'string') {
 				const sa = await db.query.questSubActions.findFirst({
