@@ -30,10 +30,11 @@ const headers = {
 
 async function postmarkGet(path: string) {
 	const res = await fetch(`${POSTMARK_API}${path}`, { headers });
-	if (!res.ok && res.status !== 404) {
+	if (!res.ok && res.status !== 404 && res.status !== 422) {
 		throw new Error(`GET ${path} → ${res.status}: ${await res.text()}`);
 	}
-	return { status: res.status, data: res.ok ? await res.json() : null };
+	const notFound = res.status === 404 || res.status === 422;
+	return { status: notFound ? 404 : res.status, data: !notFound ? await res.json() : null };
 }
 
 async function postmarkPost(path: string, body: Record<string, unknown>) {
@@ -94,7 +95,7 @@ const layoutHtml = `<div style="margin:0;padding:0;background-color:#f4f4f5;font
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
           <tr>
             <td style="padding:36px 32px 28px;font-family:'Circular Std',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-              {{{content}}}
+              {{{ @content }}}
             </td>
           </tr>
           <tr>
@@ -123,7 +124,7 @@ const layoutHtml = `<div style="margin:0;padding:0;background-color:#f4f4f5;font
   </table>
 </div>`;
 
-const layoutText = '{{{content}}}';
+const layoutText = '{{{ @content }}}';
 
 // ---------------------------------------------------------------------------
 // CTA button helper (used in template definitions below)
