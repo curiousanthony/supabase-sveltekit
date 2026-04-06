@@ -20,7 +20,7 @@ import {
 	validateFileType
 } from '$lib/services/document-service';
 import { generateDocument, type DocumentType } from '$lib/services/document-generator';
-import { sendFormationEmail, buildEmailHtml } from '$lib/services/email-service';
+import { sendFormationTemplateEmail, EMAIL_TYPE_TO_TEMPLATE } from '$lib/services/email-service';
 import type { Actions } from './$types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -501,27 +501,32 @@ export const actions: Actions = {
 
 		const ws = await db.query.workspaces.findFirst({
 			where: eq(workspaces.id, workspaceId),
-			columns: { name: true }
+			columns: { name: true, logoUrl: true, address: true, city: true, postalCode: true }
 		});
+		const workspaceName = ws?.name ?? '';
+		const workspaceLogoUrl = ws?.logoUrl ?? '';
+		const workspaceAddress = [ws?.address, ws?.postalCode, ws?.city].filter(Boolean).join(', ');
 
-		const emailSubject =
-			typeof subject === 'string' && subject
-				? subject
-				: `${emailType.replace(/_/g, ' ')} — ${formation.name ?? 'Formation'}`;
-		const emailBody = buildEmailHtml({
-			greeting: recipientName ? `Bonjour ${recipientName},` : 'Bonjour,',
-			bodyLines: [`Ce message concerne la formation ${formation.name ?? '—'}.`],
-			signoff: 'Cordialement,',
-			orgName: ws?.name ?? undefined
-		});
+		const templateAlias = EMAIL_TYPE_TO_TEMPLATE[emailType];
 
 		try {
-			await sendFormationEmail(
+			await sendFormationTemplateEmail(
 				{
 					to: recipientEmail,
 					toName: typeof recipientName === 'string' ? recipientName : undefined,
-					subject: emailSubject,
-					htmlBody: emailBody
+					templateAlias: templateAlias ?? 'analyse-besoins',
+					templateModel: {
+						recipientName: (typeof recipientName === 'string' ? recipientName : null) ?? 'Madame, Monsieur',
+						formationName: formation.name ?? 'Formation',
+						sessionDate: formation.dateDebut
+							? new Date(formation.dateDebut).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+							: '',
+						workspaceName,
+						workspaceLogoUrl,
+						workspaceAddress,
+						hasAttachment: false
+					},
+					tag: emailType
 				},
 				params.id,
 				{ type: emailType, recipientType, createdBy: user.id }

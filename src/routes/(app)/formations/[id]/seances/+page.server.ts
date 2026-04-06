@@ -9,7 +9,8 @@ import {
 	seanceFormInputToUtcIso
 } from '$lib/datetime/seance-schedule';
 import { logAuditEvent } from '$lib/services/audit-log';
-import { sendFormationEmail, buildEmailHtml } from '$lib/services/email-service';
+import { sendFormationTemplateEmail } from '$lib/services/email-service';
+import { workspaces } from '$lib/db/schema';
 import { env } from '$env/dynamic/private';
 import type { Actions } from './$types';
 
@@ -576,6 +577,14 @@ export const actions: Actions = {
 				timeZone: FORMATION_SCHEDULE_TIMEZONE
 			});
 
+			const ws = await db.query.workspaces.findFirst({
+				where: eq(workspaces.id, workspaceId),
+				columns: { name: true, logoUrl: true, address: true, city: true, postalCode: true }
+			});
+			const workspaceName = ws?.name ?? '';
+			const workspaceLogoUrl = ws?.logoUrl ?? '';
+			const workspaceAddress = [ws?.address, ws?.postalCode, ws?.city].filter(Boolean).join(', ');
+
 			let sentCount = 0;
 
 			for (const contact of contactList) {
@@ -586,20 +595,20 @@ export const actions: Actions = {
 				const signingUrl = `${origin}/emargement/${firstToken}`;
 				const learnerName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Participant';
 
-				await sendFormationEmail(
+				await sendFormationTemplateEmail(
 					{
 						to: contact.email,
 						toName: learnerName,
-						subject: `Émargement — ${formationName}`,
-						htmlBody: buildEmailHtml({
-							greeting: `Bonjour ${learnerName},`,
-							bodyLines: [
-								`Veuillez signer votre feuille d'émargement pour la formation "${formationName}".`,
-								`Séance du ${sessionDate}.`
-							],
-							ctaText: 'Signer mon émargement',
-							ctaUrl: signingUrl
-						}),
+						templateAlias: 'emargement-apprenant',
+						templateModel: {
+							recipientName: learnerName,
+							formationName,
+							sessionDate,
+							ctaUrl: signingUrl,
+							workspaceName,
+							workspaceLogoUrl,
+							workspaceAddress
+						},
 						tag: 'emargement_link'
 					},
 					params.id,
@@ -616,20 +625,20 @@ export const actions: Actions = {
 				const signingUrl = `${origin}/emargement/${firstToken}`;
 				const fName = [f.user.firstName, f.user.lastName].filter(Boolean).join(' ') || 'Formateur';
 
-				await sendFormationEmail(
+				await sendFormationTemplateEmail(
 					{
 						to: f.user.email,
 						toName: fName,
-						subject: `Émargement formateur — ${formationName}`,
-						htmlBody: buildEmailHtml({
-							greeting: `Bonjour ${fName},`,
-							bodyLines: [
-								`Veuillez signer votre feuille d'émargement formateur pour la formation "${formationName}".`,
-								`Séance du ${sessionDate}.`
-							],
-							ctaText: 'Signer mon émargement',
-							ctaUrl: signingUrl
-						}),
+						templateAlias: 'emargement-formateur',
+						templateModel: {
+							recipientName: fName,
+							formationName,
+							sessionDate,
+							ctaUrl: signingUrl,
+							workspaceName,
+							workspaceLogoUrl,
+							workspaceAddress
+						},
 						tag: 'emargement_link_formateur'
 					},
 					params.id,
