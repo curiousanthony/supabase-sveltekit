@@ -2,25 +2,42 @@
 
 Active sprint items and progress.
 
-**Sprint**: Formations v2 (working branch)  
-**Start**: —  
-**End**: —  
-
-*À renseigner avec les dates réelles de l’équipe lorsque le sprint est figé.*
+**Sprint**: Chunk 1 — Core PDF Templates + Convention Fix
+**Branch**: `feat/formations-v2`
+**Design decisions**: `docs/decisions/2026-04-07-document-generation-system.md` §1–6, §13
 
 ## Goals
 
-1. **Documents** — Réduire l’écart entre types exposés dans l’UI et types réellement générés (cible minimale : `feuille_emargement` + `attestation`, puis `devis` / `ordre_mission` selon capacité).
-2. **Qualité données** — Corriger le calcul des participants sur la **convention** pour des PDFs fiables.
-3. **Stabilisation** — Garder les envois formation sur Postmark templates ; noter explicitement ce qui reste hors Postmark (Auth, invites workspace).
+1. **3 new PDF types** — `feuille_emargement` (proof mode), `devis`, `ordre_mission` — following existing pdfmake patterns.
+2. **Convention fix** — Correct participant count + wire real pricing.
+3. **Schema additions** — `prixConvenu` on formations, workspace financial defaults.
 
 ## Items
 
-| Status | Item | Priority | Notes |
-| ------ | ---- | -------- | ----- |
-| `[IN PROGRESS]` | Moteur PDF — types manquants formation | P1 | Voir `docs/project/backlog.md` section documents |
-| `[BACKLOG]` | Fix `nbParticipants` convention | P1 | `document-generator.ts` |
-| `[BACKLOG]` | Webhooks Postmark | P2 | Hors sprint minimal si pas bloquant release |
+| Status      | Item                                                          | Priority | Notes                                                   |
+| ----------- | ------------------------------------------------------------- | -------- | ------------------------------------------------------- |
+| `[SPRINT]`  | `feuille_emargement` proof PDF template                       | P1       | Post-séance. Données: séance + émargements signés.      |
+| `[SPRINT]`  | `devis` PDF template                                          | P1       | Formation + client + pricing + workspace defaults.      |
+| `[SPRINT]`  | `ordre_mission` PDF template                                  | P1       | Formateur + formation + TJM/frais.                      |
+| `[SPRINT]`  | Fix convention `nbParticipants`                               | P1       | `formation_apprenants` count, not broken query.         |
+| `[SPRINT]`  | Wire convention pricing (`prixConvenu` / `prixPublic`)        | P1       | Currently hardcoded `null`.                             |
+| `[SPRINT]`  | Schema: `prixConvenu` on `formations`                         | P1       | Drizzle migration.                                      |
+| `[SPRINT]`  | Schema: workspace financial defaults                          | P1       | `tvaRate`, `defaultPaymentTerms`, `defaultDevisValidityDays`. |
+| `[SPRINT]`  | Update `GENERATABLE_TYPES` in Documents tab UI                | P1       | Add `feuille_emargement` to dropdown.                   |
+
+## Definition of Done
+
+- All 3 new PDF types generate a valid, downloadable PDF from the Documents tab
+- Convention PDF shows correct participant count and real pricing
+- Workspace settings page exposes financial defaults (or migration seeds sensible defaults)
+- Existing tests pass; new template builders have basic test coverage
+- Documents tab lets Marie generate all 6 implemented types (convention, convocation, certificat, feuille_emargement, devis, ordre_mission)
+
+## What Comes After (Do NOT Start Without Brainstorming)
+
+- **Chunk 2**: Document lifecycle states + Documents tab UX — requires UX brainstorming session
+- **Chunk 3**: Auto-generation triggers — requires cron infrastructure decision
+- See `docs/project/backlog.md` for full chunk breakdown
 
 ## Retrospective
 
@@ -28,4 +45,4 @@ Active sprint items and progress.
 
 ---
 
-*Dernière mise à jour : 2026-04-06.*
+*Dernière mise à jour : 2026-04-07.*

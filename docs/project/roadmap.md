@@ -2,28 +2,41 @@
 
 High-level product direction for Mentore Manager.
 
-## Current Focus
+## Current Focus — Chunk 1: Core PDF Templates
 
-- **Formations (branche `feat/formations-v2`)** — Compléter le **moteur de documents** : PDF manquants (`feuille_emargement`, `attestation`, puis `devis`, `ordre_mission`) et correction du **comptage participants** sur la convention.
-- **Qualiopi / parcours Marie** — Prioriser les pièces les plus visibles pour l’audit et le flux quotidien (émargement déjà renforcé côté séances).
+**Branch**: `feat/formations-v2`
+**Design decisions**: `docs/decisions/2026-04-07-document-generation-system.md`
 
-## Upcoming
+Implement the 3 remaining document types that have all required data in the schema today: **feuille d'émargement** (proof mode), **devis**, **ordre de mission**. Fix the convention participant count bug and wire real pricing. Add workspace financial defaults and `prixConvenu` to formations.
 
-- **Postmark « phase 2 »** — Webhooks de livraison / bounce, affichage ou statuts plus fins sur `formation_emails` si la traçabilité devient un critère de mise en production.
-- **Alignement spec suivi** — Comportement auto (ex. règlement intérieur) vs implémentation actuelle ; ajuster la spec ou le code.
-- **Document pipeline avancé** — Apposition de signatures, génération déclenchée par le parcours (quêtes), comme décrit dans les plans formations/documents.
+No auto-generation, no lifecycle states, no Documents tab UX changes — just the PDF templates and the `document-generator.ts` switch cases, following the existing patterns (convention, convocation, certificat).
 
-## Future
+## Next — Chunk 2: Document Lifecycle + Documents Tab UX
 
-- **E-mail produit unifié** — Invitations workspace, autres parcours CRM, éventuellement bascule partielle depuis les canaux actuels (selon décision produit).
-- **SDK Postmark** — Le plan historique mentionnait le package `postmark` ; l’implémentation actuelle utilise `fetch` vers l’API (acceptable tant que les besoins restent simples).
+Rich status per document type with automatic transitions (email sent → envoyé, quest completed → signé, etc.). Contextual generation prompts on the Documents tab (quest-aware banners). Phase grouping. Regeneration prompt when data changes.
+
+**Requires further brainstorming** before implementation: exact UX layout, batch generation, deep-link protocol, "régénérer" prompt design.
+
+## Upcoming — Chunks 3–4
+
+- **Chunk 3: Auto-generation triggers** — Feuille d'émargement blank (Mode 1) auto-generated J-1 for présentiel. Proof PDF auto-generated after signatures. Cron infrastructure decision needed.
+- **Chunk 4: Deal devis + inheritance** — Generate devis from Deal page. Bridge to Formation on conversion (auto-complete quest). "Hérité du deal" badge.
+
+Both chunks require brainstorming before implementation.
+
+## Future — Chunk 5+
+
+- **Evaluation tracking + Attestation** — Per-learner structured evaluation results. Attestation PDF with individual competency data. Requires extensive brainstorming (data model, questionnaire evolution, UX).
+- **Postmark phase 2** — Webhooks, delivery tracking, reminder template fixes, ctaUrl in quest emails.
+- **E-mail produit unifié** — Workspace invitations, other CRM flows on Postmark.
+- **Signature overlay** — pdf-lib apposition on signed convention/ordre de mission returns.
 
 ## Completed Milestones
 
-- **Vague 2 — Séances + émargement (2026 Q2)** — Décisions enregistrées dans `docs/decisions/2026-04-02-wave2-seances-emargement-decisions.md` : découpe AM/PM, lien module–formateur, émargement formateur, envoi des liens par **Postmark** (individuel + masse), création de séances par lot, UX calendrier.
-- **E-mails formation via Postmark** — Templates pour séances (liens signature) + suivi (quêtes) ; journalisation `formation_emails`.
-- **Documents formation (partiel)** — Génération **convention**, **convocation**, **certificat** (PDF + stockage) ; onglet Documents et actions serveur pour tous les types déclarés.
+- **Vague 2 — Séances + émargement (2026 Q2)** — AM/PM splitting, formateur émargement, Postmark email links, batch session creation, calendar UX. Decisions: `docs/decisions/2026-04-02-wave2-seances-emargement-decisions.md`.
+- **E-mails formation via Postmark** — Templates for séances (signing links) + suivi (quests). `formation_emails` logging.
+- **Documents formation (partiel)** — Convention, convocation, certificat PDF generation + storage. Documents tab with server actions for all declared types.
 
 ---
 
-*Dernière mise à jour : 2026-04-06.*
+*Dernière mise à jour : 2026-04-07 — restructuré en chunks alignés sur le document de décisions.*
