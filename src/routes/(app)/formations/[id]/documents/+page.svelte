@@ -63,11 +63,13 @@
 		'convocation',
 		'certificat',
 		'devis',
-		'ordre_mission'
+		'ordre_mission',
+		'feuille_emargement'
 	] as const;
 
 	const NEEDS_CONTACT = new Set(['convocation', 'certificat']);
 	const NEEDS_FORMATEUR = new Set(['ordre_mission']);
+	const NEEDS_SEANCE = new Set(['feuille_emargement']);
 
 	let typeFilter = $state<string>('all');
 	let statusFilter = $state<string>('all');
@@ -78,6 +80,7 @@
 	let generateType = $state('');
 	let generateContactId = $state('');
 	let generateFormateurId = $state('');
+	let generateSeanceId = $state('');
 	let generating = $state(false);
 	let deleteDialogOpen = $state(false);
 	let documentToDelete = $state<{ id: string; title: string } | null>(null);
@@ -88,6 +91,7 @@
 	const emails = $derived(data.emails ?? []);
 	const apprenants = $derived(formation?.formationApprenants ?? []);
 	const formateurs = $derived(formation?.formationFormateurs ?? []);
+	const seancesList = $derived(formation?.seances ?? []);
 
 	let commsExpanded = $state(false);
 
@@ -143,7 +147,8 @@
 		generateType = type;
 		generateContactId = '';
 		generateFormateurId = '';
-		if (NEEDS_CONTACT.has(type) || NEEDS_FORMATEUR.has(type)) {
+		generateSeanceId = '';
+		if (NEEDS_CONTACT.has(type) || NEEDS_FORMATEUR.has(type) || NEEDS_SEANCE.has(type)) {
 			generateOpen = true;
 		} else {
 			submitGenerate(type);
@@ -157,6 +162,7 @@
 		body.set('type', docType);
 		if (generateContactId) body.set('contactId', generateContactId);
 		if (generateFormateurId) body.set('formateurId', generateFormateurId);
+		if (generateSeanceId) body.set('seanceId', generateSeanceId);
 
 		try {
 			const response = await fetch('?/generateDocument', { method: 'POST', body });
@@ -167,9 +173,13 @@
 				await invalidateAll();
 			} else if (result.type === 'failure') {
 				toast.error((result.data as { message?: string })?.message ?? 'Erreur de génération');
+			} else if (result.type === 'error') {
+				toast.error(result.error?.message ?? 'Erreur serveur lors de la génération');
+			} else {
+				toast.error('Réponse inattendue du serveur');
 			}
-		} catch {
-			toast.error('Erreur de génération');
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Erreur de génération');
 		} finally {
 			generating = false;
 		}
@@ -435,53 +445,72 @@
 			<Dialog.Title>
 				Générer : {DOC_TYPE_CONFIG[generateType]?.label ?? generateType}
 			</Dialog.Title>
-			<Dialog.Description>
-				{#if NEEDS_CONTACT.has(generateType)}
-					Sélectionnez l'apprenant concerné.
-				{:else if NEEDS_FORMATEUR.has(generateType)}
-					Sélectionnez le formateur concerné.
-				{/if}
-			</Dialog.Description>
+		<Dialog.Description>
+			{#if NEEDS_CONTACT.has(generateType)}
+				Sélectionnez l'apprenant concerné.
+			{:else if NEEDS_FORMATEUR.has(generateType)}
+				Sélectionnez le formateur concerné.
+			{:else if NEEDS_SEANCE.has(generateType)}
+				Sélectionnez la séance concernée.
+			{/if}
+		</Dialog.Description>
 		</Dialog.Header>
 
 		<div class="space-y-4 py-2">
-			{#if NEEDS_CONTACT.has(generateType)}
-				<Select.Root type="single" bind:value={generateContactId}>
-					<Select.Trigger class="w-full cursor-pointer">
-						{#if generateContactId}
-							{@const found = apprenants.find((a) => a.contact?.id === generateContactId)}
-							{found ? [found.contact.firstName, found.contact.lastName].filter(Boolean).join(' ') : 'Sélectionner'}
-						{:else}
-							<span class="text-muted-foreground">Sélectionner un apprenant</span>
-						{/if}
-					</Select.Trigger>
-					<Select.Content>
-						{#each apprenants as fa (fa.contact?.id)}
-							{@const c = fa.contact}
-							{@const name = [c?.firstName, c?.lastName].filter(Boolean).join(' ') || 'Sans nom'}
-							<Select.Item value={c?.id ?? ''} label={name}>{name}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-			{:else if NEEDS_FORMATEUR.has(generateType)}
-				<Select.Root type="single" bind:value={generateFormateurId}>
-					<Select.Trigger class="w-full cursor-pointer">
-						{#if generateFormateurId}
-							{@const found = formateurs.find((f) => f.formateur?.id === generateFormateurId)}
-							{found ? [found.formateur.user?.firstName, found.formateur.user?.lastName].filter(Boolean).join(' ') : 'Sélectionner'}
-						{:else}
-							<span class="text-muted-foreground">Sélectionner un formateur</span>
-						{/if}
-					</Select.Trigger>
-					<Select.Content>
-						{#each formateurs as ff (ff.formateur?.id)}
-							{@const u = ff.formateur?.user}
-							{@const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'Formateur'}
-							<Select.Item value={ff.formateur?.id ?? ''} label={name}>{name}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-			{/if}
+		{#if NEEDS_CONTACT.has(generateType)}
+			<Select.Root type="single" bind:value={generateContactId}>
+				<Select.Trigger class="w-full cursor-pointer">
+					{#if generateContactId}
+						{@const found = apprenants.find((a) => a.contact?.id === generateContactId)}
+						{found ? [found.contact.firstName, found.contact.lastName].filter(Boolean).join(' ') : 'Sélectionner'}
+					{:else}
+						<span class="text-muted-foreground">Sélectionner un apprenant</span>
+					{/if}
+				</Select.Trigger>
+				<Select.Content>
+					{#each apprenants as fa (fa.contact?.id)}
+						{@const c = fa.contact}
+						{@const name = [c?.firstName, c?.lastName].filter(Boolean).join(' ') || 'Sans nom'}
+						<Select.Item value={c?.id ?? ''} label={name}>{name}</Select.Item>
+					{/each}
+				</Select.Content>
+			</Select.Root>
+		{:else if NEEDS_FORMATEUR.has(generateType)}
+			<Select.Root type="single" bind:value={generateFormateurId}>
+				<Select.Trigger class="w-full cursor-pointer">
+					{#if generateFormateurId}
+						{@const found = formateurs.find((f) => f.formateur?.id === generateFormateurId)}
+						{found ? [found.formateur.user?.firstName, found.formateur.user?.lastName].filter(Boolean).join(' ') : 'Sélectionner'}
+					{:else}
+						<span class="text-muted-foreground">Sélectionner un formateur</span>
+					{/if}
+				</Select.Trigger>
+				<Select.Content>
+					{#each formateurs as ff (ff.formateur?.id)}
+						{@const u = ff.formateur?.user}
+						{@const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'Formateur'}
+						<Select.Item value={ff.formateur?.id ?? ''} label={name}>{name}</Select.Item>
+					{/each}
+				</Select.Content>
+			</Select.Root>
+		{:else if NEEDS_SEANCE.has(generateType)}
+			<Select.Root type="single" bind:value={generateSeanceId}>
+				<Select.Trigger class="w-full cursor-pointer">
+					{#if generateSeanceId}
+						{@const found = seancesList.find((s) => s.id === generateSeanceId)}
+						{found ? `${new Date(found.startAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })} — ${found.module?.name ?? 'Séance'}` : 'Sélectionner'}
+					{:else}
+						<span class="text-muted-foreground">Sélectionner une séance</span>
+					{/if}
+				</Select.Trigger>
+				<Select.Content>
+					{#each seancesList as s (s.id)}
+						{@const label = `${new Date(s.startAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })} — ${s.module?.name ?? 'Séance'}`}
+						<Select.Item value={s.id} {label}>{label}</Select.Item>
+					{/each}
+				</Select.Content>
+			</Select.Root>
+		{/if}
 		</div>
 
 		<Dialog.Footer>
@@ -494,7 +523,7 @@
 			</Button>
 			<Button
 				class="cursor-pointer"
-				disabled={generating || (NEEDS_CONTACT.has(generateType) && !generateContactId) || (NEEDS_FORMATEUR.has(generateType) && !generateFormateurId)}
+				disabled={generating || (NEEDS_CONTACT.has(generateType) && !generateContactId) || (NEEDS_FORMATEUR.has(generateType) && !generateFormateurId) || (NEEDS_SEANCE.has(generateType) && !generateSeanceId)}
 				onclick={() => submitGenerate()}
 			>
 				{#if generating}

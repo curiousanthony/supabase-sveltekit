@@ -62,6 +62,7 @@ export const formations = pgTable(
 		prerequis: text(),
 		publicVise: text('public_vise'),
 		prixPublic: numeric('prix_public'),
+		prixConvenu: numeric('prix_convenu', { precision: 12, scale: 2 }),
 		financementAccorde: boolean('financement_accorde').default(false),
 		montantAccorde: numeric('montant_accorde', { precision: 12, scale: 2 }),
 		tjmFormateur: numeric('tjm_formateur', { precision: 10, scale: 2 }),

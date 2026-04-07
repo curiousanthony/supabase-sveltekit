@@ -1,11 +1,15 @@
 import { db } from '$lib/db';
-import { formations, formationDocuments, workspaces, contacts, formateurs, modules, seances, emargements } from '$lib/db/schema';
+import { formations, formationDocuments, formationApprenants, formationFormateurs, workspaces, contacts, formateurs, modules, seances, emargements } from '$lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getSupabaseAdmin } from '$lib/server/supabase-admin';
 import { buildConvention, type ConventionData } from './document-templates/convention';
 import { buildConvocation, type ConvocationData } from './document-templates/convocation';
 import { buildCertificat, type CertificatData } from './document-templates/certificat';
+import { buildFeuilleEmargement, type FeuilleEmargementData, type EmargementEntry } from './document-templates/feuille-emargement';
+import { buildDevis, type DevisData } from './document-templates/devis';
+import { buildOrdreMission, type OrdreMissionData } from './document-templates/ordre-mission';
 import type { WorkspaceIdentity, FormationData, ClientData, LearnerData } from './document-templates/shared';
+import { fullName } from './document-templates/shared';
 
 export type DocumentType =
 	| 'convention'
@@ -17,6 +21,7 @@ export type DocumentType =
 	| 'ordre_mission';
 
 const BUCKET = 'formation-documents';
+const HOURS_PER_DAY = 7;
 
 export interface GenerateDocumentResult {
 	documentId: string;
@@ -40,7 +45,11 @@ async function fetchWorkspaceIdentity(workspaceId: string): Promise<WorkspaceIde
 			signatoryName: true,
 			signatoryRole: true,
 			showReferralCta: true,
-			logoUrl: true
+			logoUrl: true,
+			tvaRate: true,
+			defaultPaymentTerms: true,
+			defaultDevisValidityDays: true,
+			defaultCancellationTerms: true
 		}
 	});
 
@@ -83,7 +92,11 @@ async function fetchWorkspaceIdentity(workspaceId: string): Promise<WorkspaceIde
 		signatoryName: ws.signatoryName,
 		signatoryRole: ws.signatoryRole,
 		showReferralCta: ws.showReferralCta ?? true,
-		logoBase64
+		logoBase64,
+		tvaRate: ws.tvaRate ? parseFloat(ws.tvaRate) : 20,
+		defaultPaymentTerms: ws.defaultPaymentTerms ?? null,
+		defaultDevisValidityDays: ws.defaultDevisValidityDays ?? 30,
+		defaultCancellationTerms: ws.defaultCancellationTerms ?? null
 	};
 }
 
@@ -92,6 +105,8 @@ async function fetchFormationData(formationId: string): Promise<{
 	workspaceId: string;
 	client: ClientData | null;
 	moduleList: { name: string; duree: number | null }[];
+	prixConvenu: number | null;
+	prixPublic: number | null;
 }> {
 	const f = await db.query.formations.findFirst({
 		where: eq(formations.id, formationId),
@@ -108,15 +123,15 @@ async function fetchFormationData(formationId: string): Promise<{
 			prerequis: true,
 			publicVise: true,
 			workspaceId: true,
-			prixTotal: true,
-			prixParJour: true
+			prixPublic: true,
+			prixConvenu: true
 		},
 		with: {
 			client: {
 				columns: { name: true, legalName: true, siret: true }
 			},
 			modules: {
-				columns: { name: true, duree: true },
+				columns: { name: true, durationHours: true },
 				orderBy: (m, { asc }) => [asc(m.orderIndex)]
 			}
 		}
@@ -147,7 +162,12 @@ async function fetchFormationData(formationId: string): Promise<{
 					address: null
 				}
 			: null,
-		moduleList: (f.modules ?? []).map((m) => ({ name: m.name ?? '—', duree: m.duree }))
+		moduleList: (f.modules ?? []).map((m) => ({
+			name: m.name ?? '—',
+			duree: m.durationHours ? parseFloat(m.durationHours) : null
+		})),
+		prixConvenu: f.prixConvenu ? parseFloat(f.prixConvenu) : null,
+		prixPublic: f.prixPublic ? parseFloat(f.prixPublic) : null
 	};
 }
 
@@ -203,7 +223,7 @@ export async function generateDocument(
 	userId: string,
 	options?: { contactId?: string; formateurId?: string; seanceId?: string }
 ): Promise<GenerateDocumentResult> {
-	const { formation, workspaceId, client, moduleList } = await fetchFormationData(formationId);
+	const { formation, workspaceId, client, moduleList, prixConvenu, prixPublic } = await fetchFormationData(formationId);
 	const workspace = await fetchWorkspaceIdentity(workspaceId);
 
 	let docDefinition: import('pdfmake/interfaces').TDocumentDefinitions;
@@ -217,18 +237,24 @@ export async function generateDocument(
 		case 'convention': {
 			if (!client) throw new Error('Client requis pour générer une convention');
 
-			const apprenantCount = await db.query.contacts.findMany({
-				where: eq(contacts.id, formationId)
+			const apprenants = await db.query.formationApprenants.findMany({
+				where: eq(formationApprenants.formationId, formationId),
+				columns: { id: true }
 			});
+
+			const prixTotal = prixConvenu ?? prixPublic ?? null;
+			const prixParJour = prixTotal !== null && formation.duree
+				? Math.round((prixTotal / (formation.duree / HOURS_PER_DAY)) * 100) / 100
+				: null;
 
 			const conventionData: ConventionData = {
 				workspace,
 				formation,
 				client,
 				pricing: {
-					prixTotal: null,
-					prixParJour: null,
-					nbParticipants: apprenantCount.length || null
+					prixTotal,
+					prixParJour,
+					nbParticipants: apprenants.length || null
 				},
 				modules: moduleList
 			};
@@ -239,6 +265,11 @@ export async function generateDocument(
 
 		case 'convocation': {
 			if (!options?.contactId) throw new Error('Contact ID requis pour la convocation');
+
+			const enrollment = await db.query.formationApprenants.findFirst({
+				where: and(eq(formationApprenants.formationId, formationId), eq(formationApprenants.contactId, options.contactId))
+			});
+			if (!enrollment) throw new Error('Ce contact n\'est pas inscrit à cette formation');
 
 			const contact = await db.query.contacts.findFirst({
 				where: eq(contacts.id, options.contactId),
@@ -277,6 +308,11 @@ export async function generateDocument(
 
 		case 'certificat': {
 			if (!options?.contactId) throw new Error('Contact ID requis pour le certificat');
+
+			const certEnrollment = await db.query.formationApprenants.findFirst({
+				where: and(eq(formationApprenants.formationId, formationId), eq(formationApprenants.contactId, options.contactId))
+			});
+			if (!certEnrollment) throw new Error('Ce contact n\'est pas inscrit à cette formation');
 
 			const contact = await db.query.contacts.findFirst({
 				where: eq(contacts.id, options.contactId),
@@ -325,11 +361,151 @@ export async function generateDocument(
 			break;
 		}
 
-		case 'feuille_emargement':
+		case 'feuille_emargement': {
+			if (!options?.seanceId) throw new Error('Séance requise pour la feuille d\'émargement');
+
+			const seance = await db.query.seances.findFirst({
+				where: and(eq(seances.id, options.seanceId), eq(seances.formationId, formationId)),
+				columns: { id: true, startAt: true, endAt: true, location: true, formateurId: true }
+			});
+			if (!seance) throw new Error('Séance introuvable ou n\'appartient pas à cette formation');
+
+			let formateurName: string | null = null;
+			if (seance.formateurId) {
+				const f = await db.query.formateurs.findFirst({
+					where: eq(formateurs.id, seance.formateurId),
+					with: { user: { columns: { firstName: true, lastName: true } } }
+				});
+				if (f?.user) formateurName = fullName(f.user.firstName, f.user.lastName);
+			}
+
+			const seanceEmargements = await db.query.emargements.findMany({
+				where: eq(emargements.seanceId, options.seanceId),
+				columns: { signedAt: true, signerType: true, period: true, contactId: true, formateurId: true },
+				with: {
+					contact: { columns: { firstName: true, lastName: true } },
+					formateur: { with: { user: { columns: { firstName: true, lastName: true } } } }
+				}
+			});
+
+			const entries: EmargementEntry[] = seanceEmargements.map((e) => {
+				const name = e.signerType === 'apprenant' && e.contact
+					? fullName(e.contact.firstName, e.contact.lastName)
+					: e.signerType === 'formateur' && e.formateur?.user
+						? fullName(e.formateur.user.firstName, e.formateur.user.lastName)
+						: '—';
+			return {
+				name,
+				contactId: e.contactId,
+				signerType: e.signerType,
+				period: e.period,
+				signedAt: e.signedAt
+			};
+			});
+
+			const emargementData: FeuilleEmargementData = {
+				workspace,
+				formation,
+				seance: {
+					date: seance.startAt.slice(0, 10),
+					startAt: seance.startAt,
+					endAt: seance.endAt,
+					location: seance.location
+				},
+				formateurName,
+				entries
+			};
+			docDefinition = buildFeuilleEmargement(emargementData);
+			title = `Feuille d'émargement - ${new Date(seance.startAt).toLocaleDateString('fr-FR')} - ${formation.name}`;
+			relatedSeanceId = options.seanceId;
+			suffix = options.seanceId.slice(0, 8);
+			break;
+		}
+
+		case 'devis': {
+			if (!client) throw new Error('Client requis pour générer un devis');
+
+			const devisApprenants = await db.query.formationApprenants.findMany({
+				where: eq(formationApprenants.formationId, formationId),
+				columns: { id: true }
+			});
+
+			const prixHT = prixConvenu ?? prixPublic ?? 0;
+			const tvaRate = workspace.tvaRate;
+			const tva = Math.round((prixHT * tvaRate / 100) * 100) / 100;
+			const prixTTC = prixHT + tva;
+			const prixParJourDevis = formation.duree
+				? Math.round((prixHT / (formation.duree / HOURS_PER_DAY)) * 100) / 100
+				: null;
+
+			const devisData: DevisData = {
+				workspace,
+				formation,
+				client,
+				pricing: {
+					prixHT,
+					tvaRate,
+					tva,
+					prixTTC,
+					prixParJour: prixParJourDevis,
+					nbParticipants: devisApprenants.length || null
+				},
+				validityDays: workspace.defaultDevisValidityDays,
+				paymentTerms: workspace.defaultPaymentTerms,
+				cancellationTerms: workspace.defaultCancellationTerms,
+				modules: moduleList,
+				generatedAt: new Date().toISOString()
+			};
+			docDefinition = buildDevis(devisData);
+			title = `Devis - ${formation.name}`;
+			break;
+		}
+
+		case 'ordre_mission': {
+			if (!options?.formateurId) throw new Error('Formateur requis pour l\'ordre de mission');
+
+			const ff = await db.query.formationFormateurs.findFirst({
+				where: and(
+					eq(formationFormateurs.formationId, formationId),
+					eq(formationFormateurs.formateurId, options.formateurId)
+				),
+				columns: { tjm: true, numberOfDays: true, deplacementCost: true, hebergementCost: true },
+				with: {
+					formateur: {
+						columns: { id: true },
+						with: { user: { columns: { firstName: true, lastName: true } } }
+					}
+				}
+			});
+			if (!ff) throw new Error('Ce formateur n\'est pas associé à cette formation');
+
+			const formateurData = ff.formateur?.user
+				? { firstName: ff.formateur.user.firstName, lastName: ff.formateur.user.lastName, specialite: null }
+				: { firstName: null, lastName: null, specialite: null };
+
+			const ordreMissionData: OrdreMissionData = {
+				workspace,
+				formation,
+				formateur: formateurData,
+				mission: {
+					tjm: ff.tjm ? parseFloat(ff.tjm) : null,
+					numberOfDays: ff.numberOfDays ? parseFloat(ff.numberOfDays) : null,
+					deplacementCost: ff.deplacementCost ? parseFloat(ff.deplacementCost) : null,
+					hebergementCost: ff.hebergementCost ? parseFloat(ff.hebergementCost) : null
+				},
+				modules: moduleList,
+				generatedAt: new Date().toISOString()
+			};
+			docDefinition = buildOrdreMission(ordreMissionData);
+			const fName = fullName(formateurData.firstName, formateurData.lastName);
+			title = `Ordre de mission - ${fName} - ${formation.name}`;
+			relatedFormateurId = options.formateurId;
+			suffix = options.formateurId.slice(0, 8);
+			break;
+		}
+
 		case 'attestation':
-		case 'devis':
-		case 'ordre_mission':
-			throw new Error(`Génération de type "${type}" pas encore implémentée`);
+			throw new Error('Génération de type "attestation" pas encore implémentée');
 	}
 
 	const pdfBuffer = await generatePdfBuffer(docDefinition);

@@ -1,31 +1,31 @@
 ---
 name: Chunk 1 Implementation
-overview: "Implement Document Generation Chunk 1: schema migration (prixConvenu + workspace financial defaults), convention bug fixes (participant count + pricing), 3 new PDF templates (feuille_emargement, devis, ordre_mission), and Documents tab UI updates (séance picker). Followed by P1 email fixes if capacity allows."
+overview: 'Implement Document Generation Chunk 1: schema migration (prixConvenu + workspace financial defaults), convention bug fixes (participant count + pricing), 3 new PDF templates (feuille_emargement, devis, ordre_mission), and Documents tab UI updates (séance picker). Followed by P1 email fixes if capacity allows.'
 todos:
   - id: schema-migration
     content: Add `prixConvenu` to formations schema + workspace financial defaults (tvaRate, defaultPaymentTerms, defaultDevisValidityDays, defaultCancellationTerms). Generate and apply SQL migration.
-    status: pending
+    status: completed
   - id: convention-fix-participants
-    content: "Fix convention participant count: query `formation_apprenants` instead of `contacts.id = formationId`"
-    status: pending
+    content: 'Fix convention participant count: query `formation_apprenants` instead of `contacts.id = formationId`'
+    status: completed
   - id: convention-fix-pricing
-    content: "Wire convention pricing: use `prixConvenu ?? prixPublic` fallback, fix `fetchFormationData` column alignment"
-    status: pending
+    content: 'Wire convention pricing: use `prixConvenu ?? prixPublic` fallback, fix `fetchFormationData` column alignment'
+    status: completed
   - id: template-emargement
-    content: "Implement `feuille_emargement` PDF template (Mode 2: proof with signature data) + generator wiring"
-    status: pending
+    content: 'Implement `feuille_emargement` PDF template (Mode 2: proof with signature data) + generator wiring'
+    status: completed
   - id: template-devis
     content: Implement `devis` PDF template with workspace defaults + formation pricing + Qualiopi content
-    status: pending
+    status: completed
   - id: template-ordre-mission
     content: Implement `ordre_mission` PDF template per-formateur with TJM and costs
-    status: pending
+    status: completed
   - id: documents-tab-ui
-    content: "Update Documents tab: add feuille_emargement to GENERATABLE_TYPES, add NEEDS_SEANCE + séance picker, verify formateur picker"
-    status: pending
+    content: 'Update Documents tab: add feuille_emargement to GENERATABLE_TYPES, add NEEDS_SEANCE + séance picker, verify formateur picker'
+    status: completed
   - id: email-fixes
     content: Add relance templates to EMAIL_TYPE_TO_TEMPLATE + pass ctaUrl in sendQuestEmail (P1, if capacity)
-    status: pending
+    status: completed
 isProject: false
 ---
 

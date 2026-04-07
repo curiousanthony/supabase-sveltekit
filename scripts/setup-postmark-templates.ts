@@ -259,6 +259,45 @@ const templates: TemplateDef[] = [
 		textBody: `Bonjour {{recipientName}},\n\nVous trouverez l'ordre de mission pour {{formationName}}.\n\n{{#hasAttachment}}Document joint à ce message.\n\n{{/hasAttachment}}Contactez-nous si quelque chose manque.\n\nÀ très vite,\n{{workspaceName}}`
 	},
 	{
+		alias: 'devis-relance',
+		name: 'Relance devis',
+		subject: 'Relance — Devis {{formationName}}',
+		htmlBody: [
+			greeting,
+			p(`Nous revenons vers vous au sujet du devis pour <strong>{{formationName}}</strong>.`),
+			p("Avez-vous eu l'occasion d'en prendre connaissance ? Nous restons disponibles pour répondre à vos questions."),
+			`{{#ctaUrl}}${ctaButton('Voir le devis')}{{/ctaUrl}}`,
+			`<p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#374151;">Cordialement,<br><strong>{{workspaceName}}</strong></p>`
+		].join('\n'),
+		textBody: `Bonjour {{recipientName}},\n\nNous revenons vers vous au sujet du devis pour {{formationName}}.\n\nAvez-vous eu l'occasion d'en prendre connaissance ? Nous restons disponibles pour répondre à vos questions.\n\n{{#ctaUrl}}Voir le devis : {{ctaUrl}}\n\n{{/ctaUrl}}Cordialement,\n{{workspaceName}}`
+	},
+	{
+		alias: 'convention-relance',
+		name: 'Relance convention',
+		subject: 'Relance — Convention {{formationName}}',
+		htmlBody: [
+			greeting,
+			p(`Nous revenons vers vous concernant la convention pour <strong>{{formationName}}</strong>.`),
+			p('Pourriez-vous nous retourner le document signé afin que nous puissions finaliser le dossier ?'),
+			`{{#ctaUrl}}${ctaButton('Voir la convention')}{{/ctaUrl}}`,
+			`<p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#374151;">Bien à vous,<br><strong>{{workspaceName}}</strong></p>`
+		].join('\n'),
+		textBody: `Bonjour {{recipientName}},\n\nNous revenons vers vous concernant la convention pour {{formationName}}.\n\nPourriez-vous nous retourner le document signé afin que nous puissions finaliser le dossier ?\n\n{{#ctaUrl}}Voir la convention : {{ctaUrl}}\n\n{{/ctaUrl}}Bien à vous,\n{{workspaceName}}`
+	},
+	{
+		alias: 'ordre-mission-relance',
+		name: "Relance ordre de mission",
+		subject: 'Relance — Ordre de mission {{formationName}}',
+		htmlBody: [
+			greeting,
+			p(`Nous revenons vers vous au sujet de l'ordre de mission pour <strong>{{formationName}}</strong>.`),
+			p('Pourriez-vous nous confirmer réception et nous retourner le document signé ?'),
+			`{{#ctaUrl}}${ctaButton("Voir l'ordre de mission")}{{/ctaUrl}}`,
+			`<p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#374151;">À très vite,<br><strong>{{workspaceName}}</strong></p>`
+		].join('\n'),
+		textBody: `Bonjour {{recipientName}},\n\nNous revenons vers vous au sujet de l'ordre de mission pour {{formationName}}.\n\nPourriez-vous nous confirmer réception et nous retourner le document signé ?\n\n{{#ctaUrl}}Voir l'ordre de mission : {{ctaUrl}}\n\n{{/ctaUrl}}À très vite,\n{{workspaceName}}`
+	},
+	{
 		alias: 'relance-documents-formateur',
 		name: 'Relance documents formateur',
 		subject: 'Documents manquants — {{formationName}}',

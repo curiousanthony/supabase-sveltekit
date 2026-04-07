@@ -52,16 +52,19 @@ function mockPostmarkTemplateThenServer(
 }
 
 describe('EMAIL_TYPE_TO_TEMPLATE', () => {
-	it('maps all 22 email types to template aliases', () => {
+	it('maps all 25 email types to template aliases', () => {
 		const expectedTypes = [
 			'analyse_besoins',
 			'analyse_besoins_resultats',
 			'devis_envoi',
+			'devis_relance',
 			'convention_envoi',
+			'convention_relance',
 			'convocation',
 			'reglement_interieur',
 			'test_positionnement',
 			'ordre_mission_envoi',
+			'ordre_mission_relance',
 			'relance_documents_formateur',
 			'emargement_link',
 			'emargement_link_formateur',

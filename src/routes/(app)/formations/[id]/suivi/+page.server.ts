@@ -21,6 +21,7 @@ import {
 } from '$lib/services/document-service';
 import { generateDocument, type DocumentType } from '$lib/services/document-generator';
 import { sendFormationTemplateEmail, EMAIL_TYPE_TO_TEMPLATE } from '$lib/services/email-service';
+import { env } from '$env/dynamic/private';
 import type { Actions } from './$types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -508,6 +509,19 @@ export const actions: Actions = {
 		const workspaceAddress = [ws?.address, ws?.postalCode, ws?.city].filter(Boolean).join(', ');
 
 		const templateAlias = EMAIL_TYPE_TO_TEMPLATE[emailType];
+		const origin = env.PUBLIC_SITE_URL || 'https://app.mentoremanager.fr';
+		const formationDocumentsUrl = `${origin}/formations/${params.id}/documents`;
+
+		const ctaUrlMap: Record<string, string> = {
+			devis_envoi: formationDocumentsUrl,
+			devis_relance: formationDocumentsUrl,
+			convention_envoi: formationDocumentsUrl,
+			convention_relance: formationDocumentsUrl,
+			ordre_mission_envoi: formationDocumentsUrl,
+			ordre_mission_relance: formationDocumentsUrl,
+			certificat_realisation: formationDocumentsUrl
+		};
+		const ctaUrl = ctaUrlMap[emailType] ?? undefined;
 
 		try {
 			const sendResult = await sendFormationTemplateEmail(
@@ -524,7 +538,8 @@ export const actions: Actions = {
 						workspaceName,
 						workspaceLogoUrl,
 						workspaceAddress,
-						hasAttachment: false
+						hasAttachment: false,
+						ctaUrl
 					},
 					tag: emailType
 				},

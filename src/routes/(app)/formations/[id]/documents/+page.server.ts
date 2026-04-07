@@ -93,6 +93,7 @@ export const actions: Actions = {
 			return { success: true, documentId: result.documentId };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Erreur de génération';
+			console.error(`[generateDocument] type=${type} formationId=${params.id} error:`, err);
 			return fail(500, { message });
 		}
 	},

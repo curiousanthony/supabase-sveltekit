@@ -1,4 +1,4 @@
-import { pgTable, timestamp, uuid, varchar, text, unique, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, timestamp, uuid, varchar, text, unique, boolean, numeric, integer } from 'drizzle-orm/pg-core';
 
 export const workspaces = pgTable(
 	'workspaces',
@@ -20,7 +20,11 @@ export const workspaces = pgTable(
 		nda: varchar({ length: 20 }),
 		signatoryName: text('signatory_name'),
 		signatoryRole: text('signatory_role'),
-		showReferralCta: boolean('show_referral_cta').default(true).notNull()
+		showReferralCta: boolean('show_referral_cta').default(true).notNull(),
+		tvaRate: numeric('tva_rate', { precision: 5, scale: 2 }).default('20.00'),
+		defaultPaymentTerms: text('default_payment_terms').default('30 jours fin de mois, par virement bancaire'),
+		defaultDevisValidityDays: integer('default_devis_validity_days').default(30),
+		defaultCancellationTerms: text('default_cancellation_terms')
 	},
 	(table) => [unique('workspaces_id2_key').on(table.id)]
 );

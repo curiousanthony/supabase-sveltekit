@@ -15,6 +15,10 @@ export interface WorkspaceIdentity {
 	signatoryRole: string | null;
 	showReferralCta: boolean;
 	logoBase64: string | null;
+	tvaRate: number;
+	defaultPaymentTerms: string | null;
+	defaultDevisValidityDays: number;
+	defaultCancellationTerms: string | null;
 }
 
 export interface FormationData {
