@@ -2,41 +2,58 @@
 
 High-level product direction for Mentore Manager.
 
-## Current Focus — Chunk 1: Core PDF Templates
+## Current Focus: Document Generation System
 
-**Branch**: `feat/formations-v2`
+**Branch**: `feat/formations-v2`  
 **Design decisions**: `docs/decisions/2026-04-07-document-generation-system.md`
 
-Implement the 3 remaining document types that have all required data in the schema today: **feuille d'émargement** (proof mode), **devis**, **ordre de mission**. Fix the convention participant count bug and wire real pricing. Add workspace financial defaults and `prixConvenu` to formations.
+### Chunk 1 — Core PDF Templates + Convention Fix (next)
 
-No auto-generation, no lifecycle states, no Documents tab UX changes — just the PDF templates and the `document-generator.ts` switch cases, following the existing patterns (convention, convocation, certificat).
+Implement the 3 remaining PDF types (`feuille_emargement`, `devis`, `ordre_mission`), fix the convention participant count bug, wire pricing into convention/devis. Add schema fields: `formations.prixConvenu`, workspace financial defaults (`tvaRate`, `defaultPaymentTerms`, `defaultDevisValidityDays`). Follow existing pdfmake patterns.
 
-## Next — Chunk 2: Document Lifecycle + Documents Tab UX
+**Prerequisite**: None — data already available in schema (+ small schema additions above).
 
-Rich status per document type with automatic transitions (email sent → envoyé, quest completed → signé, etc.). Contextual generation prompts on the Documents tab (quest-aware banners). Phase grouping. Regeneration prompt when data changes.
+### Chunk 2 — Document Lifecycle States + Documents Tab UX
 
-**Requires further brainstorming** before implementation: exact UX layout, batch generation, deep-link protocol, "régénérer" prompt design.
+Rich document statuses per type (automatic transitions), contextual generation prompts, phase grouping, regeneration prompts, error states with fix paths. **Requires further UX brainstorming before implementation.**
 
-## Upcoming — Chunks 3–4
+**Prerequisite**: Chunk 1 (documents must exist to have lifecycle).
 
-- **Chunk 3: Auto-generation triggers** — Feuille d'émargement blank (Mode 1) auto-generated J-1 for présentiel. Proof PDF auto-generated after signatures. Cron infrastructure decision needed.
-- **Chunk 4: Deal devis + inheritance** — Generate devis from Deal page. Bridge to Formation on conversion (auto-complete quest). "Hérité du deal" badge.
+### Chunk 3 — Auto-Generation Triggers
 
-Both chunks require brainstorming before implementation.
+Feuille d'émargement auto J-1 (présentiel blank), auto post-session (proof), scheduled job infrastructure. **Requires brainstorming on cron approach.**
 
-## Future — Chunk 5+
+**Prerequisite**: Chunk 1 (PDF templates) + Chunk 2 (lifecycle states for auto-transitions).
 
-- **Evaluation tracking + Attestation** — Per-learner structured evaluation results. Attestation PDF with individual competency data. Requires extensive brainstorming (data model, questionnaire evolution, UX).
-- **Postmark phase 2** — Webhooks, delivery tracking, reminder template fixes, ctaUrl in quest emails.
-- **E-mail produit unifié** — Workspace invitations, other CRM flows on Postmark.
-- **Signature overlay** — pdf-lib apposition on signed convention/ordre de mission returns.
+### Chunk 4 — Deal Devis + Formation Inheritance
+
+Generate devis from Deal detail page. `closeAndCreateFormation` inherits devis + auto-completes quest. **Requires brainstorming on Deal documents UI.**
+
+**Prerequisite**: Chunk 1 (devis PDF template).
+
+### Chunk 5 — Attestation + Evaluation Tracking (future)
+
+Per-learner evaluation results schema, attestation PDF with individual competency data. **Requires extensive brainstorming** — data model, questionnaire evolution, manual vs import.
+
+**Prerequisite**: Evaluation tracking feature (does not exist yet).
+
+## Parallel Tracks (Independent of Chunks)
+
+- **Email fixes** — Add missing reminder templates to `EMAIL_TYPE_TO_TEMPLATE`, pass `ctaUrl` in quest emails. Can ship anytime.
+- **Postmark webhooks** — Delivery/bounce tracking. Independent of document generation.
+
+## Future
+
+- **E-mail produit unifié** — Invitations workspace, parcours CRM sur Postmark.
+- **Signature overlay sur PDF** (`pdf-lib`) — Apposition de signatures sur convention/ordre de mission retournés signés.
+- **Alignement spec suivi** — Envoi auto `reglement_interieur`, écarts spec vs code.
 
 ## Completed Milestones
 
-- **Vague 2 — Séances + émargement (2026 Q2)** — AM/PM splitting, formateur émargement, Postmark email links, batch session creation, calendar UX. Decisions: `docs/decisions/2026-04-02-wave2-seances-emargement-decisions.md`.
-- **E-mails formation via Postmark** — Templates for séances (signing links) + suivi (quests). `formation_emails` logging.
-- **Documents formation (partiel)** — Convention, convocation, certificat PDF generation + storage. Documents tab with server actions for all declared types.
+- **Vague 2 — Séances + émargement (2026 Q2)** — Décisions: `docs/decisions/2026-04-02-wave2-seances-emargement-decisions.md`. Découpe AM/PM, module–formateur, émargement formateur, Postmark (individuel + masse), création par lot, UX calendrier.
+- **E-mails formation via Postmark** — Templates séances (liens signature) + suivi (quêtes) ; journalisation `formation_emails`.
+- **Documents formation (partiel)** — Convention, convocation, certificat (PDF + stockage) ; onglet Documents et actions serveur pour tous les types déclarés.
 
 ---
 
-*Dernière mise à jour : 2026-04-07 — restructuré en chunks alignés sur le document de décisions.*
+*Dernière mise à jour : 2026-04-07 — restructuré en chunks suite au brainstorming document generation.*

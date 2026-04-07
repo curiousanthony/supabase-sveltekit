@@ -24,12 +24,14 @@
 ### Status Sets per Document Type
 
 **Convention / Ordre de mission** (contractual documents):
+
 - `généré` → `envoyé` → `signé` → `archivé`
 - `généré → envoyé`: automatic when email sent (formation_emails record created)
 - `envoyé → signé`: automatic when related quest sub-action "Obtenir la signature" completed
 - `signé → archivé`: automatic when parent quest marked "Terminé"
 
 **Devis** (commercial document):
+
 - `généré` → `envoyé` → `accepté` | `refusé` | `expiré`
 - `généré → envoyé`: automatic when email sent
 - `envoyé → accepté`: **manual** — Marie clicks "Devis accepté" (business decision learned from client). Triggers convention quest unlock.
@@ -37,18 +39,21 @@
 - `envoyé → expiré`: automatic after configurable validity period (default 30 days)
 
 **Feuille d'émargement** (compliance document):
+
 - `généré` → `signatures_en_cours` → `signé` → `archivé`
 - `généré → signatures_en_cours`: automatic when first digital signature collected for the séance
 - `signatures_en_cours → signé`: automatic when all expected signatures collected (all émargement rows have `signedAt`)
 - `signé → archivé`: automatic when émargement quest completed
 
 **Convocation / Certificat** (existing types, informational documents):
+
 - `généré` → `envoyé` → `archivé`
 - All automatic.
 
 **What "draft" means**: There is no explicit "brouillon" state. All documents start as `généré`. If Marie wants to review before sending, she simply doesn't send yet. The quest system tracks whether the send step is completed; the document doesn't need a separate "draft" flag.
 
 **Alternatives considered**:
+
 - UX designer proposed 3 flat states (Généré/Envoyé/Archivé) for all types → rejected because `signé` and `accepté/refusé` are meaningful business events that quests and automations depend on.
 - Qualiopi expert proposed 5-6 states with manual transitions → rejected because Marie shouldn't manage document states; the system should infer them.
 
@@ -91,17 +96,20 @@ Feuille d'émargement must contain: organisme identity (raison sociale, NDA, adr
 ### Pricing Data Model
 
 **Workspace-level defaults** (set once, apply to all formations):
+
 - `tvaRate` (numeric, default 20.0 — some OF are TVA-exonérés at 0%)
 - `defaultPaymentTerms` (text, e.g. "30 jours fin de mois, par virement bancaire")
 - `defaultDevisValidityDays` (integer, default 30)
 
 **Formation-level** (already exists or to add):
+
 - `prixPublic` (numeric) — programme catalogue price (informational)
 - `prixConvenu` (numeric) — actual negotiated price for this formation (may differ from deal or prixPublic). **New field** to add.
 - `duree` (integer) — already exists
 - Number of participants: count of `formation_apprenants` rows (fix the convention bug at the same time)
 
 **Computed on the PDF** (not stored):
+
 - Prix HT = `prixConvenu` (or `prixPublic` if no negotiated price)
 - TVA = Prix HT × workspace `tvaRate` / 100
 - Prix TTC = Prix HT + TVA
@@ -133,7 +141,7 @@ Required: organisme identity, formateur identity, mission (intitulé + contenu +
 
 ---
 
-## 6. Convention Bug Fix
+## 6. Convention Bug Fix + Pricing
 
 **Decision**: Fix the participant count in `document-generator.ts` (convention case).
 
@@ -143,6 +151,8 @@ Required: organisme identity, formateur identity, mission (intitulé + contenu +
 
 **Also**: Wire `prixConvenu` (or `prixPublic` fallback) into the convention's `pricing.prixTotal` instead of hardcoded `null`.
 
+**Pricing note from brainstorm**: The linked programme has a `prixPublic` (catalogue price), but sometimes the salesperson negotiates a different price in the Deal. `prixConvenu` captures the actual agreed price. The priority is: `prixConvenu` > `prixPublic` > null (show "à définir" on PDF).
+
 ---
 
 ## 7. Auto-Generation vs Manual Generation
@@ -150,6 +160,7 @@ Required: organisme identity, formateur identity, mission (intitulé + contenu +
 **Decision**: Start with **manual generation** for all types (Marie clicks "Générer" in Documents tab). Auto-generation is a **separate chunk** (Chunk 3) to implement later.
 
 **When auto-generation is built (Chunk 3)**:
+
 - Feuille d'émargement blank: auto J-1 before séance (présentiel/hybride)
 - Feuille d'émargement proof: auto after all signatures collected
 - Other types: remain manual (convention, devis, ordre de mission all require Marie's judgment on timing)
@@ -179,6 +190,7 @@ The app has a Deals feature (stages: Suspect → … → Gagné/Perdu). `closeAn
 ### Future Design (Chunk 4)
 
 The commercial devis and the Qualiopi devis are the **same document** in 95% of cases. The recommended flow:
+
 1. Deal stage "Négociation" → Marie generates devis from Deal
 2. Devis stored as `formation_documents` with nullable `dealId`
 3. Marie sends devis to client
@@ -203,10 +215,12 @@ The commercial devis and the Qualiopi devis are the **same document** in 95% of 
 ### Gap Analysis
 
 Attestation de fin de formation (articles L.6353-1, R.6353-1) must mention:
+
 - Résultats de l'évaluation des acquis (per learner)
 - Compétences acquises (individual, not generic)
 
 Current schema has:
+
 - `biblio_questionnaires` with external URLs (Google Forms) — no stored results
 - `quest_documents` for generic PDF uploads — not queryable per learner
 - `modules.modaliteEvaluation` — metadata only (QCM/QCU/Pratique/Projet)
@@ -215,17 +229,30 @@ Current schema has:
 ### Future Feature: Evaluation Tracking
 
 When built, this feature should add:
+
 - Per-learner, per-module evaluation results (structured: acquis / en cours / non acquis, or score-based)
 - Integration with questionnaire system (even if results remain external, capture a summary)
 - Attestation PDF then pulls individual results into the document
 
+### Current Questionnaire System (Gap Analysis)
+
+- `biblio_questionnaires` stores only `titre`, `type` (Test de niveau / Quiz / Audit des besoins), and `url_test` (external URL)
+- Linked to programmes via `biblio_programme_questionnaires` and to modules via `biblio_module_questionnaires`
+- When a programme is attached to a formation, module-level questionnaire links are copied to `module_questionnaires` (formation-specific)
+- **No answers, scores, or results are stored** — everything happens in external tools (Google Forms, Tally)
+- Quest sub-actions for evaluations are `confirm-task` and `upload-document` — generic PDF upload, not structured data
+
+The user noted: "Currently questionnaires point to external URLs like Google Forms where learners answer quizzes. Is it related?" — **Yes, directly related.** The attestation needs per-learner results that the questionnaire system currently cannot provide.
+
 ### Brainstorming Needed (Future Session)
 
 Before implementing evaluation tracking + attestation, the following must be brainstormed:
+
 - Should results be entered manually by Marie or imported from external tools?
 - What granularity? Per-module? Per-objective? Per-competency?
-- Should the questionnaire system evolve to capture results internally?
+- Should the questionnaire system evolve to capture results internally (built-in quiz builder)?
 - How does this interact with the `evaluation_acquis_fin` quest?
+- Is there a lightweight middle ground (e.g. Marie enters "acquis / en cours / non acquis" per learner per module)?
 
 ---
 
@@ -242,6 +269,7 @@ Before implementing evaluation tracking + attestation, the following must be bra
 ### Brainstorming Needed (Future Session)
 
 Before implementing Chunk 2, further brainstorm:
+
 - Exact layout of phase groups (visual design, expand/collapse behavior)
 - Batch generation for per-learner documents (generate all convocations at once)
 - Quest → Documents tab deep-link protocol (query params, scroll behavior, highlighting)
@@ -275,12 +303,14 @@ These email fixes are **independent** of document generation and can be addresse
 **Decision**: Add workspace-level financial fields to support devis generation and other document types.
 
 **New fields on `workspaces` table**:
+
 - `tvaRate` — numeric, default 20.0
 - `defaultPaymentTerms` — text, default "30 jours fin de mois, par virement bancaire"
 - `defaultDevisValidityDays` — integer, default 30
 - `defaultCancellationTerms` — text, default null (optional boilerplate for conventions/devis)
 
 **New field on `formations` table**:
+
 - `prixConvenu` — numeric, nullable (the actual negotiated price, may differ from `prixPublic`)
 
 ---
@@ -288,6 +318,7 @@ These email fixes are **independent** of document generation and can be addresse
 ## 14. Implementation Chunks (Ordered)
 
 ### Chunk 1: Core PDF Templates + Convention Fix
+
 - Implement `feuille_emargement` (Mode 2 proof only — Mode 1 blank deferred to Chunk 3 auto-generation)
 - Implement `devis` PDF template
 - Implement `ordre_mission` PDF template
@@ -299,6 +330,7 @@ These email fixes are **independent** of document generation and can be addresse
 - Follow existing patterns: pdfmake builder in `document-templates/`, switch case in `document-generator.ts`
 
 ### Chunk 2: Document Lifecycle States + Documents Tab UX
+
 - Implement rich status per document type (§2 above)
 - Automatic status transitions (email sent → envoyé, quest completed → signé)
 - Contextual generation prompts on Documents tab
@@ -308,12 +340,14 @@ These email fixes are **independent** of document generation and can be addresse
 - **Requires further UX brainstorming before implementation** (see §11)
 
 ### Chunk 3: Auto-Generation Triggers
+
 - Feuille d'émargement blank (Mode 1) auto-generated J-1 for présentiel/hybride
 - Feuille d'émargement proof (Mode 2) auto-generated after all signatures
 - Scheduled job infrastructure (SvelteKit cron or Supabase pg_cron)
 - **Requires further brainstorming**: cron approach, notification UX for auto-generated docs
 
 ### Chunk 4: Deal Devis + Formation Inheritance
+
 - Devis generation from Deal detail page
 - `closeAndCreateFormation` inherits devis + auto-completes quest
 - `dealId` on `formation_documents` (or linking mechanism)
@@ -321,6 +355,7 @@ These email fixes are **independent** of document generation and can be addresse
 - **Requires further brainstorming**: Deal documents UI, what other deal-level documents might exist
 
 ### Chunk 5: Attestation + Evaluation Tracking (Future)
+
 - Per-learner evaluation results schema
 - Integration with questionnaire system
 - Attestation PDF with individual competency results
@@ -340,6 +375,19 @@ These topics were identified during this session but deferred for focused brains
 6. **Document versioning** — when Marie regenerates, replace or keep history? (Current code replaces.)
 7. **Émargement Mode 1 (blank) distribution** — email to formateur J-1? Download from app? Both?
 8. **Signature overlay on PDFs** (pdf-lib) — for signed convention/ordre de mission return, timing TBD
+
+---
+
+## 16. Cross-Specialist Collaboration Protocol
+
+During this brainstorming session, specialist subagents (Qualiopi, UX, product) sometimes reached contradictory conclusions (e.g. document lifecycle complexity). The resolution protocol used:
+
+1. Each specialist produces findings independently
+2. The orchestrator identifies tensions between specialists
+3. A synthesis subagent receives both positions and produces a consensus recommendation
+4. The user makes the final call on unresolved tensions
+
+**Action item**: Update the team-driven-development skill or team orchestrator rule to formalize this "cross-pollination" step — after parallel subagents return, if tensions exist, launch a synthesis subagent that receives all prior outputs and must produce a single recommendation before presenting to the user.
 
 ---
 

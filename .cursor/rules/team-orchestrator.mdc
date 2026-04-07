@@ -1,11 +1,11 @@
 ---
-description: Orchestrates the subagent team for feature development. Classifies tasks, assembles the right team, and enforces quality gates including mandatory QA.
+description: Orchestrates the subagent team for feature development. Classifies tasks, assembles the right team, and enforces quality gates including mandatory QA. Use proactively when the user asks to build, implement, design, or fix something non-trivial.
 alwaysApply: true
 ---
 
 # Team Orchestrator
 
-When the user asks to build, implement, design, or fix something non-trivial, orchestrate the subagent team.
+When the user asks to build, implement, design, or fix something non-trivial, orchestrate the subagent team using the **Task tool** with the appropriate `subagent_type`.
 
 ## Skip Conditions
 
@@ -13,6 +13,23 @@ Handle directly (no subagents) when:
 - Single-file fix, typo, variable rename, config change
 - Running a command, answering a question
 - Task is fully specified with no design decisions needed
+
+## Available Subagents
+
+Custom subagents are defined in `.cursor/agents/`. Launch them via the **Task tool** using the filename (without `.md`) as the `subagent_type`:
+
+| subagent_type | Role | readonly |
+|---------------|------|----------|
+| `ux-designer` | Senior UI/UX designer (behavioral psychology, Marie persona) | no |
+| `product-analyst` | Product foundation + Qualiopi compliance analyst | no |
+| `architect` | Database schema and API architect (Drizzle + Supabase) | no |
+| `test-engineer` | TDD specialist (Vitest + Playwright) | no |
+| `implementer` | Senior SvelteKit 5 full-stack developer | no |
+| `reviewer` | Senior code reviewer (correctness, types, a11y, shadcn) | yes |
+| `security-analyst` | Security auditor (RLS, auth, data isolation) | no |
+| `qa-tester` | Persona-based acceptance tester (Browser MCP) | no |
+| `project-manager` | Agile PM + documentation (model: fast) | no |
+| `team-architect` | Meta-agent that improves the subagent ecosystem | no |
 
 ## Task Classification
 
@@ -28,28 +45,48 @@ Analyze the task and pick a recipe:
 | **Meeting digest** | project-manager | 7 only |
 | **Team improvement** | team-architect | Meta |
 
+## How to Launch Subagents
+
+Use the **Task tool** for every subagent invocation:
+
+```
+Task(
+  subagent_type: "ux-designer",
+  description: "UX review for [feature]",
+  prompt: "Full context here: what to analyze, which files to read, what artifacts exist..."
+)
+```
+
+**Critical**: Subagents start with a clean context. The `prompt` must include ALL necessary context:
+- What the feature/task is
+- Which files or artifacts to read first
+- What output is expected (artifact path, format)
+- Any decisions already made in prior phases
+
+For **parallel** phases, send multiple Task tool calls in the same message.
+
 ## 7-Phase Sequence
 
 ### 1. Brainstorm (parallel)
-Launch `ux-designer` + `product-analyst` as parallel subagents. After both return, synthesize: identify consensus, surface tensions between UX and compliance, present design choices to user via AskQuestion. **User must approve design direction before proceeding.**
+Launch `ux-designer` + `product-analyst` as **parallel** Task calls in a single message. After both return, synthesize: identify consensus, surface tensions between UX and compliance, present design choices to user via AskQuestion. **User must approve design direction before proceeding.**
 
 ### 2. Design
 Launch `architect` when task touches DB or creates new entities. Present schema design to user. **User must approve schema before proceeding.**
 
 ### 3. Test Writing (TDD)
-Launch `test-engineer`. Reads design + architecture artifacts. Writes failing tests that define acceptance criteria. Confirm tests fail before proceeding.
+Launch `test-engineer`. Tell it to read `docs/team-artifacts/design/` and `docs/team-artifacts/architecture/` first. Writes failing tests that define acceptance criteria. Confirm tests fail before proceeding.
 
 ### 4. Build
-Launch `implementer`. Must follow the plan and make all tests pass. Uses shadcn-svelte MCP for all UI elements.
+Launch `implementer`. Tell it to read `docs/team-artifacts/architecture/` and `docs/team-artifacts/testing/` first. Must follow the plan and make all tests pass. Uses shadcn-svelte MCP for all UI elements.
 
 ### 5. Review (parallel)
-Launch `reviewer` + `security-analyst` in parallel. Reviewer does code quality + shadcn audit. Security analyst checks RLS, auth, data access. Fix Critical/High findings before proceeding.
+Launch `reviewer` + `security-analyst` as **parallel** Task calls. Reviewer does code quality + shadcn audit. Security analyst checks RLS, auth, data access. Fix Critical/High findings before proceeding.
 
 ### 6. Acceptance (mandatory gate)
-Launch `qa-tester`. Reads design artifacts, then tests the running app as Marie using Browser MCP. **No UI-facing feature ships without passing QA.** If QA fails, loop back to phase 4 with findings.
+Launch `qa-tester`. Tell it to read `docs/team-artifacts/design/` first, then test the running app as Marie using Browser MCP. **No UI-facing feature ships without passing QA.** If QA fails, loop back to phase 4 with findings.
 
 ### 7. Document
-Launch `project-manager`. Updates `docs/project/` files, records decisions, writes feature documentation.
+Launch `project-manager`. Tell it to read all relevant artifacts from prior phases. Updates `docs/project/` files, records decisions, writes feature documentation.
 
 ## Phase Gates
 
@@ -60,7 +97,7 @@ Launch `project-manager`. Updates `docs/project/` files, records decisions, writ
 
 ## Artifact Protocol
 
-Each subagent writes findings to `docs/team-artifacts/<team>/` as dated markdown files. Subsequent subagents are instructed to read relevant artifacts before starting:
+Each subagent writes findings to `docs/team-artifacts/<team>/` as dated markdown files. When launching a subagent, **include in the prompt** which artifact directories it should read first:
 
 - `test-engineer` reads `design/` + `architecture/`
 - `implementer` reads `architecture/` + `testing/`
