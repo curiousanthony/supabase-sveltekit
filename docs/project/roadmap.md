@@ -7,13 +7,11 @@ High-level product direction for Mentore Manager.
 **Branch**: `feat/formations-v2`  
 **Design decisions**: `docs/decisions/2026-04-07-document-generation-system.md`
 
-### Chunk 1 — Core PDF Templates + Convention Fix (next)
+### Immediate — Chunk 1 Bug Fixes + Tech Debt
 
-Implement the 3 remaining PDF types (`feuille_emargement`, `devis`, `ordre_mission`), fix the convention participant count bug, wire pricing into convention/devis. Add schema fields: `formations.prixConvenu`, workspace financial defaults (`tvaRate`, `defaultPaymentTerms`, `defaultDevisValidityDays`). Follow existing pdfmake patterns.
+Price formatting bug on generated documents (P1), timezone-safe date/time formatting (P1), plus code quality improvements from reviewer audit (exhaustive switch, typed pdfmake import, optimized DB query). See `docs/project/current-sprint.md` for full list.
 
-**Prerequisite**: None — data already available in schema (+ small schema additions above).
-
-### Chunk 2 — Document Lifecycle States + Documents Tab UX
+### Chunk 2 — Document Lifecycle States + Documents Tab UX (next)
 
 Rich document statuses per type (automatic transitions), contextual generation prompts, phase grouping, regeneration prompts, error states with fix paths. **Requires further UX brainstorming before implementation.**
 
@@ -39,8 +37,8 @@ Per-learner evaluation results schema, attestation PDF with individual competenc
 
 ## Parallel Tracks (Independent of Chunks)
 
-- **Email fixes** — Add missing reminder templates to `EMAIL_TYPE_TO_TEMPLATE`, pass `ctaUrl` in quest emails. Can ship anytime.
 - **Postmark webhooks** — Delivery/bounce tracking. Independent of document generation.
+- **RLS hardening** — `formation_documents` table and `formation-documents` storage bucket need workspace-scoped policies (currently permissive).
 
 ## Future
 
@@ -50,10 +48,11 @@ Per-learner evaluation results schema, attestation PDF with individual competenc
 
 ## Completed Milestones
 
+- **Chunk 1 — Core PDF Templates + Convention Fix (2026-04-08)** — 3 nouveaux PDF (`feuille_emargement`, `devis`, `ordre_mission`), convention corrigée (participants + tarifs), schéma `prixConvenu` + workspace defaults, emails relance + `ctaUrl`, sécurité (enrollment checks). Voir `docs/project/shipped.md`.
 - **Vague 2 — Séances + émargement (2026 Q2)** — Décisions: `docs/decisions/2026-04-02-wave2-seances-emargement-decisions.md`. Découpe AM/PM, module–formateur, émargement formateur, Postmark (individuel + masse), création par lot, UX calendrier.
 - **E-mails formation via Postmark** — Templates séances (liens signature) + suivi (quêtes) ; journalisation `formation_emails`.
 - **Documents formation (partiel)** — Convention, convocation, certificat (PDF + stockage) ; onglet Documents et actions serveur pour tous les types déclarés.
 
 ---
 
-*Dernière mise à jour : 2026-04-07 — restructuré en chunks suite au brainstorming document generation.*
+*Dernière mise à jour : 2026-04-08 — Chunk 1 terminé, focus sur bug fixes + préparation Chunk 2.*

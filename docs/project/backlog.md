@@ -20,20 +20,23 @@ All work items for Mentore Manager, tagged by status and priority.
 
 ---
 
-## Chunk 1: Core PDF Templates + Convention Fix
+## Chunk 1: Core PDF Templates + Convention Fix — `[DONE]` 2026-04-08
 
-**Design decisions**: `docs/decisions/2026-04-07-document-generation-system.md` §1–6, §13
+**Design decisions**: `docs/decisions/2026-04-07-document-generation-system.md` §1–6, §13  
+**All items shipped.** See `docs/project/shipped.md` for details.
 
-| Status      | Item                                                                                                  | Priority | Notes                                                                                              |
-| ----------- | ----------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
-| `[SPRINT]`  | Schema: add `prixConvenu` (numeric, nullable) to `formations`                                         | P1       | Actual negotiated price; distinct from `prixPublic` (catalogue price)                              |
-| `[SPRINT]`  | Schema: add workspace financial defaults (`tvaRate`, `defaultPaymentTerms`, `defaultDevisValidityDays`, `defaultCancellationTerms`) | P1 | Set once, used by devis + convention PDFs |
-| `[SPRINT]`  | Fix convention `nbParticipants` bug — query `formation_apprenants` not `contacts.id = formationId`    | P1       | `document-generator.ts` convention case                                                            |
-| `[SPRINT]`  | Wire convention pricing from formation data (`prixConvenu` or `prixPublic` fallback) instead of `null` | P1      | Same file, convention case                                                                         |
-| `[SPRINT]`  | Implement `feuille_emargement` PDF template (Mode 2: post-session proof with signature data)          | P1       | Per-séance, per-period (AM/PM). Shows digital signature timestamps. See decisions §3               |
-| `[SPRINT]`  | Implement `devis` PDF template                                                                        | P1       | Uses workspace financial defaults + `prixConvenu`. See decisions §4                                |
-| `[SPRINT]`  | Implement `ordre_mission` PDF template                                                                | P1       | Per-formateur per-formation. Uses `formation_formateurs` TJM data. See decisions §5                |
-| `[SPRINT]`  | Update `GENERATABLE_TYPES` and pickers in Documents tab UI for new types                              | P1       | `feuille_emargement` needs séance picker; `ordre_mission` needs formateur picker (already exists)  |
+## Bugs & Tech Debt (from Chunk 1 review)
+
+| Status      | Item                                                                                                          | Priority | Notes                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `[SPRINT]`  | **BUG: Price formatting broken on documents** — amounts show "2/ 600€" instead of "2 600,00 €"               | P1       | Likely in `devis.ts` and/or convention pricing section                                           |
+| `[SPRINT]`  | Add `timeZone: 'Europe/Paris'` to all `toLocaleTimeString`/`toLocaleDateString` calls in doc templates        | P1       | Cloud hosts run UTC — session times will be wrong in PDFs                                        |
+| `[SPRINT]`  | Exhaustive switch for `DocumentType` in `document-generator.ts`                                               | P2       | No `default` branch — new types won't trigger compile errors                                     |
+| `[SPRINT]`  | Type the pdfmake import (`esmRequire('pdfmake/js/index.js')` returns `any`)                                   | P2       | Add local interface for type safety                                                              |
+| `[SPRINT]`  | Optimize certificat emargements query — filter by `formationId` at DB level                                   | P2       | Fetches ALL emargements for a contact, filters in JS — should use join                           |
+| `[BACKLOG]` | Logo WebP/SVG → PNG conversion for professional PDFs                                                          | P3       | Currently skipped; PDFKit only supports PNG/JPEG                                                 |
+| `[BACKLOG]` | RLS: scope `formation_documents` table policies to workspace                                                  | P2       | Pre-existing — currently `USING (true) WITH CHECK (true)`                                        |
+| `[BACKLOG]` | RLS: scope `formation-documents` storage bucket to workspace                                                  | P2       | Pre-existing — currently permissive                                                              |
 
 ## Chunk 2: Document Lifecycle States + Documents Tab UX
 
@@ -91,8 +94,8 @@ All work items for Mentore Manager, tagged by status and priority.
 | ----------- | ------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------ |
 | `[SHIPPED]` | Envoi liens émargement (apprenant + formateur) via templates Postmark                       | —        | `seances/+page.server.ts`                                    |
 | `[SHIPPED]` | Envoi e-mails quête suivi via `sendQuestEmail` + `EMAIL_TYPE_TO_TEMPLATE`                   | —        | `suivi/+page.server.ts`                                      |
-| `[BACKLOG]` | Add missing reminder templates (`devis_relance`, `convention_relance`, `ordre_mission_relance`) to `EMAIL_TYPE_TO_TEMPLATE` + Postmark | P1 | Currently falls back to wrong template |
-| `[BACKLOG]` | Pass `ctaUrl` in `sendQuestEmail` based on email type                                       | P1       | Many templates expect `{{#ctaUrl}}` but get none             |
+| `[DONE]`    | Add missing reminder templates (`devis_relance`, `convention_relance`, `ordre_mission_relance`) to `EMAIL_TYPE_TO_TEMPLATE` + Postmark | —  | Shipped 2026-04-08 (Chunk 1) |
+| `[DONE]`    | Pass `ctaUrl` in `sendQuestEmail` based on email type                                       | —        | Shipped 2026-04-08 (Chunk 1) |
 | `[BACKLOG]` | Webhook Postmark (delivery, bounce, spam) → mise à jour `formation_emails.status`           | P2       | Pas d'endpoint webhook dans le dépôt                         |
 | `[BACKLOG]` | Brancher ou retirer `sendFormationEmail` (HTML brut) — aucun appel route                    | P3       | `email-service.ts`                                           |
 | `[BACKLOG]` | Unifier envoi invitation workspace sur Postmark (optionnel)                                 | P3       | Aujourd'hui token + copie lien                               |
@@ -110,4 +113,4 @@ All work items for Mentore Manager, tagged by status and priority.
 
 ---
 
-*Dernière mise à jour : 2026-04-07 — restructuré en chunks suite à la session brainstorming (`docs/decisions/2026-04-07-document-generation-system.md`).*
+*Dernière mise à jour : 2026-04-08 — Chunk 1 terminé, bugs et tech debt ajoutés suite à revue de code.*

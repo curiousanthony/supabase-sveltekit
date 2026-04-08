@@ -66,10 +66,13 @@ async function fetchWorkspaceIdentity(workspaceId: string): Promise<WorkspaceIde
 						.from('workspace-logos')
 						.download(pathMatch[1]);
 					if (data) {
-						const buffer = await data.arrayBuffer();
-						const base64 = Buffer.from(buffer).toString('base64');
 						const mimeType = data.type || 'image/png';
-						logoBase64 = `data:${mimeType};base64,${base64}`;
+						const supportedByPdfkit = mimeType === 'image/png' || mimeType === 'image/jpeg';
+						if (supportedByPdfkit) {
+							const buffer = await data.arrayBuffer();
+							const base64 = Buffer.from(buffer).toString('base64');
+							logoBase64 = `data:${mimeType};base64,${base64}`;
+						}
 					}
 				}
 			}
@@ -128,7 +131,10 @@ async function fetchFormationData(formationId: string): Promise<{
 		},
 		with: {
 			client: {
-				columns: { name: true, legalName: true, siret: true }
+				columns: { legalName: true, siret: true }
+			},
+			company: {
+				columns: { name: true, siret: true, address: true }
 			},
 			modules: {
 				columns: { name: true, durationHours: true },
@@ -138,6 +144,22 @@ async function fetchFormationData(formationId: string): Promise<{
 	});
 
 	if (!f) throw new Error('Formation introuvable');
+
+	const client: ClientData | null = f.client
+		? {
+				name: f.client.legalName ?? '—',
+				legalName: f.client.legalName ?? null,
+				siret: f.client.siret != null ? String(f.client.siret) : null,
+				address: null
+			}
+		: f.company
+			? {
+					name: f.company.name ?? '—',
+					legalName: f.company.name ?? null,
+					siret: f.company.siret ?? null,
+					address: f.company.address ?? null
+				}
+			: null;
 
 	return {
 		formation: {
@@ -154,14 +176,7 @@ async function fetchFormationData(formationId: string): Promise<{
 			publicVise: f.publicVise
 		},
 		workspaceId: f.workspaceId,
-		client: f.client
-			? {
-					name: f.client.name ?? '—',
-					legalName: f.client.legalName ?? null,
-					siret: f.client.siret ?? null,
-					address: null
-				}
-			: null,
+		client,
 		moduleList: (f.modules ?? []).map((m) => ({
 			name: m.name ?? '—',
 			duree: m.durationHours ? parseFloat(m.durationHours) : null
@@ -172,9 +187,12 @@ async function fetchFormationData(formationId: string): Promise<{
 }
 
 async function generatePdfBuffer(docDefinition: import('pdfmake/interfaces').TDocumentDefinitions): Promise<Buffer> {
-	const PdfPrinter = (await import('pdfmake')).default;
+	const { createRequire } = await import('node:module');
+	const esmRequire = createRequire(import.meta.url);
+	// pdfmake 0.3.7: CJS singleton with setFonts/createPdf/getBuffer API
+	const pdfmake = esmRequire('pdfmake/js/index.js');
 
-	const printer = new PdfPrinter({
+	pdfmake.setFonts({
 		Helvetica: {
 			normal: 'Helvetica',
 			bold: 'Helvetica-Bold',
@@ -183,15 +201,8 @@ async function generatePdfBuffer(docDefinition: import('pdfmake/interfaces').TDo
 		}
 	});
 
-	const pdfDoc = printer.createPdfKitDocument(docDefinition);
-
-	return new Promise<Buffer>((resolve, reject) => {
-		const chunks: Uint8Array[] = [];
-		pdfDoc.on('data', (chunk: Uint8Array) => chunks.push(chunk));
-		pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
-		pdfDoc.on('error', reject);
-		pdfDoc.end();
-	});
+	const doc = pdfmake.createPdf(docDefinition);
+	return await doc.getBuffer();
 }
 
 async function uploadToStorage(
