@@ -2,6 +2,7 @@
 	import type { HudBannerState } from '$lib/formation-quest-priority';
 	import * as Popover from '$lib/components/ui/popover/index.js';
 	import { PHASE_LABELS, getQuestActionTitle } from '$lib/formation-quests';
+	import { getTargetTab } from '$lib/document-prompts';
 
 	interface Props {
 		hudState: HudBannerState;
@@ -13,22 +14,6 @@
 
 	let popoverOpen = $state(false);
 	let hoverTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
-
-	function getTargetTab(questKey: string | null): string {
-		if (!questKey) return 'suivi';
-		const tabMap: Record<string, string> = {
-			verification_infos: 'fiche',
-			analyse_besoins: 'apprenants',
-			programme_modules: 'programme',
-			affectation_formateur: 'formateurs',
-			convocations: 'apprenants',
-			preparation_logistique: 'fiche',
-			emargement: 'seances',
-			documents_formateur: 'formateurs',
-			facturation: 'finances'
-		};
-		return tabMap[questKey] ?? 'suivi';
-	}
 
 	function getQuestHref(questKey: string | null): string {
 		const tab = getTargetTab(questKey);

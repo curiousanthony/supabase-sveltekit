@@ -14,6 +14,7 @@
 	} from '$lib/formation-quests';
 	import { getPhaseDateRangeLine, getPhaseCountdownLine } from '$lib/formation-suivi-hints';
 	import { categorizeByDisplayState } from '$lib/formation-quest-state';
+	import { getTargetTab } from '$lib/document-prompts';
 	import { playMicroSound, playMediumSound, playMacroSound } from '$lib/sounds';
 	import LevelUpToast from '$lib/components/formations/level-up-toast.svelte';
 	import PhaseCard from '$lib/components/formations/suivi/phase-card.svelte';
@@ -157,22 +158,6 @@
 	function phaseCountdown(phase: QuestPhase): string | null {
 		const p = progress.phases[phase];
 		return getPhaseCountdownLine(phase, { dateDebut: formation?.dateDebut, dateFin: formation?.dateFin }, p);
-	}
-
-	function getTargetTab(questKey: string | null): string | null {
-		if (!questKey) return null;
-		const tabMap: Record<string, string> = {
-			verification_infos: 'fiche',
-			analyse_besoins: 'apprenants',
-			programme_modules: 'programme',
-			affectation_formateur: 'formateurs',
-			convocations: 'apprenants',
-			preparation_logistique: 'fiche',
-			emargement: 'seances',
-			documents_formateur: 'formateurs',
-			facturation: 'finances'
-		};
-		return tabMap[questKey] ?? 'suivi';
 	}
 
 	async function callAction(actionName: string, body: FormData): Promise<boolean> {

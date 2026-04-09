@@ -8,8 +8,10 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { enhance } from '$app/forms';
 	import { deserialize } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import { toast } from 'svelte-sonner';
+	import { getDocumentPrompts, type QuestActionInput, type DocumentInput } from '$lib/document-prompts';
 	import Files from '@lucide/svelte/icons/files';
 	import FileSignature from '@lucide/svelte/icons/file-signature';
 	import Mail from '@lucide/svelte/icons/mail';
@@ -28,6 +30,8 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import History from '@lucide/svelte/icons/history';
 	import EyeOff from '@lucide/svelte/icons/eye-off';
+	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import type { Component } from 'svelte';
 
 	let { data }: PageProps = $props();
@@ -124,6 +128,39 @@
 	const seancesList = $derived(formation?.seances ?? []);
 
 	let commsExpanded = $state(false);
+
+	const questParam = $derived(page.url.searchParams.get('quest'));
+
+	const documentPrompts = $derived.by(() => {
+		const actions = (data.formation?.actions ?? []) as QuestActionInput[];
+		const docs = (documents ?? []) as DocumentInput[];
+		return getDocumentPrompts(actions, docs);
+	});
+
+	const highlightedDocType = $derived.by(() => {
+		if (!questParam) return null;
+		const prompt = [...documentPrompts.values()].find((p) => p.questKey === questParam);
+		return prompt?.documentType ?? null;
+	});
+
+	$effect(() => {
+		if (!questParam) return;
+
+		const targetId = highlightedDocType
+			? `doc-prompt-${highlightedDocType}`
+			: null;
+
+		if (targetId) {
+			const el = document.getElementById(targetId);
+			if (el) {
+				el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}
+		}
+
+		const url = new URL(page.url);
+		url.searchParams.delete('quest');
+		replaceState(url, {});
+	});
 
 	const EMAIL_STATUS_CONFIG: Record<string, { label: string; class: string }> = {
 		sent: { label: 'Envoyé', class: 'border-green-300 bg-green-50 text-green-700' },
@@ -342,6 +379,40 @@
 			</button>
 		{/if}
 	</div>
+
+	<!-- Contextual generation prompts -->
+	{#if documentPrompts.size > 0}
+		<div class="flex flex-col gap-2">
+			{#each [...documentPrompts.values()] as prompt (prompt.documentType)}
+				{@const typeConfig = DOC_TYPE_CONFIG[prompt.documentType] ?? DOC_TYPE_CONFIG['autre']}
+				{@const isHighlighted = highlightedDocType === prompt.documentType}
+				<div
+					id="doc-prompt-{prompt.documentType}"
+					class="flex items-center gap-4 rounded-lg border px-4 py-3 transition-all {isHighlighted
+						? 'border-amber-400 bg-amber-50 shadow-sm dark:border-amber-600 dark:bg-amber-950/40'
+						: 'border-amber-200 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20'}"
+				>
+					<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+						<Sparkles class="size-4 text-amber-600 dark:text-amber-400" />
+					</div>
+					<p class="min-w-0 flex-1 text-sm font-medium text-amber-900 dark:text-amber-100">
+						{prompt.message}
+					</p>
+					{#if prompt.canGenerate}
+						<Button
+							variant="outline"
+							size="sm"
+							class="shrink-0 cursor-pointer border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
+							onclick={() => openGenerate(prompt.documentType)}
+						>
+							Générer
+							<ArrowRight class="ml-1 size-3.5" />
+						</Button>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	{/if}
 
 	<!-- Document list -->
 	{#if filteredDocuments.length === 0}

@@ -89,17 +89,16 @@ After determining the base recipe, skip phases based on ticket metadata:
 **Important**: When a `decision` doc exists, read it (Layer 4) before launching any subagent.
 Pass relevant sections to subagent prompts as context.
 
-### 0d. Confirm with user
+### 0d. Announce and start (no confirmation needed)
 
-Present a concise summary:
+Present a concise summary, then **immediately begin work** — never ask "Proceed?" or wait for confirmation:
 
 > Picking up **T-{id}**: {title}
 > Type: {type} | Priority: {priority} | Estimate: {estimate}
 > Decision: {decision doc name or "none — will brainstorm"}
 > Phases: {effective phase list with skipped phases noted}
-> Proceed?
 
-On user confirmation (or if user already said "let's go"), set `status: in_progress` and `assignee: agent`.
+Set `status: in_progress` and `assignee: agent`, then launch the first phase in the same response.
 
 ## Git Operations (Autonomous)
 
@@ -151,7 +150,7 @@ Use `gh pr create` with:
 
 ### 1. Brainstorm (parallel) — skip if `decision` exists
 
-Launch `ux-designer` + `product-analyst` as **parallel** Task calls in a single message. After both return, synthesize: identify consensus, surface tensions between UX and compliance, present design choices to user via AskQuestion. **User must approve design direction before proceeding.**
+Launch `ux-designer` + `product-analyst` as **parallel** Task calls in a single message. After both return, synthesize: identify consensus, surface tensions between UX and compliance, present design summary, then proceed immediately.
 
 If the task touches DB or creates new entities, also launch `architect` in the same parallel batch.
 
@@ -159,7 +158,7 @@ Record decisions in `docs/decisions/{date}-{slug}.md`. Update ticket's `decision
 
 ### 2. Design — skip if `decision` covers schema
 
-Launch `architect` when task touches DB or creates new entities. Present schema design to user. **User must approve schema before proceeding.**
+Launch `architect` when task touches DB or creates new entities. Present schema design summary, then proceed immediately.
 
 ### 3. Test Writing (TDD) — skip for small tech-debt/bugs
 
@@ -200,18 +199,20 @@ regenerate board → append to changelog → append learning to learnings.md.
 
 ## Phase Gates
 
-- After phase 1: user approves design direction
-- After phase 2: user approves schema
-- After phase 5: Critical/High review findings must be fixed
-- After phase 6: QA must PASS (or loop back to phase 4)
+Never ask the user "Proceed?" or "Should I continue?". Present findings, then move to the next phase immediately.
+
+- After phase 1: present design direction summary, then continue
+- After phase 2: present schema summary, then continue
+- After phase 5: Critical/High review findings must be fixed (autonomously)
+- After phase 6: QA must PASS (or loop back to phase 4 autonomously)
 
 ## Multi-Ticket Sessions
 
 When multiple tickets can be done in one session (e.g. several small tech-debt items):
 
 1. After closing a ticket (7b), immediately check: is there another unblocked ticket of similar type/priority?
-2. If yes, propose: "T-{id} done. Next unblocked: T-{next} ({title}). Continue?"
-3. If user agrees, start Phase 0c for the new ticket (no need to re-run board.sh).
+2. If yes, announce: "T-{id} done. Picking up T-{next} ({title})." and start immediately.
+3. Start Phase 0c for the new ticket (no need to re-run board.sh).
 4. Group related small tickets (same chunk, same files) for efficiency.
 5. After 3+ tickets closed without a PR, create one targeting `develop` (see Git Operations).
 

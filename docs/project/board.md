@@ -3,7 +3,6 @@
 ## sprint
 
 ## backlog
-T-10 P1 Contextual generation prompts
 T-34 P1 Document lifecycle transition service
 T-11 P2 Phase grouping in Documents tab
 T-12 P2 Regeneration prompt
