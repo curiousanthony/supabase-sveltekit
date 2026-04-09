@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-04-09
+- T-10 Contextual generation prompts: quest-driven inline prompts in Documents tab with deep-link scroll from Suivi
 - T-9 Document lifecycle service (per-type state machines, transition validation, annule/remplace, devis expiry)
 - T-33 Action-oriented display states: 4 color-coded labels, hidden remplace docs, expandable lifecycle timeline
 - T-32 Schema migration for document lifecycle (7 columns, default genere, 3 indexes, 2 FKs)
