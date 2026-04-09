@@ -4,6 +4,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { generateDocument, getDocumentSignedUrl, type DocumentType } from '$lib/services/document-generator';
+import { getEffectiveStatus } from '$lib/services/document-lifecycle';
 import type { PageServerLoad, Actions } from './$types';
 
 async function verifyFormationOwnership(formationId: string, workspaceId: string) {
@@ -50,7 +51,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	});
 
-	return { documents, emails };
+	const docsWithEffectiveStatus = documents.map((doc) => ({
+		...doc,
+		effectiveStatus: getEffectiveStatus({
+			type: doc.type,
+			status: doc.status,
+			expiresAt: doc.expiresAt
+		})
+	}));
+
+	return { documents: docsWithEffectiveStatus, emails };
 };
 
 const VALID_DOCUMENT_TYPES: DocumentType[] = [

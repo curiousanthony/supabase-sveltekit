@@ -133,10 +133,10 @@
 	};
 
 	const visibleDocuments = $derived(
-		showReplaced ? documents : documents.filter((d) => d.status !== 'remplace')
+		showReplaced ? documents : documents.filter((d) => d.effectiveStatus !== 'remplace')
 	);
 
-	const replacedCount = $derived(documents.filter((d) => d.status === 'remplace').length);
+	const replacedCount = $derived(documents.filter((d) => d.effectiveStatus === 'remplace').length);
 
 	const filteredDocuments = $derived.by(() => {
 		let result = visibleDocuments;
@@ -144,7 +144,7 @@
 			result = result.filter((d) => d.type === typeFilter);
 		}
 		if (statusFilter !== 'all') {
-			result = result.filter((d) => d.status === statusFilter);
+			result = result.filter((d) => d.effectiveStatus === statusFilter);
 		}
 		return result;
 	});
@@ -152,7 +152,7 @@
 	const statusCounts = $derived.by(() => {
 		const counts: Record<string, number> = {};
 		for (const doc of visibleDocuments) {
-			counts[doc.status] = (counts[doc.status] ?? 0) + 1;
+			counts[doc.effectiveStatus] = (counts[doc.effectiveStatus] ?? 0) + 1;
 		}
 		return counts;
 	});
@@ -362,7 +362,7 @@
 		<div class="space-y-2">
 			{#each filteredDocuments as doc (doc.id)}
 				{@const typeConfig = DOC_TYPE_CONFIG[doc.type] ?? DOC_TYPE_CONFIG['autre']}
-				{@const statusConfig = STATUS_CONFIG[doc.status] ?? STATUS_CONFIG['genere']}
+				{@const statusConfig = STATUS_CONFIG[doc.effectiveStatus] ?? STATUS_CONFIG['genere']}
 				{@const related = personName(doc)}
 				{@const isExpanded = expandedDocId === doc.id}
 				<Card.Root>
