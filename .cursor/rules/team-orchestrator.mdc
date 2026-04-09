@@ -5,7 +5,13 @@ alwaysApply: true
 
 # Team Orchestrator
 
-When the user asks to build, implement, design, or fix something non-trivial, orchestrate the subagent team using the **Task tool** with the appropriate `subagent_type`.
+## Trigger Phrases
+
+Start the workflow when the user says any of:
+- "next", "next ticket", "let's go", "let's work", "continue", "pick up work"
+- "work on T-{N}", "do T-{N}", "start T-{N}"
+- "build", "implement", "design", "fix", "what should we work on"
+- Or any non-trivial implementation request
 
 ## Skip Conditions
 
@@ -19,7 +25,7 @@ Handle directly (no subagents) when:
 Custom subagents are defined in `.cursor/agents/`. Launch them via the **Task tool** using the filename (without `.md`) as the `subagent_type`:
 
 | subagent_type | Role | readonly |
-|---------------|------|----------|
+|---|---|----|
 | `ux-designer` | Senior UI/UX designer (behavioral psychology, Marie persona) | no |
 | `product-analyst` | Product foundation + Qualiopi compliance analyst | no |
 | `architect` | Database schema and API architect (Drizzle + Supabase) | no |
@@ -31,71 +37,111 @@ Custom subagents are defined in `.cursor/agents/`. Launch them via the **Task to
 | `project-manager` | Agile PM + documentation (model: fast) | no |
 | `team-architect` | Meta-agent that improves the subagent ecosystem | no |
 
-## Task Classification
+## Phase 0: Smart Ticket Pickup
 
-Analyze the ticket type and pick a recipe:
+Use the `project-tracker` skill. Follow these steps in order:
 
-| Ticket type | Phases |
-|-------------|--------|
-| `feature` | 0-1-2-3-4-5-6-7-7b |
-| `bug` (UI impact) | 0-1(quick)-3-4-6-7b |
-| `bug` (no UI) | 0-3-4-5-7b |
-| `tech-debt` | 0-4-5-7b |
-| `security` | 0-4-5(security-analyst)-7b |
-| `docs` | 0-7-7b |
+### 0a. Board health check
+Run `bash scripts/board.sh`. Check output for:
+- "WARNING: Orphaned in_progress tickets" → resume or reset before continuing
+- "ACTION: N unreviewed learnings" → if N >= 10, launch `team-architect` to review before proceeding
 
-## How to Launch Subagents
+### 0b. Select ticket
+Read `docs/project/board.md`.
 
-Use the **Task tool** for every subagent invocation:
+**If user specified a ticket**: find it.
+**If user said "next" or similar**: select the highest-priority item using this algorithm:
 
-```
-Task(
-  subagent_type: "ux-designer",
-  description: "UX review for [feature]",
-  prompt: "Full context here: what to analyze, which files to read, what artifacts exist..."
-)
-```
+1. Sprint items first, then backlog. Within each: P1 > P2 > P3.
+2. Skip tickets where `blocked_by` contains IDs not in `docs/project/tickets/done/`.
+3. Prefer `tech-debt` and `bug` tickets over `feature` when both are same priority (faster to ship).
 
-**Critical**: Subagents start with a clean context. The `prompt` must include ALL necessary context:
-- What the feature/task is
-- Which files or artifacts to read first
-- What output is expected (artifact path, format)
-- Any decisions already made in prior phases
+### 0c. Read ticket and determine phases
 
-For **parallel** phases, send multiple Task tool calls in the same message.
+Read the ticket YAML frontmatter. Determine the **effective phase list** using the rules below.
+
+### Phase Recipe by Type
+
+| Ticket type | Full recipe |
+|---|---|
+| `feature` | 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 7b |
+| `bug` (UI) | 0 → 1(quick) → 3 → 4 → 6 → 7b |
+| `bug` (no UI) | 0 → 3 → 4 → 5 → 7b |
+| `tech-debt` | 0 → 4 → 5 → 7b |
+| `security` | 0 → 4 → 5(security-analyst) → 7b |
+| `docs` | 0 → 7 → 7b |
+
+### Smart Phase Skipping
+
+After determining the base recipe, skip phases based on ticket metadata:
+
+| Condition | Skip | Rationale |
+|---|---|---|
+| `decision` is not null | Phase 1 (brainstorm) | Design decisions already recorded |
+| `decision` covers schema (read the doc) | Phase 2 (design) | Schema already approved |
+| `plan` is not null | Phases 1+2 | Plan implies brainstorm+design done |
+| `artifacts` contains design docs | Phase 1 | UX/product analysis exists |
+| `artifacts` contains architecture docs | Phase 2 | Schema design exists |
+| `artifacts` contains test docs | Phase 3 | Tests already written |
+| `estimate: small` + `type: tech-debt` | Phases 3, 5, 6 | Lightweight — build + close |
+| `estimate: small` + `type: bug` | Phases 3, 6 | Quick fix — build + review + close |
+
+**Important**: When a `decision` doc exists, read it (Layer 4) before launching any subagent.
+Pass relevant sections to subagent prompts as context.
+
+### 0d. Confirm with user
+
+Present a concise summary:
+
+> Picking up **T-{id}**: {title}
+> Type: {type} | Priority: {priority} | Estimate: {estimate}
+> Decision: {decision doc name or "none — will brainstorm"}
+> Phases: {effective phase list with skipped phases noted}
+> Proceed?
+
+On user confirmation (or if user already said "let's go"), set `status: in_progress` and `assignee: agent`.
 
 ## Phase Sequence
 
-### 0. Ticket Pickup
-Use the `project-tracker` skill for all ticket operations. Run `bash scripts/board.sh` first —
-check its output for WARNING (orphaned tickets) or ACTION (learnings review due) and handle
-before proceeding. Then read `docs/project/board.md`. If user specified a task, find or create
-a matching ticket. If no task specified, select highest-priority sprint item (skip `blocked_by`
-tickets whose blockers aren't `done`). Read the ticket file. Confirm with user:
-"Picking up T-{id}: {title}. Phases: {list}. Proceed?" On confirmation, set assignee and status.
+### 1. Brainstorm (parallel) — skip if `decision` exists
 
-### 1. Brainstorm (parallel)
 Launch `ux-designer` + `product-analyst` as **parallel** Task calls in a single message. After both return, synthesize: identify consensus, surface tensions between UX and compliance, present design choices to user via AskQuestion. **User must approve design direction before proceeding.**
 
-### 2. Design
+If the task touches DB or creates new entities, also launch `architect` in the same parallel batch.
+
+Record decisions in `docs/decisions/{date}-{slug}.md`. Update ticket's `decision` field.
+
+### 2. Design — skip if `decision` covers schema
+
 Launch `architect` when task touches DB or creates new entities. Present schema design to user. **User must approve schema before proceeding.**
 
-### 3. Test Writing (TDD)
-Launch `test-engineer`. Tell it to read `docs/team-artifacts/design/` and `docs/team-artifacts/architecture/` first. Writes failing tests that define acceptance criteria. Confirm tests fail before proceeding.
+### 3. Test Writing (TDD) — skip for small tech-debt/bugs
+
+Launch `test-engineer`. Tell it to read the `decision` doc and any design artifacts first. Writes failing tests that define acceptance criteria. Confirm tests fail before proceeding.
 
 ### 4. Build
-Launch `implementer`. Tell it to read `docs/team-artifacts/architecture/` and `docs/team-artifacts/testing/` first. Must follow the plan and make all tests pass. Uses shadcn-svelte MCP for all UI elements.
+
+Launch `implementer`. Include in prompt:
+- The ticket file content
+- The `decision` doc path (if exists) — tell it to read the relevant section
+- Test file paths (if phase 3 was done)
+- Specific acceptance criteria from the ticket
+Must make all tests pass. Uses shadcn-svelte MCP for UI elements.
 
 ### 5. Review (parallel)
-Launch `reviewer` + `security-analyst` as **parallel** Task calls. Reviewer does code quality + shadcn audit. Security analyst checks RLS, auth, data access. Fix Critical/High findings before proceeding.
 
-### 6. Acceptance (mandatory gate)
-Launch `qa-tester`. Tell it to read `docs/team-artifacts/design/` first, then test the running app as Marie using Browser MCP. **No UI-facing feature ships without passing QA.** If QA fails, loop back to phase 4 with findings.
+Launch `reviewer` + `security-analyst` as **parallel** Task calls. Fix Critical/High findings before proceeding.
+
+### 6. Acceptance (mandatory gate for UI features)
+
+Launch `qa-tester`. Tell it to read design artifacts first, then test the running app as Marie using Browser MCP. **No UI-facing feature ships without passing QA.** If QA fails, loop back to phase 4 with findings.
 
 ### 7. Document
-Launch `project-manager`. Tell it to read all relevant artifacts from prior phases. Updates `docs/project/` files, records decisions, writes feature documentation.
+
+Launch `project-manager`. Updates `docs/project/` files, records decisions, writes feature documentation.
 
 ### 7b. Close Ticket
+
 Use the `project-tracker` skill's Close Ticket recipe. The recipe requires a learning
 (one-line reusable insight, or "none"). Steps: update status → move to done/ →
 regenerate board → append to changelog → append learning to learnings.md.
@@ -107,12 +153,26 @@ regenerate board → append to changelog → append learning to learnings.md.
 - After phase 5: Critical/High review findings must be fixed
 - After phase 6: QA must PASS (or loop back to phase 4)
 
-## Subagent Context
+## Multi-Ticket Sessions
 
-When launching any subagent, include in the prompt:
-- The ticket ID and full ticket file content
-- Specific artifact paths from the ticket's `artifacts` array (never "read the whole directory")
-- The plan slug if one exists
+When multiple tickets can be done in one session (e.g. several small tech-debt items):
+
+1. After closing a ticket (7b), immediately check: is there another unblocked ticket of similar type/priority?
+2. If yes, propose: "T-{id} done. Next unblocked: T-{next} ({title}). Continue?"
+3. If user agrees, start Phase 0c for the new ticket (no need to re-run board.sh).
+4. Group related small tickets (same chunk, same files) for efficiency.
+
+## Subagent Context Protocol
+
+When launching ANY subagent, always include in the prompt:
+
+1. **Ticket content**: the full ticket YAML + description + acceptance criteria
+2. **Decision doc path**: if `decision` field is set, tell subagent to read `docs/decisions/{decision}.md`
+3. **Artifact paths**: specific files from the ticket's `artifacts` array
+4. **Plan path**: if `plan` field is set, tell subagent to read it
+5. **Prior phase outputs**: paths to artifacts from earlier phases in THIS session
+
+Never say "read the whole directory". Always give specific file paths.
 
 Subagents write artifacts with ticket ID in filename: `{date}-T-{id}-{slug}.md`
 Subagents append to the ticket's `## log` when done: `- {date} {agent}: {summary}`
@@ -125,3 +185,9 @@ After parallel subagents return, synthesize their findings:
 2. Surface tensions (UX vs compliance, speed vs security)
 3. Present structured choices via AskQuestion when decisions are needed
 4. Record decisions in `docs/decisions/` for significant choices
+
+## Self-Improvement Hooks
+
+- **After every 5 tickets closed**: suggest launching `team-architect` to review recent learnings and update agent definitions
+- **When board.sh reports ACTION**: handle before picking up new work
+- **When a phase fails repeatedly**: log the pattern in learnings for team-architect review

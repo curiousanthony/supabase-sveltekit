@@ -5,7 +5,7 @@ description: >
   regeneration, ticket CRUD, plan progress checks. Use when picking up work, creating tickets,
   updating status, closing tickets, or when the orchestrator invokes Phase 0 or 7b.
   Trigger phrases: "update docs", "track progress", "what's left", "update the backlog",
-  "mark as done", "close ticket", "create ticket", "next ticket".
+  "mark as done", "close ticket", "create ticket", "next ticket", "next", "let's go".
 ---
 
 # Project Tracker
@@ -25,9 +25,22 @@ description: >
 - Layer 1: ticket file (~100 tok) — read when picking up work
 - Layer 2: plan frontmatter (~50 tok) — check progress (use script below)
 - Layer 3: full plan (~500 tok) — only during implementation phases
-- Layer 4: decision doc (~1-4K tok) — only during brainstorm/design phases
+- Layer 4: decision doc (~1-4K tok) — only when phases require it (brainstorm/design)
 
 Never jump layers. Each layer is gated by the previous.
+
+## Ticket Readiness Signals
+
+The YAML frontmatter tells the orchestrator what's already done:
+
+| Field | If populated | Means |
+|-------|-------------|-------|
+| `decision` | Points to `docs/decisions/{slug}.md` | Brainstorm done — skip Phase 1 |
+| `plan` | Points to a `.plan.md` file | Implementation planned — skip Phase 1+2 |
+| `artifacts` | List of file paths | Specific phases already produced output |
+| `blocked_by` | List of ticket IDs | Cannot start until those are in `done/` |
+
+The orchestrator uses these signals to auto-skip phases. See `team-orchestrator.mdc`.
 
 ## Operations
 
