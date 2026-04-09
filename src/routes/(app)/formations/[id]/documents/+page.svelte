@@ -26,6 +26,8 @@
 	import Send from '@lucide/svelte/icons/send';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import History from '@lucide/svelte/icons/history';
+	import EyeOff from '@lucide/svelte/icons/eye-off';
 	import type { Component } from 'svelte';
 
 	let { data }: PageProps = $props();
@@ -42,20 +44,46 @@
 	};
 
 	const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
-		draft: { label: 'Brouillon', class: 'border-muted-foreground/30 text-muted-foreground' },
-		pending_signature: {
-			label: 'En attente de signature',
+		genere: {
+			label: 'À envoyer',
 			class: 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-400'
 		},
-		signed: {
-			label: 'Signé',
-			class: 'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-400'
-		},
-		sent: {
-			label: 'Envoyé',
+		envoye: {
+			label: 'En attente',
 			class: 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-400'
 		},
-		archived: { label: 'Archivé', class: 'bg-secondary text-secondary-foreground' }
+		signatures_en_cours: {
+			label: 'En attente',
+			class: 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-400'
+		},
+		accepte: {
+			label: 'Terminé',
+			class: 'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-400'
+		},
+		signe: {
+			label: 'Terminé',
+			class: 'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-400'
+		},
+		archive: {
+			label: 'Terminé',
+			class: 'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-400'
+		},
+		refuse: {
+			label: 'Action requise',
+			class: 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-400'
+		},
+		expire: {
+			label: 'Action requise',
+			class: 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-400'
+		},
+		annule: {
+			label: 'Action requise',
+			class: 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-400'
+		},
+		remplace: {
+			label: 'Remplacé',
+			class: 'border-muted-foreground/30 text-muted-foreground'
+		}
 	};
 
 	const GENERATABLE_TYPES = [
@@ -85,6 +113,8 @@
 	let deleteDialogOpen = $state(false);
 	let documentToDelete = $state<{ id: string; title: string } | null>(null);
 	let deleting = $state(false);
+	let showReplaced = $state(false);
+	let expandedDocId = $state<string | null>(null);
 
 	const formation = $derived(data.formation);
 	const documents = $derived(data.documents ?? []);
@@ -102,8 +132,14 @@
 		pending: { label: 'En attente', class: 'border-amber-300 bg-amber-50 text-amber-700' }
 	};
 
+	const visibleDocuments = $derived(
+		showReplaced ? documents : documents.filter((d) => d.status !== 'remplace')
+	);
+
+	const replacedCount = $derived(documents.filter((d) => d.status === 'remplace').length);
+
 	const filteredDocuments = $derived.by(() => {
-		let result = documents;
+		let result = visibleDocuments;
 		if (typeFilter !== 'all') {
 			result = result.filter((d) => d.type === typeFilter);
 		}
@@ -115,7 +151,7 @@
 
 	const statusCounts = $derived.by(() => {
 		const counts: Record<string, number> = {};
-		for (const doc of documents) {
+		for (const doc of visibleDocuments) {
 			counts[doc.status] = (counts[doc.status] ?? 0) + 1;
 		}
 		return counts;
@@ -220,8 +256,8 @@
 		<h2 class="flex items-center gap-2 text-lg font-semibold">
 			<Files class="size-5" />
 			Documents
-			{#if documents.length > 0}
-				<Badge variant="secondary" class="text-xs">{documents.length}</Badge>
+			{#if visibleDocuments.length > 0}
+				<Badge variant="secondary" class="text-xs">{visibleDocuments.length}</Badge>
 			{/if}
 		</h2>
 
@@ -291,6 +327,20 @@
 				{/if}
 			{/each}
 		</div>
+
+		{#if replacedCount > 0}
+			<button
+				type="button"
+				class="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+				onclick={() => {
+					showReplaced = !showReplaced;
+					if (!showReplaced && statusFilter === 'remplace') statusFilter = 'all';
+				}}
+			>
+				<EyeOff class="size-3" />
+				{showReplaced ? 'Masquer' : 'Afficher'} remplacés ({replacedCount})
+			</button>
+		{/if}
 	</div>
 
 	<!-- Document list -->
@@ -312,53 +362,125 @@
 		<div class="space-y-2">
 			{#each filteredDocuments as doc (doc.id)}
 				{@const typeConfig = DOC_TYPE_CONFIG[doc.type] ?? DOC_TYPE_CONFIG['autre']}
-				{@const statusConfig = STATUS_CONFIG[doc.status] ?? STATUS_CONFIG['draft']}
+				{@const statusConfig = STATUS_CONFIG[doc.status] ?? STATUS_CONFIG['genere']}
 				{@const related = personName(doc)}
+				{@const isExpanded = expandedDocId === doc.id}
 				<Card.Root>
-					<Card.Content class="flex items-center gap-4 py-4">
-						<div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-							<typeConfig.icon class="size-5 text-muted-foreground" />
-						</div>
+					<Card.Content class="py-4">
+						<div class="flex items-center gap-4">
+							<button
+								type="button"
+								class="flex min-w-0 flex-1 cursor-pointer items-center gap-4 text-left"
+								aria-expanded={isExpanded}
+								aria-label="{isExpanded ? 'Réduire' : 'Détails'} — {doc.title || typeConfig.label}"
+								onclick={() => (expandedDocId = isExpanded ? null : doc.id)}
+							>
+								<div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted transition-colors hover:bg-muted/80">
+									<typeConfig.icon class="size-5 text-muted-foreground" />
+								</div>
+								<div class="min-w-0 flex-1">
+									<div class="flex items-center gap-2">
+										<p class="truncate text-sm font-medium">{doc.title || typeConfig.label}</p>
+										<Badge variant="outline" class="shrink-0 text-[10px] {statusConfig.class}">
+											{statusConfig.label}
+										</Badge>
+									</div>
+									<div class="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+										{#if related}
+											<span>{related}</span>
+										{/if}
+										{#if doc.generatedAt}
+											<span>{formatDate(doc.generatedAt)}</span>
+										{/if}
+									</div>
+								</div>
+							</button>
 
-						<div class="min-w-0 flex-1">
-							<div class="flex items-center gap-2">
-								<p class="truncate text-sm font-medium">{doc.title || typeConfig.label}</p>
-								<Badge variant="outline" class="shrink-0 text-[10px] {statusConfig.class}">
-									{statusConfig.label}
-								</Badge>
-							</div>
-							<div class="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-								{#if related}
-									<span>{related}</span>
+							<div class="flex shrink-0 items-center gap-1">
+								{#if doc.storagePath}
+									<Button
+										variant="ghost"
+										size="icon"
+										class="size-8 cursor-pointer"
+										onclick={() => openPreview(doc.id)}
+										aria-label="Voir le PDF"
+									>
+										<Eye class="size-4" />
+									</Button>
 								{/if}
-								{#if doc.generatedAt}
-									<span>{formatDate(doc.generatedAt)}</span>
-								{/if}
-							</div>
-						</div>
-
-						<div class="flex shrink-0 items-center gap-1">
-							{#if doc.storagePath}
 								<Button
 									variant="ghost"
 									size="icon"
-									class="size-8 cursor-pointer"
-									onclick={() => openPreview(doc.id)}
-									aria-label="Voir le PDF"
+									class="size-8 cursor-pointer text-destructive hover:text-destructive"
+									onclick={() => confirmDelete({ id: doc.id, title: doc.title || typeConfig.label })}
+									aria-label="Supprimer"
 								>
-									<Eye class="size-4" />
+									<Trash2 class="size-4" />
 								</Button>
-							{/if}
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-8 cursor-pointer text-destructive hover:text-destructive"
-								onclick={() => confirmDelete({ id: doc.id, title: doc.title || typeConfig.label })}
-								aria-label="Supprimer"
-							>
-								<Trash2 class="size-4" />
-							</Button>
+							</div>
 						</div>
+
+						{#if isExpanded}
+							<div class="mt-3 border-t pt-3">
+								<div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+									<History class="size-3.5" />
+									Historique du cycle de vie
+								</div>
+								<div class="mt-2 space-y-1.5 text-xs text-muted-foreground">
+									{#if doc.generatedAt}
+										<div class="flex items-baseline gap-2">
+											<span class="w-28 shrink-0 text-right font-medium">Généré</span>
+											<span>{formatDate(doc.generatedAt)}</span>
+										</div>
+									{/if}
+									{#if doc.sentAt}
+										<div class="flex items-baseline gap-2">
+											<span class="w-28 shrink-0 text-right font-medium">Envoyé</span>
+											<span>{formatDate(doc.sentAt)}{doc.sentTo?.length ? ` → ${doc.sentTo.join(', ')}` : ''}</span>
+										</div>
+									{/if}
+									{#if doc.acceptedAt}
+										<div class="flex items-baseline gap-2">
+											<span class="w-28 shrink-0 text-right font-medium">Accepté</span>
+											<span>{formatDate(doc.acceptedAt)}</span>
+										</div>
+									{/if}
+									{#if doc.refusedAt}
+										<div class="flex items-baseline gap-2">
+											<span class="w-28 shrink-0 text-right font-medium">Refusé</span>
+											<span>{formatDate(doc.refusedAt)}</span>
+										</div>
+									{/if}
+									{#if doc.signedAt}
+										<div class="flex items-baseline gap-2">
+											<span class="w-28 shrink-0 text-right font-medium">Signé</span>
+											<span>{formatDate(doc.signedAt)}</span>
+										</div>
+									{/if}
+									{#if doc.expiresAt}
+										<div class="flex items-baseline gap-2">
+											<span class="w-28 shrink-0 text-right font-medium">Expire</span>
+											<span>{formatDate(doc.expiresAt)}</span>
+										</div>
+									{/if}
+									{#if doc.archivedAt}
+										<div class="flex items-baseline gap-2">
+											<span class="w-28 shrink-0 text-right font-medium">Archivé</span>
+											<span>{formatDate(doc.archivedAt)}</span>
+										</div>
+									{/if}
+									{#if doc.statusChangedAt}
+										<div class="flex items-baseline gap-2">
+											<span class="w-28 shrink-0 text-right font-medium">Dernière MAJ</span>
+											<span>{formatDate(doc.statusChangedAt)}</span>
+										</div>
+									{/if}
+									{#if !doc.generatedAt && !doc.sentAt && !doc.signedAt && !doc.acceptedAt && !doc.refusedAt && !doc.expiresAt && !doc.archivedAt && !doc.statusChangedAt}
+										<p class="italic">Aucun événement enregistré.</p>
+									{/if}
+								</div>
+							</div>
+						{/if}
 					</Card.Content>
 				</Card.Root>
 			{/each}
