@@ -203,7 +203,7 @@ describe('getDocumentPrompts', () => {
 			expect(result.has('convention')).toBe(true);
 		});
 
-		it('considers only the latest non-terminal document when multiples exist', () => {
+		it('suppresses prompt when any active non-terminal document exists among multiples', () => {
 			const actions = [makeQuestAction({ questKey: 'devis', status: 'En cours' })];
 			const docs = [
 				makeDocument({ type: 'devis', effectiveStatus: 'remplace' }),

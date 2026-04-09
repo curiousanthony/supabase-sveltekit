@@ -11,7 +11,7 @@
 	import { invalidateAll, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { toast } from 'svelte-sonner';
-	import { getDocumentPrompts, type QuestActionInput, type DocumentInput } from '$lib/document-prompts';
+	import { getDocumentPrompts, getDocumentTypeForQuest, type QuestActionInput, type DocumentInput } from '$lib/document-prompts';
 	import Files from '@lucide/svelte/icons/files';
 	import FileSignature from '@lucide/svelte/icons/file-signature';
 	import Mail from '@lucide/svelte/icons/mail';
@@ -131,30 +131,35 @@
 
 	const questParam = $derived(page.url.searchParams.get('quest'));
 
-	const documentPrompts = $derived.by(() => {
-		const actions = (data.formation?.actions ?? []) as QuestActionInput[];
-		const docs = (documents ?? []) as DocumentInput[];
-		return getDocumentPrompts(actions, docs);
+	const questActions = $derived.by(() => {
+		const raw = data.formation?.actions ?? [];
+		return raw.map((a: Record<string, unknown>) => ({
+			questKey: (a.questKey as string) ?? null,
+			status: (a.status as QuestActionInput['status']) ?? 'Pas commencé'
+		}));
 	});
 
-	const highlightedDocType = $derived.by(() => {
-		if (!questParam) return null;
-		const prompt = [...documentPrompts.values()].find((p) => p.questKey === questParam);
-		return prompt?.documentType ?? null;
-	});
+	const documentInputs = $derived(
+		documents.map((d) => ({ type: d.type, effectiveStatus: d.effectiveStatus }))
+	);
+
+	const documentPrompts = $derived(getDocumentPrompts(questActions, documentInputs));
+
+	const highlightedDocType = $derived(getDocumentTypeForQuest(questParam));
 
 	$effect(() => {
 		if (!questParam) return;
 
-		const targetId = highlightedDocType
-			? `doc-prompt-${highlightedDocType}`
+		const promptEl = highlightedDocType
+			? document.getElementById(`doc-prompt-${highlightedDocType}`)
 			: null;
 
-		if (targetId) {
-			const el = document.getElementById(targetId);
-			if (el) {
-				el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-			}
+		const target = promptEl ?? (highlightedDocType
+			? document.querySelector(`[data-doc-type="${highlightedDocType}"]`)
+			: null);
+
+		if (target) {
+			target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 		}
 
 		const url = new URL(page.url);
@@ -388,12 +393,14 @@
 				{@const isHighlighted = highlightedDocType === prompt.documentType}
 				<div
 					id="doc-prompt-{prompt.documentType}"
+					role="region"
+					aria-label={prompt.message}
 					class="flex items-center gap-4 rounded-lg border px-4 py-3 transition-all {isHighlighted
 						? 'border-amber-400 bg-amber-50 shadow-sm dark:border-amber-600 dark:bg-amber-950/40'
 						: 'border-amber-200 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20'}"
 				>
 					<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
-						<Sparkles class="size-4 text-amber-600 dark:text-amber-400" />
+						<Sparkles class="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
 					</div>
 					<p class="min-w-0 flex-1 text-sm font-medium text-amber-900 dark:text-amber-100">
 						{prompt.message}
@@ -406,7 +413,7 @@
 							onclick={() => openGenerate(prompt.documentType)}
 						>
 							Générer
-							<ArrowRight class="ml-1 size-3.5" />
+							<ArrowRight class="ml-1 size-3.5" aria-hidden="true" />
 						</Button>
 					{/if}
 				</div>
@@ -436,7 +443,7 @@
 				{@const statusConfig = STATUS_CONFIG[doc.effectiveStatus] ?? STATUS_CONFIG['genere']}
 				{@const related = personName(doc)}
 				{@const isExpanded = expandedDocId === doc.id}
-				<Card.Root>
+				<Card.Root data-doc-type={doc.type}>
 					<Card.Content class="py-4">
 						<div class="flex items-center gap-4">
 							<button

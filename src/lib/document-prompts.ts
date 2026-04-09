@@ -19,6 +19,16 @@ export interface DocumentPrompt {
 
 const TERMINAL_STATUSES = new Set(['remplace', 'annule']);
 
+const SUPPORTED_GENERATABLE_TYPES = new Set([
+	'convention',
+	'convocation',
+	'certificat',
+	'devis',
+	'ordre_mission',
+	'feuille_emargement',
+	'attestation'
+]);
+
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
 	devis: 'Le devis est prêt à être généré',
 	convention: 'La convention est prête à être générée',
@@ -26,13 +36,13 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
 	ordre_mission: "L'ordre de mission est prêt à être généré",
 	certificat: 'Le certificat de réalisation est prêt à être généré',
 	attestation: "L'attestation est prête à être générée",
-	facture: 'La facture est prête à être générée'
+	feuille_emargement: "La feuille d'émargement est prête à être générée"
 };
 
 /**
  * Build quest key → document type mapping from QUEST_TEMPLATES.
  * A quest maps to a document type if it has a sub-action with
- * `inlineType: 'generate-document'`.
+ * `inlineType: 'generate-document'` and the type is server-supported.
  */
 const QUEST_TO_DOC_TYPE: ReadonlyMap<string, string> = (() => {
 	const map = new Map<string, string>();
@@ -40,7 +50,7 @@ const QUEST_TO_DOC_TYPE: ReadonlyMap<string, string> = (() => {
 		for (const sub of quest.subActions) {
 			if (sub.inlineType === 'generate-document' && sub.inlineConfig) {
 				const docType = (sub.inlineConfig as GenerateDocumentConfig).documentType;
-				if (docType) {
+				if (docType && SUPPORTED_GENERATABLE_TYPES.has(docType)) {
 					map.set(quest.key, docType);
 					break;
 				}
@@ -83,6 +93,15 @@ export function getDocumentPrompts(
 	}
 
 	return prompts;
+}
+
+/**
+ * Resolves a quest key to its associated document type,
+ * independent of whether a prompt is currently active.
+ */
+export function getDocumentTypeForQuest(questKey: string | null): string | null {
+	if (!questKey) return null;
+	return QUEST_TO_DOC_TYPE.get(questKey) ?? null;
 }
 
 const TAB_MAP: Record<string, string> = {
