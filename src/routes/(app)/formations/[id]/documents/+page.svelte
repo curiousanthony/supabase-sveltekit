@@ -32,7 +32,7 @@
 	import EyeOff from '@lucide/svelte/icons/eye-off';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
-	import type { Component } from 'svelte';
+	import { onMount, type Component } from 'svelte';
 
 	let { data }: PageProps = $props();
 
@@ -147,8 +147,11 @@
 
 	const highlightedDocType = $derived(getDocumentTypeForQuest(questParam));
 
+	let mounted = $state(false);
+	onMount(() => { mounted = true; });
+
 	$effect(() => {
-		if (!questParam) return;
+		if (!questParam || !mounted) return;
 
 		const promptEl = highlightedDocType
 			? document.getElementById(`doc-prompt-${highlightedDocType}`)
@@ -162,9 +165,11 @@
 			target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 		}
 
-		const url = new URL(page.url);
-		url.searchParams.delete('quest');
-		replaceState(url, {});
+		requestAnimationFrame(() => {
+			const url = new URL(page.url);
+			url.searchParams.delete('quest');
+			replaceState(url, {});
+		});
 	});
 
 	const EMAIL_STATUS_CONFIG: Record<string, { label: string; class: string }> = {
