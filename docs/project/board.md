@@ -4,8 +4,6 @@
 
 ## backlog
 T-10 P1 Contextual generation prompts
-T-32 P1 Schema migration for document lifecycle
-T-33 P1 Action-oriented display states in Documents tab
 T-34 P1 Document lifecycle transition service
 T-9 P1 Document lifecycle states
 T-11 P2 Phase grouping in Documents tab
