@@ -7,6 +7,7 @@ import {
 	jsonb,
 	index
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { formations } from './formations';
 import { users } from './users';
 import { contacts } from './contacts';
@@ -20,13 +21,20 @@ export const formationDocuments = pgTable(
 		formationId: uuid('formation_id').notNull(),
 		type: text().notNull(),
 		title: text().notNull(),
-		status: text().default('draft').notNull(),
+		status: text().default('genere').notNull(),
 		storagePath: text('storage_path'),
 		generatedAt: timestamp('generated_at', { withTimezone: true, mode: 'string' }),
 		generatedBy: uuid('generated_by'),
 		signedAt: timestamp('signed_at', { withTimezone: true, mode: 'string' }),
 		sentAt: timestamp('sent_at', { withTimezone: true, mode: 'string' }),
 		sentTo: text('sent_to').array(),
+		acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'string' }),
+		refusedAt: timestamp('refused_at', { withTimezone: true, mode: 'string' }),
+		expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }),
+		archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'string' }),
+		statusChangedAt: timestamp('status_changed_at', { withTimezone: true, mode: 'string' }),
+		statusChangedBy: uuid('status_changed_by'),
+		replacesDocumentId: uuid('replaces_document_id'),
 		relatedContactId: uuid('related_contact_id'),
 		relatedFormateurId: uuid('related_formateur_id'),
 		relatedSeanceId: uuid('related_seance_id'),
@@ -52,6 +60,16 @@ export const formationDocuments = pgTable(
 			name: 'formation_documents_generated_by_fkey'
 		}).onDelete('set null'),
 		foreignKey({
+			columns: [table.statusChangedBy],
+			foreignColumns: [users.id],
+			name: 'formation_documents_status_changed_by_fkey'
+		}).onDelete('set null'),
+		foreignKey({
+			columns: [table.replacesDocumentId],
+			foreignColumns: [table.id],
+			name: 'formation_documents_replaces_document_id_fkey'
+		}).onDelete('set null'),
+		foreignKey({
 			columns: [table.relatedContactId],
 			foreignColumns: [contacts.id],
 			name: 'formation_documents_related_contact_id_fkey'
@@ -74,7 +92,18 @@ export const formationDocuments = pgTable(
 			.onDelete('set null'),
 		index('formation_documents_formation_id_idx').on(table.formationId),
 		index('formation_documents_type_idx').on(table.type),
-		index('formation_documents_status_idx').on(table.status)
+		index('formation_documents_status_idx').on(table.status),
+		index('formation_documents_formation_type_status_idx').on(
+			table.formationId,
+			table.type,
+			table.status
+		),
+		index('formation_documents_expires_at_idx')
+			.on(table.expiresAt)
+			.where(sql`expires_at IS NOT NULL`),
+		index('formation_documents_replaces_document_id_idx')
+			.on(table.replacesDocumentId)
+			.where(sql`replaces_document_id IS NOT NULL`)
 	]
 );
 

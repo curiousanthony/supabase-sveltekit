@@ -545,7 +545,7 @@ export async function generateDocument(
 			formationId,
 			type,
 			title,
-			status: 'draft',
+			status: 'genere',
 			storagePath,
 			generatedAt: new Date().toISOString(),
 			generatedBy: userId,
