@@ -5,7 +5,6 @@
 ## backlog
 T-10 P1 Contextual generation prompts
 T-34 P1 Document lifecycle transition service
-T-9 P1 Document lifecycle states
 T-11 P2 Phase grouping in Documents tab
 T-12 P2 Regeneration prompt
 T-13 P2 Error states with fix paths
