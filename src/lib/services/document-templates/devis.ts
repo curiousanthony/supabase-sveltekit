@@ -5,6 +5,7 @@ import {
 	type ClientData,
 	SHARED_STYLES,
 	formatDateFr,
+	formatPdfCurrency,
 	buildOrgHeader,
 	buildSignatureBlock,
 	buildReferralFooter
@@ -29,10 +30,6 @@ export interface DevisData {
 	generatedAt: string;
 }
 
-function formatCurrency(n: number): string {
-	return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 export function buildDevis(data: DevisData): TDocumentDefinitions {
 	const { workspace, formation, client, pricing, validityDays, paymentTerms, cancellationTerms, modules, generatedAt } = data;
 
@@ -50,7 +47,7 @@ export function buildDevis(data: DevisData): TDocumentDefinitions {
 					...(pricing.nbParticipants ? [{ text: `Nombre de stagiaires : ${pricing.nbParticipants}`, style: 'small' }] : [])
 				]
 			},
-			{ text: `${formatCurrency(pricing.prixHT)} €`, style: 'value', alignment: 'right' as const }
+			{ text: formatPdfCurrency(pricing.prixHT), style: 'value', alignment: 'right' as const }
 		]
 	];
 
@@ -157,20 +154,20 @@ export function buildDevis(data: DevisData): TDocumentDefinitions {
 					...(pricing.prixParJour !== null
 						? [[
 							{ text: 'Prix par jour HT', style: 'small', alignment: 'right' as const },
-							{ text: `${formatCurrency(pricing.prixParJour)} €`, style: 'small', alignment: 'right' as const }
+							{ text: formatPdfCurrency(pricing.prixParJour), style: 'small', alignment: 'right' as const }
 						]]
 						: []),
 					[
 						{ text: 'Total HT', style: 'label', alignment: 'right' as const },
-						{ text: `${formatCurrency(pricing.prixHT)} €`, style: 'value', alignment: 'right' as const }
+						{ text: formatPdfCurrency(pricing.prixHT), style: 'value', alignment: 'right' as const }
 					],
 					[
 						{ text: `TVA (${pricing.tvaRate}%)`, style: 'label', alignment: 'right' as const },
-						{ text: `${formatCurrency(pricing.tva)} €`, style: 'value', alignment: 'right' as const }
+						{ text: formatPdfCurrency(pricing.tva), style: 'value', alignment: 'right' as const }
 					],
 					[
 						{ text: 'Total TTC', style: 'label', bold: true, alignment: 'right' as const },
-						{ text: `${formatCurrency(pricing.prixTTC)} €`, style: 'value', bold: true, alignment: 'right' as const }
+						{ text: formatPdfCurrency(pricing.prixTTC), style: 'value', bold: true, alignment: 'right' as const }
 					]
 				]
 			},

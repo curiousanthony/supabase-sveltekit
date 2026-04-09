@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-04-09
+- T-1 PDF currency formatting (fr-FR EUR, pdfmake-safe spacing)
+- T-2 Europe/Paris timezone for PDF dates/times
+- T-3 Exhaustive switch for DocumentType in document-generator
+- T-4 Typed pdfmake CJS require (PdfMakeModule)
+- T-5 Certificat émargements filtered by formation at DB (join)
+
 ## 2026-04-08
 - T-S1 Convention fix: participant count + pricing
 - T-S2 3 new PDF templates (feuille_emargement, devis, ordre_mission)

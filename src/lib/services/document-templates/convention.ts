@@ -5,6 +5,7 @@ import {
 	type ClientData,
 	SHARED_STYLES,
 	formatDateFr,
+	formatPdfCurrency,
 	buildOrgHeader,
 	buildSignatureBlock,
 	buildReferralFooter
@@ -182,7 +183,7 @@ export function buildConvention(data: ConventionData): TDocumentDefinitions {
 								? [
 										[
 											{ text: 'Coût total HT', style: 'label' },
-											{ text: `${pricing.prixTotal.toLocaleString('fr-FR')} €`, style: 'value' }
+											{ text: formatPdfCurrency(pricing.prixTotal), style: 'value' }
 										]
 									]
 								: []),
@@ -190,7 +191,7 @@ export function buildConvention(data: ConventionData): TDocumentDefinitions {
 								? [
 										[
 											{ text: 'Coût journalier HT', style: 'label' },
-											{ text: `${pricing.prixParJour.toLocaleString('fr-FR')} €`, style: 'value' }
+											{ text: formatPdfCurrency(pricing.prixParJour), style: 'value' }
 										]
 									]
 								: []),

@@ -8,8 +8,26 @@ import { buildCertificat, type CertificatData } from './document-templates/certi
 import { buildFeuilleEmargement, type FeuilleEmargementData, type EmargementEntry } from './document-templates/feuille-emargement';
 import { buildDevis, type DevisData } from './document-templates/devis';
 import { buildOrdreMission, type OrdreMissionData } from './document-templates/ordre-mission';
-import type { WorkspaceIdentity, FormationData, ClientData, LearnerData } from './document-templates/shared';
-import { fullName } from './document-templates/shared';
+import {
+	type WorkspaceIdentity,
+	type FormationData,
+	type ClientData,
+	type LearnerData,
+	fullName,
+	formatDateFr,
+	PDF_TIMEZONE
+} from './document-templates/shared';
+
+function assertNeverDocumentType(x: never): never {
+	throw new Error(`Type de document non géré : ${String(x)}`);
+}
+
+interface PdfMakeModule {
+	setFonts(fonts: Record<string, Record<string, string>>): void;
+	createPdf(docDefinition: import('pdfmake/interfaces').TDocumentDefinitions): {
+		getBuffer(): Promise<Buffer>;
+	};
+}
 
 export type DocumentType =
 	| 'convention'
@@ -190,7 +208,7 @@ async function generatePdfBuffer(docDefinition: import('pdfmake/interfaces').TDo
 	const { createRequire } = await import('node:module');
 	const esmRequire = createRequire(import.meta.url);
 	// pdfmake 0.3.7: CJS singleton with setFonts/createPdf/getBuffer API
-	const pdfmake = esmRequire('pdfmake/js/index.js');
+	const pdfmake = esmRequire('pdfmake/js/index.js') as PdfMakeModule;
 
 	pdfmake.setFonts({
 		Helvetica: {
@@ -302,11 +320,13 @@ export async function generateDocument(
 					date: s.startAt.slice(0, 10),
 					startTime: new Date(s.startAt).toLocaleTimeString('fr-FR', {
 						hour: '2-digit',
-						minute: '2-digit'
+						minute: '2-digit',
+						timeZone: PDF_TIMEZONE
 					}),
 					endTime: new Date(s.endAt).toLocaleTimeString('fr-FR', {
 						hour: '2-digit',
-						minute: '2-digit'
+						minute: '2-digit',
+						timeZone: PDF_TIMEZONE
 					}),
 					location: s.location
 				}))
@@ -331,28 +351,23 @@ export async function generateDocument(
 			});
 			if (!contact) throw new Error('Contact introuvable');
 
-			const learnerEmargements = await db.query.emargements.findMany({
-				where: and(
-					eq(emargements.contactId, options.contactId)
-				),
-				columns: { signedAt: true, seanceId: true },
-				with: {
-					seance: {
-						columns: { startAt: true, endAt: true, formationId: true }
-					}
-				}
-			});
-
-			const relevantEmargements = learnerEmargements.filter(
-				(e) => e.seance?.formationId === formationId
-			);
+			const certEmargementRows = await db
+				.select({
+					signedAt: emargements.signedAt,
+					startAt: seances.startAt,
+					endAt: seances.endAt
+				})
+				.from(emargements)
+				.innerJoin(seances, eq(emargements.seanceId, seances.id))
+				.where(
+					and(eq(emargements.contactId, options.contactId), eq(seances.formationId, formationId))
+				);
 
 			let attendedHours = 0;
-			for (const e of relevantEmargements) {
-				if (e.signedAt && e.seance) {
+			for (const e of certEmargementRows) {
+				if (e.signedAt) {
 					const hours =
-						(new Date(e.seance.endAt).getTime() - new Date(e.seance.startAt).getTime()) /
-						(1000 * 60 * 60);
+						(new Date(e.endAt).getTime() - new Date(e.startAt).getTime()) / (1000 * 60 * 60);
 					attendedHours += hours;
 				}
 			}
@@ -427,7 +442,7 @@ export async function generateDocument(
 				entries
 			};
 			docDefinition = buildFeuilleEmargement(emargementData);
-			title = `Feuille d'émargement - ${new Date(seance.startAt).toLocaleDateString('fr-FR')} - ${formation.name}`;
+			title = `Feuille d'émargement - ${formatDateFr(seance.startAt)} - ${formation.name}`;
 			relatedSeanceId = options.seanceId;
 			suffix = options.seanceId.slice(0, 8);
 			break;
@@ -517,6 +532,8 @@ export async function generateDocument(
 
 		case 'attestation':
 			throw new Error('Génération de type "attestation" pas encore implémentée');
+		default:
+			return assertNeverDocumentType(type);
 	}
 
 	const pdfBuffer = await generatePdfBuffer(docDefinition);

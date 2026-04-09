@@ -4,6 +4,7 @@ import {
 	type FormationData,
 	SHARED_STYLES,
 	formatDateFr,
+	formatTimeFr,
 	buildOrgHeader,
 	buildReferralFooter
 } from './shared';
@@ -27,10 +28,6 @@ export interface FeuilleEmargementData {
 	};
 	formateurName: string | null;
 	entries: EmargementEntry[];
-}
-
-function formatTimeFr(iso: string): string {
-	return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatSignatureCell(signedAt: string | null): Content {

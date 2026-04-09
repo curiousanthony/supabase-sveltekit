@@ -54,6 +54,9 @@ export interface FormateurData {
 	specialite: string | null;
 }
 
+/** IANA timezone for PDF date/time strings (servers often run UTC). */
+export const PDF_TIMEZONE = 'Europe/Paris';
+
 export const SHARED_STYLES: StyleDictionary = {
 	header: { fontSize: 18, bold: true, margin: [0, 0, 0, 10] },
 	subheader: { fontSize: 14, bold: true, margin: [0, 15, 0, 5] },
@@ -72,8 +75,32 @@ export function formatDateFr(isoDate: string | null): string {
 	return date.toLocaleDateString('fr-FR', {
 		day: 'numeric',
 		month: 'long',
-		year: 'numeric'
+		year: 'numeric',
+		timeZone: PDF_TIMEZONE
 	});
+}
+
+/** Time portion for PDFs (e.g. signature blocks). */
+export function formatTimeFr(iso: string): string {
+	return new Date(iso).toLocaleTimeString('fr-FR', {
+		hour: '2-digit',
+		minute: '2-digit',
+		timeZone: PDF_TIMEZONE
+	});
+}
+
+/**
+ * French euro amounts for PDF text. Normalizes narrow no-break space (U+202F) to ASCII space
+ * so Helvetica in pdfmake does not render thousands separators as wrong glyphs.
+ */
+export function formatPdfCurrency(amount: number): string {
+	const formatted = new Intl.NumberFormat('fr-FR', {
+		style: 'currency',
+		currency: 'EUR',
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2
+	}).format(amount);
+	return formatted.replace(/\u202f/g, ' ').replace(/\u00a0/g, ' ');
 }
 
 export function fullName(firstName: string | null, lastName: string | null): string {

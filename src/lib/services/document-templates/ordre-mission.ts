@@ -4,6 +4,7 @@ import {
 	type FormationData,
 	SHARED_STYLES,
 	formatDateFr,
+	formatPdfCurrency,
 	fullName,
 	buildOrgHeader,
 	buildSignatureBlock,
@@ -28,10 +29,6 @@ export interface OrdreMissionData {
 	generatedAt: string;
 }
 
-function formatCurrency(n: number): string {
-	return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 export function buildOrdreMission(data: OrdreMissionData): TDocumentDefinitions {
 	const { workspace, formation, formateur, mission, modules, generatedAt } = data;
 	const formateurName = fullName(formateur.firstName, formateur.lastName);
@@ -47,7 +44,7 @@ export function buildOrdreMission(data: OrdreMissionData): TDocumentDefinitions 
 	if (mission.tjm !== null) {
 		financialRows.push([
 			{ text: 'Taux journalier (TJM) HT', style: 'label' },
-			{ text: `${formatCurrency(mission.tjm)} €`, style: 'value', alignment: 'right' as const }
+			{ text: `${formatPdfCurrency(mission.tjm)}`, style: 'value', alignment: 'right' as const }
 		]);
 	}
 	if (mission.numberOfDays !== null) {
@@ -59,25 +56,25 @@ export function buildOrdreMission(data: OrdreMissionData): TDocumentDefinitions 
 	if (totalHonoraires !== null) {
 		financialRows.push([
 			{ text: 'Total honoraires HT', style: 'label', bold: true },
-			{ text: `${formatCurrency(totalHonoraires)} €`, style: 'value', bold: true, alignment: 'right' as const }
+			{ text: `${formatPdfCurrency(totalHonoraires)}`, style: 'value', bold: true, alignment: 'right' as const }
 		]);
 	}
 	if (mission.deplacementCost !== null && mission.deplacementCost > 0) {
 		financialRows.push([
 			{ text: 'Frais de déplacement', style: 'label' },
-			{ text: `${formatCurrency(mission.deplacementCost)} €`, style: 'value', alignment: 'right' as const }
+			{ text: `${formatPdfCurrency(mission.deplacementCost)}`, style: 'value', alignment: 'right' as const }
 		]);
 	}
 	if (mission.hebergementCost !== null && mission.hebergementCost > 0) {
 		financialRows.push([
 			{ text: 'Frais d\'hébergement', style: 'label' },
-			{ text: `${formatCurrency(mission.hebergementCost)} €`, style: 'value', alignment: 'right' as const }
+			{ text: `${formatPdfCurrency(mission.hebergementCost)}`, style: 'value', alignment: 'right' as const }
 		]);
 	}
 	if (totalFrais > 0 || totalHonoraires !== null) {
 		financialRows.push([
 			{ text: 'Total mission HT', style: 'label', bold: true },
-			{ text: `${formatCurrency(totalMission)} €`, style: 'value', bold: true, alignment: 'right' as const }
+			{ text: `${formatPdfCurrency(totalMission)}`, style: 'value', bold: true, alignment: 'right' as const }
 		]);
 	}
 
