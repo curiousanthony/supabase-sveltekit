@@ -53,3 +53,9 @@ Structure:
 5. **Test File Paths** — exact paths to the test files you created
 
 Actual test files go directly in `src/` alongside the code they test.
+
+## Ticket Tracking
+
+When working on a ticket, append one line to its `## log`: `- {date} test-engineer: {summary}`.
+Name artifact files with ticket ID: `{date}-T-{id}-{slug}.md`. Write artifacts in English
+(preserve French for user-facing terms like formation, émargement, séance).

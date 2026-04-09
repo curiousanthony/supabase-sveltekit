@@ -59,3 +59,9 @@ Structure:
 - **Backend with user-visible impact**: QA mandatory
 - **Pure backend refactoring / migrations with no visible change**: QA optional
 - **Typos, variable renames, config changes**: skip QA
+
+## Ticket Tracking
+
+When working on a ticket, append one line to its `## log`: `- {date} qa-tester: {summary}`.
+Name artifact files with ticket ID: `{date}-T-{id}-{slug}.md`. Write artifacts in English
+(preserve French for user-facing terms like formation, émargement, séance).

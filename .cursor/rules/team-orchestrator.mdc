@@ -33,17 +33,16 @@ Custom subagents are defined in `.cursor/agents/`. Launch them via the **Task to
 
 ## Task Classification
 
-Analyze the task and pick a recipe:
+Analyze the ticket type and pick a recipe:
 
-| Task Type | Subagents | Phases |
-|-----------|-----------|--------|
-| **New feature with UI** | ux-designer, product-analyst, architect, test-engineer, implementer, reviewer, security-analyst, qa-tester, project-manager | All 7 |
-| **Schema-only change** | architect, implementer, security-analyst, reviewer | 2→4→5 |
-| **Bug fix with UX impact** | ux-designer (quick), test-engineer, implementer, qa-tester | 1→3→4→6 |
-| **Small bug fix (no UI)** | test-engineer, implementer, reviewer | 3→4→5 |
-| **Documentation / project update** | project-manager | 7 only |
-| **Meeting digest** | project-manager | 7 only |
-| **Team improvement** | team-architect | Meta |
+| Ticket type | Phases |
+|-------------|--------|
+| `feature` | 0-1-2-3-4-5-6-7-7b |
+| `bug` (UI impact) | 0-1(quick)-3-4-6-7b |
+| `bug` (no UI) | 0-3-4-5-7b |
+| `tech-debt` | 0-4-5-7b |
+| `security` | 0-4-5(security-analyst)-7b |
+| `docs` | 0-7-7b |
 
 ## How to Launch Subagents
 
@@ -65,7 +64,15 @@ Task(
 
 For **parallel** phases, send multiple Task tool calls in the same message.
 
-## 7-Phase Sequence
+## Phase Sequence
+
+### 0. Ticket Pickup
+Use the `project-tracker` skill for all ticket operations. Run `bash scripts/board.sh` first —
+check its output for WARNING (orphaned tickets) or ACTION (learnings review due) and handle
+before proceeding. Then read `docs/project/board.md`. If user specified a task, find or create
+a matching ticket. If no task specified, select highest-priority sprint item (skip `blocked_by`
+tickets whose blockers aren't `done`). Read the ticket file. Confirm with user:
+"Picking up T-{id}: {title}. Phases: {list}. Proceed?" On confirmation, set assignee and status.
 
 ### 1. Brainstorm (parallel)
 Launch `ux-designer` + `product-analyst` as **parallel** Task calls in a single message. After both return, synthesize: identify consensus, surface tensions between UX and compliance, present design choices to user via AskQuestion. **User must approve design direction before proceeding.**
@@ -88,6 +95,11 @@ Launch `qa-tester`. Tell it to read `docs/team-artifacts/design/` first, then te
 ### 7. Document
 Launch `project-manager`. Tell it to read all relevant artifacts from prior phases. Updates `docs/project/` files, records decisions, writes feature documentation.
 
+### 7b. Close Ticket
+Use the `project-tracker` skill's Close Ticket recipe. The recipe requires a learning
+(one-line reusable insight, or "none"). Steps: update status → move to done/ →
+regenerate board → append to changelog → append learning to learnings.md.
+
 ## Phase Gates
 
 - After phase 1: user approves design direction
@@ -95,15 +107,16 @@ Launch `project-manager`. Tell it to read all relevant artifacts from prior phas
 - After phase 5: Critical/High review findings must be fixed
 - After phase 6: QA must PASS (or loop back to phase 4)
 
-## Artifact Protocol
+## Subagent Context
 
-Each subagent writes findings to `docs/team-artifacts/<team>/` as dated markdown files. When launching a subagent, **include in the prompt** which artifact directories it should read first:
+When launching any subagent, include in the prompt:
+- The ticket ID and full ticket file content
+- Specific artifact paths from the ticket's `artifacts` array (never "read the whole directory")
+- The plan slug if one exists
 
-- `test-engineer` reads `design/` + `architecture/`
-- `implementer` reads `architecture/` + `testing/`
-- `reviewer` reads `design/`
-- `qa-tester` reads `design/`
-- `project-manager` reads all relevant artifacts
+Subagents write artifacts with ticket ID in filename: `{date}-T-{id}-{slug}.md`
+Subagents append to the ticket's `## log` when done: `- {date} {agent}: {summary}`
+All artifacts in English (preserve French for user-facing app terms).
 
 ## Synthesis Protocol
 

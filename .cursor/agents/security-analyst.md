@@ -57,3 +57,9 @@ Structure:
    - Fix: specific remediation
 3. **RLS Policy Review** — for any new/modified tables, list required policies
 4. **Required Fixes** — items that MUST be resolved before shipping (Critical + High)
+
+## Ticket Tracking
+
+When working on a ticket, append one line to its `## log`: `- {date} security-analyst: {summary}`.
+Name artifact files with ticket ID: `{date}-T-{id}-{slug}.md`. Write artifacts in English
+(preserve French for user-facing terms like formation, émargement, séance).

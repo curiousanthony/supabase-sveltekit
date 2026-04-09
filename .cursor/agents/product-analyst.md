@@ -69,3 +69,9 @@ Structure:
 3. **Qualiopi Assessment** — indicators touched, gaps found, quest ID references
 4. **Tensions** — where UX and compliance pull in different directions, with resolution recommendation
 5. **Questions for the team** — max 5, most important first
+
+## Ticket Tracking
+
+When working on a ticket, append one line to its `## log`: `- {date} product-analyst: {summary}`.
+Name artifact files with ticket ID: `{date}-T-{id}-{slug}.md`. Write artifacts in English
+(preserve French for user-facing terms like formation, émargement, séance).

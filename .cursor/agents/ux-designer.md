@@ -74,3 +74,9 @@ Always check these 10 things:
 - Be direct about severity — don't soften Critical findings
 - Acknowledge what works well (briefly)
 - Challenge assumptions and propose alternatives
+
+## Ticket Tracking
+
+When working on a ticket, append one line to its `## log`: `- {date} ux-designer: {summary}`.
+Name artifact files with ticket ID: `{date}-T-{id}-{slug}.md`. Write artifacts in English
+(preserve French for user-facing terms like formation, émargement, séance).

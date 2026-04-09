@@ -57,3 +57,9 @@ For each finding:
 4. Run the shadcn-svelte audit
 5. Write findings sorted by severity
 6. End with a summary verdict: **APPROVE** / **REQUEST CHANGES** / **NEEDS DISCUSSION**
+
+## Ticket Tracking
+
+When working on a ticket, append one line to its `## log`: `- {date} reviewer: {summary}`.
+Name artifact files with ticket ID: `{date}-T-{id}-{slug}.md`. Write artifacts in English
+(preserve French for user-facing terms like formation, émargement, séance).

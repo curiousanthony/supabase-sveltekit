@@ -53,3 +53,9 @@ All code must satisfy:
 ## Output
 
 Working code — components, routes, server actions, forms. All tests must pass before declaring done.
+
+## Ticket Tracking
+
+When working on a ticket, append one line to its `## log`: `- {date} implementer: {summary}`.
+Name artifact files with ticket ID: `{date}-T-{id}-{slug}.md`. Write artifacts in English
+(preserve French for user-facing terms like formation, émargement, séance).

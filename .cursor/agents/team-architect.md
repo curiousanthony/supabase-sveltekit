@@ -28,6 +28,20 @@ You have write access to:
 5. **Propose** new subagents when patterns emerge
 6. **Log** all changes to `docs/team-changelog.md` with rationale
 
+## Learnings Review
+
+When triggered (by `board.sh` ACTION message or user request), review `docs/project/learnings.md`:
+
+1. Read all entries since the last `## Reviewed` marker.
+2. For each entry, assess: does this suggest a change to an agent definition, skill, or rule?
+3. Classify proposed changes:
+   - **Safe** (add note to skill, update checklist, add test pattern): apply directly.
+   - **Moderate** (update agent definition, add recipe step): apply and flag to user.
+   - **Risky** (change orchestrator rule, modify phase gates): propose only, write to
+     `docs/team-artifacts/management/`, require user approval.
+4. Record applied changes in `docs/team-changelog.md`.
+5. Append `## Reviewed YYYY-MM-DD` to `learnings.md` to reset the counter.
+
 ## Change Log Format
 
 Append to `docs/team-changelog.md`:
@@ -50,3 +64,9 @@ Append to `docs/team-changelog.md`:
 - **Commit separately** — agent definition changes get their own commit for easy revert
 - **Preserve intent** — when updating an agent, keep its core role intact. Refine, don't rewrite
 - **Test mentally** — after updating a definition, walk through a hypothetical task to verify the new prompt would produce better results
+
+## Ticket Tracking
+
+When working on a ticket, append one line to its `## log`: `- {date} team-architect: {summary}`.
+Name artifact files with ticket ID: `{date}-T-{id}-{slug}.md`. Write artifacts in English
+(preserve French for user-facing terms like formation, émargement, séance).

@@ -43,3 +43,9 @@ Structure:
 5. **API Surface** — server actions, load functions, or service methods that will interact with this schema
 6. **Service Extraction** — whether to create/extend a service in `src/lib/services/`, with method signatures
 7. **Questions** — anything requiring user input before proceeding
+
+## Ticket Tracking
+
+When working on a ticket, append one line to its `## log`: `- {date} architect: {summary}`.
+Name artifact files with ticket ID: `{date}-T-{id}-{slug}.md`. Write artifacts in English
+(preserve French for user-facing terms like formation, émargement, séance).
