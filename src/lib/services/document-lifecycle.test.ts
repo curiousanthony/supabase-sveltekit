@@ -474,14 +474,14 @@ describe('transition matrix coverage', () => {
 
 describe('transitionStatus', () => {
 	beforeEach(() => {
-		mockDbFindFirst.mockReset();
-		mockDbReturning.mockReset();
+		mockTxFindFirst.mockReset();
+		mockTxReturning.mockReset();
 		mockLogAuditEvent.mockReset().mockResolvedValue(undefined);
 	});
 
-	it('succeeds for a valid transition and calls logAuditEvent', async () => {
-		mockDbFindFirst.mockResolvedValue({ id: 'doc-1', type: 'devis', status: 'genere' });
-		mockDbReturning.mockResolvedValue([{ id: 'doc-1' }]);
+	it('succeeds for a valid transition and calls logAuditEvent with tx', async () => {
+		mockTxFindFirst.mockResolvedValue({ id: 'doc-1', type: 'devis', status: 'genere' });
+		mockTxReturning.mockResolvedValue([{ id: 'doc-1' }]);
 
 		const result = await transitionStatus(makeCtx(), 'envoye');
 
@@ -497,12 +497,13 @@ describe('transitionStatus', () => {
 				fieldName: 'status',
 				oldValue: 'genere',
 				newValue: 'envoye'
-			})
+			}),
+			expect.anything()
 		);
 	});
 
 	it('returns error when document is not found', async () => {
-		mockDbFindFirst.mockResolvedValue(undefined);
+		mockTxFindFirst.mockResolvedValue(undefined);
 
 		const result = await transitionStatus(makeCtx(), 'envoye');
 
@@ -512,7 +513,7 @@ describe('transitionStatus', () => {
 	});
 
 	it('returns error when current status is invalid for the document type', async () => {
-		mockDbFindFirst.mockResolvedValue({
+		mockTxFindFirst.mockResolvedValue({
 			id: 'doc-1',
 			type: 'convention',
 			status: 'accepte'
@@ -526,7 +527,7 @@ describe('transitionStatus', () => {
 	});
 
 	it('returns error when transition is not allowed', async () => {
-		mockDbFindFirst.mockResolvedValue({ id: 'doc-1', type: 'devis', status: 'genere' });
+		mockTxFindFirst.mockResolvedValue({ id: 'doc-1', type: 'devis', status: 'genere' });
 
 		const result = await transitionStatus(makeCtx(), 'signe');
 
@@ -536,7 +537,7 @@ describe('transitionStatus', () => {
 	});
 
 	it('returns error on transitions out of terminal state', async () => {
-		mockDbFindFirst.mockResolvedValue({ id: 'doc-1', type: 'devis', status: 'annule' });
+		mockTxFindFirst.mockResolvedValue({ id: 'doc-1', type: 'devis', status: 'annule' });
 
 		const result = await transitionStatus(makeCtx(), 'envoye');
 
@@ -545,8 +546,8 @@ describe('transitionStatus', () => {
 	});
 
 	it('handles optimistic locking failure (race condition)', async () => {
-		mockDbFindFirst.mockResolvedValue({ id: 'doc-1', type: 'devis', status: 'genere' });
-		mockDbReturning.mockResolvedValue([]);
+		mockTxFindFirst.mockResolvedValue({ id: 'doc-1', type: 'devis', status: 'genere' });
+		mockTxReturning.mockResolvedValue([]);
 
 		const result = await transitionStatus(makeCtx(), 'envoye');
 
@@ -579,14 +580,16 @@ describe('cancelFormationDocuments', () => {
 				entityId: 'doc-1',
 				oldValue: 'genere',
 				newValue: 'annule'
-			})
+			}),
+			expect.anything()
 		);
 		expect(mockLogAuditEvent).toHaveBeenCalledWith(
 			expect.objectContaining({
 				entityId: 'doc-2',
 				oldValue: 'envoye',
 				newValue: 'annule'
-			})
+			}),
+			expect.anything()
 		);
 	});
 
@@ -616,7 +619,8 @@ describe('cancelFormationDocuments', () => {
 				fieldName: 'status',
 				oldValue: 'signatures_en_cours',
 				newValue: 'annule'
-			})
+			}),
+			expect.anything()
 		);
 	});
 });
@@ -644,7 +648,8 @@ describe('replaceDocument', () => {
 				entityId: 'doc-old',
 				oldValue: 'genere',
 				newValue: 'remplace'
-			})
+			}),
+			expect.anything()
 		);
 	});
 

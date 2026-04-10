@@ -148,72 +148,78 @@ export async function transitionStatus(
 	ctx: TransitionContext,
 	toStatus: DocumentStatus
 ): Promise<TransitionResult> {
-	const doc = await db.query.formationDocuments.findFirst({
-		where: and(
-			eq(formationDocuments.id, ctx.documentId),
-			eq(formationDocuments.formationId, ctx.formationId)
-		),
-		columns: { id: true, type: true, status: true }
-	});
-
-	if (!doc) {
-		return { success: false, error: 'Document introuvable' };
-	}
-
-	const docType = doc.type as DocumentType;
-	const fromStatus = doc.status as DocumentStatus;
-
-	if (!isValidStatus(docType, fromStatus)) {
-		return { success: false, error: `Statut actuel invalide : ${fromStatus}` };
-	}
-
-	if (!isValidTransition(docType, fromStatus, toStatus)) {
-		return {
-			success: false,
-			error: `Transition interdite : ${fromStatus} → ${toStatus} pour ${docType}`
-		};
-	}
-
-	const now = new Date().toISOString();
-	const updateFields: Partial<DocInsert> = {
-		status: toStatus,
-		statusChangedAt: now,
-		statusChangedBy: ctx.userId,
-		updatedAt: now
-	};
-
-	const timestampField = STATUS_TIMESTAMP_FIELD[toStatus];
-	if (timestampField) {
-		(updateFields as Record<string, unknown>)[timestampField] = now;
-	}
-
-	const updated = await db
-		.update(formationDocuments)
-		.set(updateFields)
-		.where(
-			and(
+	return db.transaction(async (tx) => {
+		const doc = await tx.query.formationDocuments.findFirst({
+			where: and(
 				eq(formationDocuments.id, ctx.documentId),
-				eq(formationDocuments.status, fromStatus)
+				eq(formationDocuments.formationId, ctx.formationId)
+			),
+			columns: { id: true, type: true, status: true }
+		});
+
+		if (!doc) {
+			return { success: false, error: 'Document introuvable' };
+		}
+
+		const docType = doc.type as DocumentType;
+		const fromStatus = doc.status as DocumentStatus;
+
+		if (!isValidStatus(docType, fromStatus)) {
+			return { success: false, error: `Statut actuel invalide : ${fromStatus}` };
+		}
+
+		if (!isValidTransition(docType, fromStatus, toStatus)) {
+			return {
+				success: false,
+				error: `Transition interdite : ${fromStatus} → ${toStatus} pour ${docType}`
+			};
+		}
+
+		const now = new Date().toISOString();
+		const updateFields: Partial<DocInsert> = {
+			status: toStatus,
+			statusChangedAt: now,
+			statusChangedBy: ctx.userId,
+			updatedAt: now
+		};
+
+		const timestampField = STATUS_TIMESTAMP_FIELD[toStatus];
+		if (timestampField) {
+			(updateFields as Record<string, unknown>)[timestampField] = now;
+		}
+
+		const updated = await tx
+			.update(formationDocuments)
+			.set(updateFields)
+			.where(
+				and(
+					eq(formationDocuments.id, ctx.documentId),
+					eq(formationDocuments.formationId, ctx.formationId),
+					eq(formationDocuments.status, fromStatus)
+				)
 			)
-		)
-		.returning({ id: formationDocuments.id });
+			.returning({ id: formationDocuments.id });
 
-	if (updated.length === 0) {
-		return { success: false, error: 'Transition échouée — statut modifié entre-temps' };
-	}
+		if (updated.length === 0) {
+			return { success: false, error: 'Transition échouée — statut modifié entre-temps' };
+		}
 
-	await logAuditEvent({
-		formationId: ctx.formationId,
-		userId: ctx.userId,
-		actionType: 'document_status_change',
-		entityType: 'formation_document',
-		entityId: ctx.documentId,
-		fieldName: 'status',
-		oldValue: fromStatus,
-		newValue: toStatus
+		await logAuditEvent(
+			{
+				formationId: ctx.formationId,
+				userId: ctx.userId,
+				actionType: 'document_status_change',
+				entityType: 'formation_document',
+				entityId: ctx.documentId,
+				fieldName: 'status',
+				oldValue: fromStatus,
+				newValue: toStatus
+			},
+			tx
+		);
+
+		return { success: true };
 	});
-
-	return { success: true };
 }
 
 export async function cancelFormationDocuments(
@@ -242,16 +248,19 @@ export async function cancelFormationDocuments(
 				})
 				.where(eq(formationDocuments.id, doc.id));
 
-			await logAuditEvent({
-				formationId,
-				userId,
-				actionType: 'document_status_change',
-				entityType: 'formation_document',
-				entityId: doc.id,
-				fieldName: 'status',
-				oldValue: doc.status,
-				newValue: 'annule'
-			});
+			await logAuditEvent(
+				{
+					formationId,
+					userId,
+					actionType: 'document_status_change',
+					entityType: 'formation_document',
+					entityId: doc.id,
+					fieldName: 'status',
+					oldValue: doc.status,
+					newValue: 'annule'
+				},
+				tx
+			);
 		}
 
 		return { cancelled: inFlightDocs.length };
@@ -331,15 +340,18 @@ export async function replaceDocument(
 			.set({ replacesDocumentId: ctx.documentId })
 			.where(eq(formationDocuments.id, newDocumentId));
 
-		await logAuditEvent({
-			formationId: ctx.formationId,
-			userId: ctx.userId,
-			actionType: 'document_replaced',
-			entityType: 'formation_document',
-			entityId: ctx.documentId,
-			oldValue: fromStatus,
-			newValue: 'remplace'
-		});
+		await logAuditEvent(
+			{
+				formationId: ctx.formationId,
+				userId: ctx.userId,
+				actionType: 'document_replaced',
+				entityType: 'formation_document',
+				entityId: ctx.documentId,
+				oldValue: fromStatus,
+				newValue: 'remplace'
+			},
+			tx
+		);
 
 		return { success: true };
 	});
