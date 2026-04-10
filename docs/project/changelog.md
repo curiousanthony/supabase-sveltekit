@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-04-10
+- T-28 Removed sendFormationEmail dead code (raw HTML path superseded by Postmark templates)
 - T-8 Workspace logos processed at upload (Sharp → PNG, max 512px), bucket PNG-only migration, safe replace order
 - T-39 Formations Kanban: horizontal scroll columns (match deals pipeline layout)
 

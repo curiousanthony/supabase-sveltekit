@@ -22,9 +22,9 @@ T-35 P2 Devis accept/refuse actions
 T-36 P2 Compliance date warnings
 T-37 P2 "Manual: Marquer comme envoyé"
 T-38 P2 Quest CTA — per-formation onboarding (every quest)
+T-40 P2 Postmark template — questionnaire satisfaction formateur (fin de formation)
 T-18 P3 Notification UX for auto-generated documents
 T-22 P3 "Hérité du deal badge in Documents tab"
 T-26 P3 Questionnaire system evolution
-T-28 P3 Remove or wire sendFormationEmail
 T-29 P3 Unify workspace invite emails on Postmark
 T-31 P3 Signature overlay on PDF via pdf-lib

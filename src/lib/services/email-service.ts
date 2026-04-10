@@ -73,16 +73,6 @@ function isAbortError(err: unknown): boolean {
 	return false;
 }
 
-export interface EmailPayload {
-	to: string;
-	toName?: string;
-	subject: string;
-	htmlBody: string;
-	textBody?: string;
-	attachments?: { filename: string; content: Buffer; contentType: string }[];
-	tag?: string;
-}
-
 export interface TemplateEmailPayload {
 	to: string;
 	toName?: string;
@@ -134,135 +124,6 @@ export const EMAIL_TYPE_TO_TEMPLATE: Record<string, string> = {
 	evaluation_transfert: 'evaluation-transfert',
 	bilan_formateur: 'bilan-formateur'
 };
-
-/**
- * Send a formation-related email.
- *
- * Phase 1: Logs to `formation_emails` table and optionally sends via Postmark
- * if POSTMARK_SERVER_TOKEN is configured.
- */
-export async function sendFormationEmail(
-	payload: EmailPayload,
-	formationId: string,
-	meta: {
-		type: string;
-		recipientType: string;
-		documentId?: string;
-		createdBy: string;
-	}
-): Promise<SendEmailResult> {
-	let postmarkMessageId: string | undefined;
-	let status = 'logged';
-	let providerError: string | undefined;
-
-	const postmarkToken = env.POSTMARK_SERVER_TOKEN;
-	if (postmarkToken) {
-		try {
-			const postmarkPayload: Record<string, unknown> = {
-				From: env.POSTMARK_FROM_EMAIL ?? 'noreply@mentoremanager.fr',
-				To: payload.toName
-					? `"${payload.toName.replace(/["\\]/g, '')}" <${payload.to}>`
-					: payload.to,
-				Subject: payload.subject,
-				HtmlBody: payload.htmlBody,
-				TextBody: payload.textBody ?? stripHtml(payload.htmlBody),
-				Tag: payload.tag ?? meta.type,
-				TrackOpens: true,
-				TrackLinks: 'HtmlAndText',
-				MessageStream: 'outbound'
-			};
-
-			if (payload.attachments?.length) {
-				postmarkPayload.Attachments = payload.attachments.map((a) => ({
-					Name: a.filename,
-					Content: a.content.toString('base64'),
-					ContentType: a.contentType
-				}));
-			}
-
-			const timeoutMs = getPostmarkFetchTimeoutMs();
-
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-			let response: Response;
-			try {
-				response = await fetch('https://api.postmarkapp.com/email', {
-					method: 'POST',
-					headers: {
-						Accept: 'application/json',
-						'Content-Type': 'application/json',
-						'X-Postmark-Server-Token': postmarkToken
-					},
-					body: JSON.stringify(postmarkPayload),
-					signal: controller.signal
-				});
-			} finally {
-				clearTimeout(timeoutId);
-			}
-
-			if (response.ok) {
-				const result = (await response.json()) as { MessageID?: string };
-				postmarkMessageId = result.MessageID;
-				const deliveryType = await getPostmarkServerDeliveryType();
-				if (deliveryType === 'Sandbox') {
-					status = 'sandbox';
-					providerError = POSTMARK_SANDBOX_PROVIDER_HINT;
-				} else {
-					status = 'sent';
-				}
-			} else {
-				const errorText = await response.text();
-				console.error('Postmark send failed:', errorText);
-				status = 'failed';
-				try {
-					const j = JSON.parse(errorText) as { Message?: string };
-					if (j.Message) providerError = j.Message;
-				} catch {
-					if (errorText) providerError = errorText.slice(0, 500);
-				}
-			}
-		} catch (err) {
-			if (isAbortError(err)) {
-				console.error(
-					`Postmark send error: délai dépassé (${getPostmarkFetchTimeoutMs()} ms, configurable via POSTMARK_FETCH_TIMEOUT_MS)`
-				);
-				providerError = `Délai dépassé (${getPostmarkFetchTimeoutMs()} ms)`;
-			} else {
-				console.error('Postmark send error:', err);
-				providerError = err instanceof Error ? err.message : 'Erreur réseau';
-			}
-			status = 'failed';
-		}
-	}
-
-	const sendStatus: EmailSendStatus = status as EmailSendStatus;
-
-	const [emailRecord] = await db
-		.insert(formationEmails)
-		.values({
-			formationId,
-			type: meta.type,
-			subject: payload.subject,
-			recipientEmail: payload.to,
-			recipientName: payload.toName ?? null,
-			recipientType: meta.recipientType,
-			status,
-			sentAt: status === 'sent' ? new Date().toISOString() : null,
-			postmarkMessageId: postmarkMessageId ?? null,
-			bodyPreview: payload.htmlBody.slice(0, 500),
-			documentId: meta.documentId ?? null,
-			createdBy: meta.createdBy
-		})
-		.returning({ id: formationEmails.id });
-
-	return {
-		emailId: emailRecord.id,
-		postmarkMessageId,
-		sendStatus,
-		...((sendStatus === 'failed' || sendStatus === 'sandbox') && providerError ? { providerError } : {})
-	};
-}
 
 /**
  * Send a formation-related email using a Postmark template.
@@ -397,17 +258,4 @@ export async function sendFormationTemplateEmail(
 		sendStatus,
 		...((sendStatus === 'failed' || sendStatus === 'sandbox') && providerError ? { providerError } : {})
 	};
-}
-
-function stripHtml(html: string): string {
-	return html
-		.replace(/<br\s*\/?>/gi, '\n')
-		.replace(/<\/p>/gi, '\n\n')
-		.replace(/<[^>]+>/g, '')
-		.replace(/&nbsp;/g, ' ')
-		.replace(/&amp;/g, '&')
-		.replace(/&lt;/g, '<')
-		.replace(/&gt;/g, '>')
-		.replace(/\n{3,}/g, '\n\n')
-		.trim();
 }
