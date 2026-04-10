@@ -282,7 +282,10 @@
 										<UploadIcon class="size-4" />
 										{logoUploading ? 'Téléversement...' : workspace?.logoUrl ? 'Remplacer' : 'Téléverser'}
 									</Button.Root>
-									<p class="text-xs text-muted-foreground">JPEG, PNG, WebP ou SVG (max 5MB)</p>
+									<p class="text-xs text-muted-foreground">
+										Préférez PNG ou JPEG (logo). Téléversement max 5&nbsp;Mo ; le fichier est redimensionné
+										(côté long max 512&nbsp;px) et enregistré en PNG pour les PDF et les e-mails.
+									</p>
 								</div>
 							</div>
 						</div>
