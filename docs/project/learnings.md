@@ -20,5 +20,6 @@ One-line insights discovered during development. Reviewed by team-architect ever
 - 2026-04-10 T-6: RLS via EXISTS subquery joining child→parent→workspaces_users is the standard pattern for tables without direct workspace_id
 - 2026-04-10 T-7: Storage policies use (storage.foldername(name))[1]::uuid to extract entity ID from path convention {entityId}/filename.ext
 - 2026-04-10 T-28: When raw-HTML email path exists alongside template-based path, remove raw HTML — all Postmark sends should use templates for consistency and deliverability
+- 2026-04-10 T-37: transitionStatus already sets timestamp fields via STATUS_TIMESTAMP_FIELD map — no need to manually set sentAt when transitioning to envoye
 
 ## Reviewed 2026-04-08

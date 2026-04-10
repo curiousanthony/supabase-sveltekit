@@ -4,7 +4,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { generateDocument, getDocumentSignedUrl, type DocumentType } from '$lib/services/document-generator';
-import { getEffectiveStatus } from '$lib/services/document-lifecycle';
+import { getEffectiveStatus, transitionStatus } from '$lib/services/document-lifecycle';
 import type { PageServerLoad, Actions } from './$types';
 
 async function verifyFormationOwnership(formationId: string, workspaceId: string) {
@@ -154,6 +154,31 @@ export const actions: Actions = {
 				eq(formationDocuments.formationId, params.id)
 			)
 		);
+
+		return { success: true };
+	},
+
+	markAsSent: async ({ request, params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+		if (!isOwner) return fail(403, { message: 'Accès refusé' });
+
+		const formData = await request.formData();
+		const documentId = formData.get('documentId')?.toString();
+		if (!documentId) return fail(400, { message: 'Document ID manquant' });
+
+		const result = await transitionStatus(
+			{ documentId, formationId: params.id, userId: user.id },
+			'envoye'
+		);
+
+		if (!result.success) {
+			return fail(400, { message: result.error ?? 'Transition impossible' });
+		}
 
 		return { success: true };
 	}

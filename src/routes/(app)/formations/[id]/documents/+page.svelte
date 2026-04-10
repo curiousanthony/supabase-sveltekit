@@ -26,6 +26,7 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import Send from '@lucide/svelte/icons/send';
+	import MailCheck from '@lucide/svelte/icons/mail-check';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import History from '@lucide/svelte/icons/history';
@@ -117,6 +118,7 @@
 	let deleteDialogOpen = $state(false);
 	let documentToDelete = $state<{ id: string; title: string } | null>(null);
 	let deleting = $state(false);
+	let markingSentId = $state<string | null>(null);
 	let showReplaced = $state(false);
 	let expandedDocId = $state<string | null>(null);
 
@@ -288,6 +290,29 @@
 			previewOpen = false;
 		} finally {
 			previewLoading = false;
+		}
+	}
+
+	async function markAsSent(documentId: string) {
+		markingSentId = documentId;
+		const body = new FormData();
+		body.set('documentId', documentId);
+
+		try {
+			const response = await fetch('?/markAsSent', { method: 'POST', body });
+			const result = deserialize(await response.text());
+			if (result.type === 'success') {
+				toast.success('Document marqué comme envoyé');
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+			} else if (result.type === 'error') {
+				toast.error(result.error?.message ?? 'Erreur serveur');
+			}
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Erreur');
+		} finally {
+			markingSentId = null;
 		}
 	}
 
@@ -480,6 +505,23 @@
 							</button>
 
 							<div class="flex shrink-0 items-center gap-1">
+								{#if doc.effectiveStatus === 'genere'}
+									<Button
+										variant="ghost"
+										size="icon"
+										class="size-8 cursor-pointer text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+										disabled={markingSentId === doc.id}
+										onclick={() => markAsSent(doc.id)}
+										aria-label="Marquer comme envoyé"
+										title="Marquer comme envoyé"
+									>
+										{#if markingSentId === doc.id}
+											<Loader2 class="size-4 animate-spin" />
+										{:else}
+											<MailCheck class="size-4" />
+										{/if}
+									</Button>
+								{/if}
 								{#if doc.storagePath}
 									<Button
 										variant="ghost"
