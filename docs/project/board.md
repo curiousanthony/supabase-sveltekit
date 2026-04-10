@@ -28,4 +28,3 @@ T-26 P3 Questionnaire system evolution
 T-28 P3 Remove or wire sendFormationEmail
 T-29 P3 Unify workspace invite emails on Postmark
 T-31 P3 Signature overlay on PDF via pdf-lib
-T-8 P3 Logo WebP/SVG to PNG conversion
