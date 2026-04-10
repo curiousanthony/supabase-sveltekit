@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-04-10
+- T-39 Formations Kanban: horizontal scroll columns (match deals pipeline layout)
+
 ## 2026-04-09
 - T-10 Contextual generation prompts: quest-driven inline prompts in Documents tab with deep-link scroll from Suivi
 - T-9 Document lifecycle service (per-type state machines, transition validation, annule/remplace, devis expiry)

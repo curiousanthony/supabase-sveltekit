@@ -2,6 +2,7 @@
 
 One-line insights discovered during development. Reviewed by team-architect every 10 entries.
 
+- 2026-04-10 T-39: Match an existing route’s Kanban (`flex` + `overflow-x-auto`, `min-w`/`max-w` columns) instead of inventing a new grid breakpoint pattern
 - 2026-04-09 T-1: French PDF amounts need Intl currency + replace U+202F/U+00A0 so Helvetica does not garble thousands separators
 - 2026-04-09 T-2: Centralize PDF_TIMEZONE in shared for every template date/time helper
 - 2026-04-09 T-3: `default` + `assertNever` on DocumentType switch catches missing cases at compile time
