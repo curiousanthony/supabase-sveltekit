@@ -15,4 +15,6 @@ One-line insights discovered during development. Reviewed by team-architect ever
 - 2026-04-08 T-S1: Locale-aware number formatting needed for French currency (not just toFixed)
 - 2026-04-08 T-S2: pdfmake CJS via createRequire works but needs setFonts() before createPdf()
 
+- 2026-04-10 T-34: logAuditEvent must accept a tx client and propagate errors when called transactionally — fire-and-forget is only safe for non-critical callers
+
 ## Reviewed 2026-04-08

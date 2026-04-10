@@ -14,6 +14,9 @@
 - T-4 Typed pdfmake CJS require (PdfMakeModule)
 - T-5 Certificat émargements filtered by formation at DB (join)
 
+## 2026-04-10
+- T-34 Document lifecycle transition service with type-safe statuses, transactional audit logging, and devis read-time expiry
+
 ## 2026-04-08
 - T-S1 Convention fix: participant count + pricing
 - T-S2 3 new PDF templates (feuille_emargement, devis, ordre_mission)
