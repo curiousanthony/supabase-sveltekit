@@ -27,6 +27,8 @@
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import Send from '@lucide/svelte/icons/send';
 	import MailCheck from '@lucide/svelte/icons/mail-check';
+	import Check from '@lucide/svelte/icons/check';
+	import X from '@lucide/svelte/icons/x';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import History from '@lucide/svelte/icons/history';
@@ -119,6 +121,7 @@
 	let documentToDelete = $state<{ id: string; title: string } | null>(null);
 	let deleting = $state(false);
 	let markingSentId = $state<string | null>(null);
+	let transitioningDocId = $state<string | null>(null);
 	let showReplaced = $state(false);
 	let expandedDocId = $state<string | null>(null);
 
@@ -290,6 +293,30 @@
 			previewOpen = false;
 		} finally {
 			previewLoading = false;
+		}
+	}
+
+	async function transitionDevis(documentId: string, action: 'acceptDevis' | 'refuseDevis') {
+		transitioningDocId = documentId;
+		const body = new FormData();
+		body.set('documentId', documentId);
+
+		const label = action === 'acceptDevis' ? 'accepté' : 'refusé';
+		try {
+			const response = await fetch(`?/${action}`, { method: 'POST', body });
+			const result = deserialize(await response.text());
+			if (result.type === 'success') {
+				toast.success(`Devis ${label}`);
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+			} else if (result.type === 'error') {
+				toast.error(result.error?.message ?? 'Erreur serveur');
+			}
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Erreur');
+		} finally {
+			transitioningDocId = null;
 		}
 	}
 
@@ -505,6 +532,34 @@
 							</button>
 
 							<div class="flex shrink-0 items-center gap-1">
+								{#if doc.type === 'devis' && doc.effectiveStatus === 'envoye'}
+									<Button
+										variant="ghost"
+										size="icon"
+										class="size-8 cursor-pointer text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+										disabled={transitioningDocId === doc.id}
+										onclick={() => transitionDevis(doc.id, 'acceptDevis')}
+										aria-label="Accepter le devis"
+										title="Accepter le devis"
+									>
+										{#if transitioningDocId === doc.id}
+											<Loader2 class="size-4 animate-spin" />
+										{:else}
+											<Check class="size-4" />
+										{/if}
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										class="size-8 cursor-pointer text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+										disabled={transitioningDocId === doc.id}
+										onclick={() => transitionDevis(doc.id, 'refuseDevis')}
+										aria-label="Refuser le devis"
+										title="Refuser le devis"
+									>
+										<X class="size-4" />
+									</Button>
+								{/if}
 								{#if doc.effectiveStatus === 'genere'}
 									<Button
 										variant="ghost"

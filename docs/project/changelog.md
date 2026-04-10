@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-04-10
+- T-35 Devis accept/refuse actions from Documents tab and Suivi quest sub-action
 - T-37 "Marquer comme envoyé" action for postal sends outside the app
 - T-28 Removed sendFormationEmail dead code (raw HTML path superseded by Postmark templates)
 - T-8 Workspace logos processed at upload (Sharp → PNG, max 512px), bucket PNG-only migration, safe replace order

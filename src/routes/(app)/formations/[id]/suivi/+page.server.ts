@@ -21,6 +21,8 @@ import {
 } from '$lib/services/document-service';
 import { generateDocument, type DocumentType } from '$lib/services/document-generator';
 import { sendFormationTemplateEmail, EMAIL_TYPE_TO_TEMPLATE } from '$lib/services/email-service';
+import { transitionStatus } from '$lib/services/document-lifecycle';
+import { formationDocuments } from '$lib/db/schema';
 import { env } from '$env/dynamic/private';
 import type { Actions } from './$types';
 
@@ -328,6 +330,39 @@ export const actions: Actions = {
 			.where(eq(questSubActions.id, subActionId));
 
 		if (completed) {
+			const parentAction = await db.query.formationActions.findFirst({
+				where: eq(formationActions.id, subAction.formationActionId),
+				columns: { questKey: true, formationId: true }
+			});
+
+			if (parentAction?.questKey === 'devis') {
+				const allSubs = await db.query.questSubActions.findMany({
+					where: eq(questSubActions.formationActionId, subAction.formationActionId),
+					columns: { id: true, title: true },
+					orderBy: (t, { asc }) => [asc(t.orderIndex)]
+				});
+				const isValidationSub = allSubs.findIndex((s) => s.id === subActionId) === 2;
+
+				if (isValidationSub) {
+					const latestDevis = await db.query.formationDocuments.findFirst({
+						where: and(
+							eq(formationDocuments.formationId, params.id),
+							eq(formationDocuments.type, 'devis'),
+							eq(formationDocuments.status, 'envoye')
+						),
+						columns: { id: true },
+						orderBy: (t, { desc }) => [desc(t.createdAt)]
+					});
+
+					if (latestDevis) {
+						await transitionStatus(
+							{ documentId: latestDevis.id, formationId: params.id, userId: user.id },
+							'accepte'
+						);
+					}
+				}
+			}
+
 			await autoCompleteQuestIfDone(subAction.formationActionId, user.id, params.id, workspaceId);
 		}
 

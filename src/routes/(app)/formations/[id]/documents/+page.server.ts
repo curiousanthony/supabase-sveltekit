@@ -158,6 +158,56 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
+	acceptDevis: async ({ request, params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+		if (!isOwner) return fail(403, { message: 'Accès refusé' });
+
+		const formData = await request.formData();
+		const documentId = formData.get('documentId')?.toString();
+		if (!documentId) return fail(400, { message: 'Document ID manquant' });
+
+		const result = await transitionStatus(
+			{ documentId, formationId: params.id, userId: user.id },
+			'accepte'
+		);
+
+		if (!result.success) {
+			return fail(400, { message: result.error ?? 'Transition impossible' });
+		}
+
+		return { success: true };
+	},
+
+	refuseDevis: async ({ request, params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+		if (!isOwner) return fail(403, { message: 'Accès refusé' });
+
+		const formData = await request.formData();
+		const documentId = formData.get('documentId')?.toString();
+		if (!documentId) return fail(400, { message: 'Document ID manquant' });
+
+		const result = await transitionStatus(
+			{ documentId, formationId: params.id, userId: user.id },
+			'refuse'
+		);
+
+		if (!result.success) {
+			return fail(400, { message: result.error ?? 'Transition impossible' });
+		}
+
+		return { success: true };
+	},
+
 	markAsSent: async ({ request, params, locals }) => {
 		const workspaceId = await getUserWorkspace(locals);
 		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
