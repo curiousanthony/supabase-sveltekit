@@ -17,5 +17,6 @@ One-line insights discovered during development. Reviewed by team-architect ever
 
 - 2026-04-10 T-34: logAuditEvent must accept a tx client and propagate errors when called transactionally — fire-and-forget is only safe for non-critical callers
 - 2026-04-10 T-6: RLS via EXISTS subquery joining child→parent→workspaces_users is the standard pattern for tables without direct workspace_id
+- 2026-04-10 T-7: Storage policies use (storage.foldername(name))[1]::uuid to extract entity ID from path convention {entityId}/filename.ext
 
 ## Reviewed 2026-04-08

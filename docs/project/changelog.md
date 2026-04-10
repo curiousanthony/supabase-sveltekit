@@ -17,6 +17,7 @@
 ## 2026-04-10
 - T-34 Document lifecycle transition service with type-safe statuses, transactional audit logging, and devis read-time expiry
 - T-6 Workspace-scoped RLS for formation_documents (SELECT/INSERT/UPDATE/DELETE)
+- T-7 Workspace-scoped storage policies for formation-documents bucket
 
 ## 2026-04-08
 - T-S1 Convention fix: participant count + pricing
