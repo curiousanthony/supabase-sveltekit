@@ -22,5 +22,6 @@ One-line insights discovered during development. Reviewed by team-architect ever
 - 2026-04-10 T-28: When raw-HTML email path exists alongside template-based path, remove raw HTML — all Postmark sends should use templates for consistency and deliverability
 - 2026-04-10 T-37: transitionStatus already sets timestamp fields via STATUS_TIMESTAMP_FIELD map — no need to manually set sentAt when transitioning to envoye
 - 2026-04-10 T-35: When linking quest sub-actions to document lifecycle, use sub-action orderIndex (not title matching) to identify specific actions within a quest
+- 2026-04-10 T-36: Compliance warnings belong in the layout load (not per-page) so both Documents and Suivi share the same computed warnings from a single lightweight query
 
 ## Reviewed 2026-04-08

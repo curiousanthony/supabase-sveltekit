@@ -1,8 +1,10 @@
 import { error } from '@sveltejs/kit';
 import { db } from '$lib/db';
-import { formations } from '$lib/db/schema';
+import { formations, formationDocuments } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getQuestProgress, getQuestsForFormation, calculateDueDates } from '$lib/formation-quests';
+import { getComplianceWarnings } from '$lib/compliance-warnings';
+import { getEffectiveStatus } from '$lib/services/document-lifecycle';
 import type { LayoutServerLoad } from './$types';
 
 const STATUT_COLORS: Record<string, string> = {
@@ -315,6 +317,16 @@ export const load = (async ({ params, depends }) => {
 		}
 	}
 
+	const docStatuses = await db.query.formationDocuments.findMany({
+		where: eq(formationDocuments.formationId, formationId),
+		columns: { type: true, status: true, expiresAt: true }
+	});
+	const docInputs = docStatuses.map((d) => ({
+		type: d.type,
+		effectiveStatus: getEffectiveStatus({ type: d.type, status: d.status, expiresAt: d.expiresAt })
+	}));
+	const complianceWarnings = getComplianceWarnings(docInputs, formation.dateDebut);
+
 	return {
 		formation,
 		pageName: formation.name ?? 'Formation',
@@ -325,6 +337,7 @@ export const load = (async ({ params, depends }) => {
 		unsignedEmargements,
 		overdueInvoices,
 		questProgress: questProgressData,
-		programmeSourceUpdatedSinceLink
+		programmeSourceUpdatedSinceLink,
+		complianceWarnings
 	};
 }) satisfies LayoutServerLoad;

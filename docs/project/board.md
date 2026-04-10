@@ -18,7 +18,6 @@ T-24 P2 Implement evaluation tracking feature
 T-25 P2 Implement attestation PDF template
 T-27 P2 Webhook Postmark delivery/bounce tracking
 T-30 P2 Auto-send reglement_interieur
-T-36 P2 Compliance date warnings
 T-38 P2 Quest CTA — per-formation onboarding (every quest)
 T-40 P2 Postmark template — questionnaire satisfaction formateur (fin de formation)
 T-18 P3 Notification UX for auto-generated documents

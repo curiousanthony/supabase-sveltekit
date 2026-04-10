@@ -19,12 +19,14 @@
 	import LevelUpToast from '$lib/components/formations/level-up-toast.svelte';
 	import PhaseCard from '$lib/components/formations/suivi/phase-card.svelte';
 	import QuestRow from '$lib/components/formations/suivi/quest-row.svelte';
+	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 
 	let { data }: PageProps = $props();
 
 	const formation = $derived(data?.formation);
 	const actions = $derived(formation?.actions ?? []);
 	const formationId = $derived(formation?.id ?? '');
+	const complianceWarnings = $derived(data?.complianceWarnings ?? []);
 
 	const categorized = $derived(
 		categorizeByDisplayState(actions as any, {
@@ -220,6 +222,32 @@
 			/>
 		{/each}
 	</div>
+
+	{#if complianceWarnings.length > 0}
+		<div class="flex flex-col gap-2">
+			{#each complianceWarnings as warning (warning.documentType)}
+				{@const isRed = warning.level === 'red'}
+				<div
+					role="alert"
+					class="flex items-center gap-3 rounded-lg border px-4 py-3 {isRed
+						? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40'
+						: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40'}"
+				>
+					<AlertTriangle
+						class="size-4 shrink-0 {isRed
+							? 'text-red-600 dark:text-red-400'
+							: 'text-amber-600 dark:text-amber-400'}"
+						aria-hidden="true"
+					/>
+					<p class="text-sm font-medium {isRed
+						? 'text-red-900 dark:text-red-100'
+						: 'text-amber-900 dark:text-amber-100'}">
+						{warning.message}
+					</p>
+				</div>
+			{/each}
+		</div>
+	{/if}
 
 	{#if categorized.actionable.length > 0}
 		<section>
