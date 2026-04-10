@@ -15,6 +15,7 @@ import {
 } from '$lib/server/supabase-admin';
 import {
 	processWorkspaceLogoUpload,
+	resolveWorkspaceLogoStorageObjectPath,
 	WorkspaceLogoProcessingError
 } from '$lib/server/workspace-logo';
 
@@ -42,9 +43,9 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		return jsonError('Type de fichier non autorisé. Utilisez JPEG, PNG, WebP ou SVG.', 400);
 	}
 
-	// Validate file size (5MB)
+	// Validate file size (5 Mo before processing)
 	if (file.size > 5 * 1024 * 1024) {
-		return jsonError('Le fichier est trop volumineux. Taille maximale: 5MB', 400);
+		return jsonError('Le fichier est trop volumineux. Taille maximale : 5 Mo', 400);
 	}
 
 	const filename = `${randomUUID()}.png`;
@@ -97,16 +98,14 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 			await ensureWorkspaceLogosBucket(admin);
 		}
 
-		const existing = await db.query.workspaces.findFirst({
+		const previous = await db.query.workspaces.findFirst({
 			where: eq(workspaces.id, workspaceId),
 			columns: { logoUrl: true }
 		});
-		if (existing?.logoUrl) {
-			const urlParts = existing.logoUrl.split(`/${bucketId}/`);
-			if (urlParts.length > 1) {
-				await storage.storage.from(bucketId).remove([urlParts[1]]);
-			}
-		}
+		const previousPath =
+			previous?.logoUrl != null
+				? resolveWorkspaceLogoStorageObjectPath(previous.logoUrl, bucketId, workspaceId)
+				: null;
 
 		const { error: uploadError } = await storage.storage.from(bucketId).upload(filePath, pngBuffer, {
 			contentType: 'image/png',
@@ -129,6 +128,10 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		} = storage.storage.from(bucketId).getPublicUrl(filePath);
 
 		await db.update(workspaces).set({ logoUrl: publicUrl }).where(eq(workspaces.id, workspaceId));
+
+		if (previousPath && previousPath !== filePath) {
+			await storage.storage.from(bucketId).remove([previousPath]);
+		}
 
 		return json({ success: true, url: publicUrl });
 	} catch (e) {
@@ -170,10 +173,13 @@ export const DELETE: RequestHandler = async ({ locals, url }) => {
 	const storage = admin;
 
 	if (workspace?.logoUrl) {
-		const urlParts = workspace.logoUrl.split(`/${bucketId}/`);
-		if (urlParts.length > 1) {
-			const filePath = urlParts[1];
-			await storage.storage.from(bucketId).remove([filePath]);
+		const objectPath = resolveWorkspaceLogoStorageObjectPath(
+			workspace.logoUrl,
+			bucketId,
+			workspaceId
+		);
+		if (objectPath) {
+			await storage.storage.from(bucketId).remove([objectPath]);
 		}
 	}
 

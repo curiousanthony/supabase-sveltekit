@@ -4,6 +4,37 @@ import sharp from 'sharp';
 const SUPPORTED_SHARP_INPUT = new Set(['jpeg', 'png', 'webp', 'svg']);
 
 const MAX_EDGE_PX = 512;
+/** Cap decoded pixels before resize to limit Sharp CPU/memory (decompression bombs). */
+const LIMIT_INPUT_PIXELS = 4096 * 4096;
+
+/**
+ * Extract the storage object path for a workspace logo public URL.
+ * Returns null if the URL does not point at `bucketId` or the key is not under this workspace.
+ */
+export function resolveWorkspaceLogoStorageObjectPath(
+	logoUrl: string,
+	bucketId: string,
+	workspaceId: string
+): string | null {
+	const marker = `/${bucketId}/`;
+	const idx = logoUrl.indexOf(marker);
+	if (idx === -1) return null;
+	let pathPart = logoUrl.slice(idx + marker.length);
+	const q = pathPart.indexOf('?');
+	if (q !== -1) pathPart = pathPart.slice(0, q);
+	let path: string;
+	try {
+		path = decodeURIComponent(pathPart);
+	} catch {
+		return null;
+	}
+	if (!path || path.includes('..')) return null;
+	const expectedPrefix = `${workspaceId}/`;
+	if (!path.startsWith(expectedPrefix)) return null;
+	const rest = path.slice(expectedPrefix.length);
+	if (!rest || rest.includes('/')) return null;
+	return path;
+}
 
 export class WorkspaceLogoProcessingError extends Error {
 	readonly code: 'invalid' | 'processing';
@@ -26,7 +57,10 @@ export async function processWorkspaceLogoUpload(input: Buffer): Promise<Buffer>
 
 	let meta: sharp.Metadata;
 	try {
-		meta = await sharp(input, { failOn: 'truncated' }).metadata();
+		meta = await sharp(input, {
+			failOn: 'truncated',
+			limitInputPixels: LIMIT_INPUT_PIXELS
+		}).metadata();
 	} catch {
 		throw new WorkspaceLogoProcessingError(
 			'Image illisible ou corrompue. Utilisez JPEG, PNG, WebP ou SVG.',
@@ -43,7 +77,10 @@ export async function processWorkspaceLogoUpload(input: Buffer): Promise<Buffer>
 	}
 
 	try {
-		const { data, info } = await sharp(input, { failOn: 'truncated' })
+		const { data, info } = await sharp(input, {
+			failOn: 'truncated',
+			limitInputPixels: LIMIT_INPUT_PIXELS
+		})
 			.rotate()
 			.resize({
 				width: MAX_EDGE_PX,

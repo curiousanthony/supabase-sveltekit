@@ -244,7 +244,7 @@
 						</div>
 
 						<div class="space-y-2">
-							<Label.Root>Logo</Label.Root>
+							<Label.Root for="workspace-logo-input">Logo</Label.Root>
 							<div class="flex items-center gap-4">
 								{#if workspace?.logoUrl}
 									<div class="relative">
@@ -254,9 +254,10 @@
 											variant="destructive"
 											size="sm"
 											class="absolute -right-2 -top-2 size-6 rounded-full p-0"
+											aria-label="Supprimer le logo"
 											onclick={handleLogoRemove}
 										>
-											<XIcon class="size-3" />
+											<XIcon class="size-3" aria-hidden="true" />
 										</Button.Root>
 									</div>
 								{:else}
@@ -266,6 +267,7 @@
 								{/if}
 								<div class="flex flex-col gap-2">
 									<input
+										id="workspace-logo-input"
 										bind:this={logoFileInput}
 										type="file"
 										accept="image/jpeg,image/png,image/webp,image/svg+xml"
