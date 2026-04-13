@@ -249,7 +249,7 @@ async function uploadToStorage(
 export async function generateDocument(
 	type: DocumentType,
 	formationId: string,
-	userId: string,
+	userId: string | null,
 	options?: { contactId?: string; formateurId?: string; seanceId?: string }
 ): Promise<GenerateDocumentResult> {
 	const { formation, workspaceId, client, moduleList, prixConvenu, prixPublic } = await fetchFormationData(formationId);
