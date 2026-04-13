@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-04-13
+- T-12 Regeneration prompts — per-document stale indicators with versioning (genere→replace, envoye+→remplace, signe→blocked)
 - T-11 Phase grouping in Documents tab — urgency sort, phase chips, grouper-par-phase toggle, per-learner collapsing
 - T-17 Scheduled job infrastructure via Vercel Cron with emargement J-1 auto-generation
 

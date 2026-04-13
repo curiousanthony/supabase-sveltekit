@@ -3,7 +3,6 @@
 ## sprint
 
 ## backlog
-T-12 P2 Regeneration prompt
 T-13 P2 Error states with fix paths
 T-14 P2 Batch generation for per-learner documents
 T-15 P2 Auto-generate emargement_blank J-1
