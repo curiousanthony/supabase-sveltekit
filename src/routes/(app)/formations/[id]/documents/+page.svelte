@@ -1246,7 +1246,7 @@
 								<p class={item.severity === 'block' ? 'text-destructive' : item.severity === 'warn' ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}>
 									{item.messageFr}
 								</p>
-								{#if item.severity !== 'warn' || item.tab !== 'fiche'}
+								{#if item.hrefPath}
 									<button
 										type="button"
 										class="mt-1 inline-flex items-center gap-1 text-xs text-primary underline-offset-2 hover:underline cursor-pointer"
@@ -1299,7 +1299,7 @@
 			<Button
 				class="cursor-pointer"
 				disabled={generating || !canGenerate}
-				aria-describedby="preflight-summary"
+				aria-describedby={preflightResult ? 'preflight-summary' : undefined}
 				onclick={() => submitGenerate()}
 			>
 				{#if generating}

@@ -17,6 +17,78 @@ async function verifyFormationOwnership(formationId: string, workspaceId: string
 	return !!formation;
 }
 
+/** Shared DB load for server-side preflight (generate + regenerate paths). */
+async function loadPreflightRows(formationId: string, workspaceId: string) {
+	const [formationRow, workspaceRow, apprenantRows, docRows] = await Promise.all([
+		db.query.formations.findFirst({
+			where: and(eq(formations.id, formationId), eq(formations.workspaceId, workspaceId)),
+			columns: { id: true, clientId: true, typeFinancement: true, dateDebut: true, dateFin: true },
+			with: {
+				client: { columns: { id: true, type: true } },
+				seances: {
+					columns: { id: true, endAt: true },
+					with: { emargements: { columns: { signedAt: true } } }
+				}
+			}
+		}),
+		db.query.workspaces.findFirst({
+			where: eq(workspaces.id, workspaceId),
+			columns: { id: true, nda: true }
+		}),
+		db.query.formationApprenants.findMany({
+			where: eq(formationApprenants.formationId, formationId),
+			with: { contact: { columns: { email: true } } }
+		}),
+		db.query.formationDocuments.findMany({
+			where: eq(formationDocuments.formationId, formationId),
+			columns: { type: true, status: true }
+		})
+	]);
+	return { formationRow, workspaceRow, apprenantRows, docRows };
+}
+
+function evaluatePreflightForServer(
+	formationRow: NonNullable<Awaited<ReturnType<typeof loadPreflightRows>>['formationRow']>,
+	workspaceRow: NonNullable<Awaited<ReturnType<typeof loadPreflightRows>>['workspaceRow']>,
+	apprenantRows: Awaited<ReturnType<typeof loadPreflightRows>>['apprenantRows'],
+	docRows: Awaited<ReturnType<typeof loadPreflightRows>>['docRows'],
+	documentType: string,
+	ids: { contactId?: string; formateurId?: string; seanceId?: string }
+) {
+	const now = new Date().toISOString();
+	const hasAcceptedDevis = docRows.some((d) => d.type === 'devis' && d.status === 'accepte');
+	const hasSignedConvention = docRows.some(
+		(d) => d.type === 'convention' && (d.status === 'signe' || d.status === 'archive')
+	);
+	const hasSignedEmargements = !(formationRow.seances ?? []).some((seance) => {
+		if (!seance.endAt || seance.endAt > now) return false;
+		return seance.emargements.some((e) => !e.signedAt);
+	});
+	const hasLearnerWithEmail = apprenantRows.some((a) => a.contact?.email);
+
+	return evaluatePreflight(
+		{
+			id: formationRow.id,
+			clientId: formationRow.clientId,
+			clientType: formationRow.client?.type ?? null,
+			typeFinancement: formationRow.typeFinancement,
+			dateDebut: formationRow.dateDebut,
+			dateFin: formationRow.dateFin
+		},
+		{ id: workspaceRow.id, nda: workspaceRow.nda },
+		{
+			documentType,
+			contactId: ids.contactId,
+			formateurId: ids.formateurId,
+			seanceId: ids.seanceId,
+			hasAcceptedDevis,
+			hasSignedConvention,
+			hasSignedEmargements,
+			hasLearnerWithEmail
+		}
+	);
+}
+
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) return { documents: [], workspaceNda: null };
@@ -29,7 +101,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			where: eq(workspaces.id, workspaceId),
 			columns: { nda: true }
 		}),
-		db.query.formationDocuments.findMany({
 		db.query.formationDocuments.findMany({
 			where: eq(formationDocuments.formationId, params.id),
 			orderBy: [desc(formationDocuments.createdAt)],
@@ -107,56 +178,20 @@ export const actions: Actions = {
 		}
 
 		// ── Server-side preflight guard ────────────────────────────────────────
-		const [formationRow, workspaceRow, apprenantRows, docRows] = await Promise.all([
-			db.query.formations.findFirst({
-				where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
-				columns: { id: true, clientId: true, typeFinancement: true, dateDebut: true, dateFin: true },
-				with: {
-					client: { columns: { id: true, type: true } },
-					seances: {
-						columns: { id: true, endAt: true },
-						with: { emargements: { columns: { signedAt: true } } }
-					}
-				}
-			}),
-			db.query.workspaces.findFirst({
-				where: eq(workspaces.id, workspaceId),
-				columns: { id: true, nda: true }
-			}),
-			db.query.formationApprenants.findMany({
-				where: eq(formationApprenants.formationId, params.id),
-				with: { contact: { columns: { email: true } } }
-			}),
-			db.query.formationDocuments.findMany({
-				where: eq(formationDocuments.formationId, params.id),
-				columns: { type: true, status: true }
-			})
-		]);
+		const { formationRow, workspaceRow, apprenantRows, docRows } = await loadPreflightRows(
+			params.id,
+			workspaceId
+		);
 
 		if (!formationRow || !workspaceRow) return fail(404, { message: 'Formation introuvable' });
 
-		const now = new Date().toISOString();
-		const hasAcceptedDevis = docRows.some((d) => d.type === 'devis' && d.status === 'accepte');
-		const hasSignedConvention = docRows.some(
-			(d) => d.type === 'convention' && (d.status === 'signe' || d.status === 'archive')
-		);
-		const hasSignedEmargements = !(formationRow.seances ?? []).some((seance) => {
-			if (!seance.endAt || seance.endAt > now) return false;
-			return seance.emargements.some((e) => !e.signedAt);
-		});
-		const hasLearnerWithEmail = apprenantRows.some((a) => a.contact?.email);
-
-		const preflightResult = evaluatePreflight(
-			{
-				id: formationRow.id,
-				clientId: formationRow.clientId,
-				clientType: formationRow.client?.type ?? null,
-				typeFinancement: formationRow.typeFinancement,
-				dateDebut: formationRow.dateDebut,
-				dateFin: formationRow.dateFin
-			},
-			{ id: workspaceRow.id, nda: workspaceRow.nda },
-			{ documentType: type, contactId, seanceId, hasAcceptedDevis, hasSignedConvention, hasSignedEmargements, hasLearnerWithEmail }
+		const preflightResult = evaluatePreflightForServer(
+			formationRow,
+			workspaceRow,
+			apprenantRows,
+			docRows,
+			type,
+			{ contactId, formateurId, seanceId }
 		);
 
 		try {
@@ -171,6 +206,18 @@ export const actions: Actions = {
 			});
 		}
 
+		const warnIds = preflightResult.items.filter((i) => i.severity === 'warn').map((i) => i.id);
+		const warnIdSet = new Set(warnIds);
+		const sanitizedWarnings = [...new Set(warningsAcknowledged)].filter((id) => warnIdSet.has(id));
+		if (warnIds.length > 0) {
+			const allAcked = warnIds.every((id) => sanitizedWarnings.includes(id));
+			if (!allAcked) {
+				return fail(400, {
+					message: 'Veuillez prendre connaissance de tous les avertissements avant de générer.'
+				});
+			}
+		}
+
 		try {
 			const result = await generateDocument(
 				type as DocumentType,
@@ -180,14 +227,14 @@ export const actions: Actions = {
 			);
 
 			// Audit: log if user acknowledged warnings
-			if (warningsAcknowledged.length > 0) {
+			if (sanitizedWarnings.length > 0) {
 				await logAuditEvent({
 					formationId: params.id,
 					userId: user.id,
 					actionType: 'document_generation_warnings_overridden',
 					entityType: 'formation',
 					entityId: params.id,
-					newValue: { documentType: type, warningIds: warningsAcknowledged }
+					newValue: { documentType: type, warningIds: sanitizedWarnings }
 				});
 			}
 
@@ -339,6 +386,12 @@ export const actions: Actions = {
 		});
 		if (!formation?.updatedAt) return fail(404, { message: 'Formation introuvable' });
 
+		const { formationRow, workspaceRow, apprenantRows, docRows } = await loadPreflightRows(
+			params.id,
+			workspaceId
+		);
+		if (!formationRow || !workspaceRow) return fail(404, { message: 'Formation introuvable' });
+
 		const SKIP_STATUSES = ['signe', 'remplace', 'archive'];
 		const staleDocs = await db.query.formationDocuments.findMany({
 			where: and(
@@ -373,6 +426,25 @@ export const actions: Actions = {
 			}
 
 			const fromStatus = oldDoc.status as DocumentStatus;
+
+			const regenPreflight = evaluatePreflightForServer(
+				formationRow,
+				workspaceRow,
+				apprenantRows,
+				docRows,
+				docType,
+				{
+					contactId: oldDoc.relatedContactId ?? undefined,
+					formateurId: oldDoc.relatedFormateurId ?? undefined,
+					seanceId: oldDoc.relatedSeanceId ?? undefined
+				}
+			);
+			try {
+				assertPreflightOrThrow(regenPreflight);
+			} catch {
+				skippedCount++;
+				continue;
+			}
 
 			try {
 				const newResult = await generateDocument(docType, params.id, user.id, {
@@ -459,6 +531,36 @@ export const actions: Actions = {
 		const fromStatus = oldDoc.status as DocumentStatus;
 		if (fromStatus !== 'genere' && !isValidTransition(docType as LifecycleDocType, fromStatus, 'remplace')) {
 			return fail(400, { message: `Régénération impossible depuis le statut : ${fromStatus}` });
+		}
+
+		const { formationRow, workspaceRow, apprenantRows, docRows } = await loadPreflightRows(
+			params.id,
+			workspaceId
+		);
+		if (!formationRow || !workspaceRow) return fail(404, { message: 'Formation introuvable' });
+
+		const regenPreflight = evaluatePreflightForServer(
+			formationRow,
+			workspaceRow,
+			apprenantRows,
+			docRows,
+			docType,
+			{
+				contactId: oldDoc.relatedContactId ?? undefined,
+				formateurId: oldDoc.relatedFormateurId ?? undefined,
+				seanceId: oldDoc.relatedSeanceId ?? undefined
+			}
+		);
+		try {
+			assertPreflightOrThrow(regenPreflight);
+		} catch {
+			const blockingIds = regenPreflight.items
+				.filter((i) => i.severity === 'block' || i.severity === 'prerequisite')
+				.map((i) => i.id)
+				.join(', ');
+			return fail(400, {
+				message: `Régénération impossible — données manquantes : ${blockingIds}`
+			});
 		}
 
 		try {

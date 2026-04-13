@@ -504,44 +504,44 @@ export const actions: Actions = {
 			})
 		]);
 
-		if (workspaceRow) {
-			const now = new Date().toISOString();
-			const hasAcceptedDevis = docRows.some((d) => d.type === 'devis' && d.status === 'accepte');
-			const hasSignedConvention = docRows.some(
-				(d) => d.type === 'convention' && (d.status === 'signe' || d.status === 'archive')
-			);
-			const hasSignedEmargements = !(formation.seances ?? []).some((seance) => {
-				if (!seance.endAt || seance.endAt > now) return false;
-				return seance.emargements.some((e) => !e.signedAt);
+		if (!workspaceRow) return fail(404, { message: 'Espace de travail introuvable' });
+
+		const now = new Date().toISOString();
+		const hasAcceptedDevis = docRows.some((d) => d.type === 'devis' && d.status === 'accepte');
+		const hasSignedConvention = docRows.some(
+			(d) => d.type === 'convention' && (d.status === 'signe' || d.status === 'archive')
+		);
+		const hasSignedEmargements = !(formation.seances ?? []).some((seance) => {
+			if (!seance.endAt || seance.endAt > now) return false;
+			return seance.emargements.some((e) => !e.signedAt);
+		});
+		const hasLearnerWithEmail = apprenantRows.some((a) => a.contact?.email);
+		const seanceId = formData.get('seanceId')?.toString();
+
+		const preflightResult = evaluatePreflight(
+			{
+				id: formation.id,
+				clientId: formation.clientId,
+				clientType: formation.client?.type ?? null,
+				typeFinancement: formation.typeFinancement,
+				dateDebut: formation.dateDebut,
+				dateFin: formation.dateFin
+			},
+			{ id: workspaceRow.id, nda: workspaceRow.nda },
+			{ documentType, contactId: contactId?.toString(), seanceId, hasAcceptedDevis, hasSignedConvention, hasSignedEmargements, hasLearnerWithEmail }
+		);
+
+		try {
+			assertPreflightOrThrow(preflightResult);
+		} catch {
+			const blockingIds = preflightResult.items
+				.filter((i) => i.severity === 'block' || i.severity === 'prerequisite')
+				.map((i) => i.id)
+				.join(', ');
+			return fail(400, {
+				message: `Génération impossible — données manquantes : ${blockingIds}`,
+				preflightItems: preflightResult.items
 			});
-			const hasLearnerWithEmail = apprenantRows.some((a) => a.contact?.email);
-			const seanceId = formData.get('seanceId')?.toString();
-
-			const preflightResult = evaluatePreflight(
-				{
-					id: formation.id,
-					clientId: formation.clientId,
-					clientType: formation.client?.type ?? null,
-					typeFinancement: formation.typeFinancement,
-					dateDebut: formation.dateDebut,
-					dateFin: formation.dateFin
-				},
-				{ id: workspaceRow.id, nda: workspaceRow.nda },
-				{ documentType, contactId: contactId?.toString(), seanceId, hasAcceptedDevis, hasSignedConvention, hasSignedEmargements, hasLearnerWithEmail }
-			);
-
-			try {
-				assertPreflightOrThrow(preflightResult);
-			} catch {
-				const blockingIds = preflightResult.items
-					.filter((i) => i.severity === 'block' || i.severity === 'prerequisite')
-					.map((i) => i.id)
-					.join(', ');
-				return fail(400, {
-					message: `Génération impossible — données manquantes : ${blockingIds}`,
-					preflightItems: preflightResult.items
-				});
-			}
 		}
 
 		try {
