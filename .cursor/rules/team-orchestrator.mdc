@@ -89,6 +89,10 @@ After determining the base recipe, skip phases based on ticket metadata:
 **Important**: When a `decision` doc exists, read it (Layer 4) before launching any subagent.
 Pass relevant sections to subagent prompts as context.
 
+**Phase 6 (QA) is NEVER skippable** for any recipe that includes it. The skip rules above
+only remove phases 3, 5, or 6 for tech-debt and bugs. For features, Phase 6 always runs.
+Even when env issues arise (dev server down, port busy), fix the env — do not skip QA.
+
 ### 0d. Announce and start (no confirmation needed)
 
 Present a concise summary, then **immediately begin work** — never ask "Proceed?" or wait for confirmation:
@@ -185,6 +189,10 @@ Launch `reviewer` + `security-analyst` as **parallel** Task calls. Fix Critical/
 
 Launch `qa-tester`. Tell it to read design artifacts first, then test the running app as Marie using Browser MCP. **No UI-facing feature ships without passing QA.** If QA fails, loop back to phase 4 with findings.
 
+**NEVER skip this phase** when it appears in the effective recipe, even if the dev server
+appears unavailable. If the server is down, start it (`bun run dev`) or ask the user. The
+QA gate exists because code review alone cannot catch visual/interaction regressions.
+
 ### 7. Document
 
 Launch `project-manager`. Updates `docs/project/` files, records decisions, writes feature documentation.
@@ -204,7 +212,7 @@ Never ask the user "Proceed?" or "Should I continue?". Present findings, then mo
 - After phase 1: present design direction summary, then continue
 - After phase 2: present schema summary, then continue
 - After phase 5: Critical/High review findings must be fixed (autonomously)
-- After phase 6: QA must PASS (or loop back to phase 4 autonomously)
+- After phase 6: QA must PASS (or loop back to phase 4 autonomously). **NEVER skip QA when it appears in the recipe** — start the dev server if needed.
 
 ## Multi-Ticket Sessions
 
