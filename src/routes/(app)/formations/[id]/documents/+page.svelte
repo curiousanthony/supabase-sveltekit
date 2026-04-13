@@ -38,6 +38,7 @@
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
+	import RefreshCcw from '@lucide/svelte/icons/refresh-ccw';
 	import { onMount, type Component } from 'svelte';
 	import type { ComplianceWarning } from '$lib/compliance-warnings';
 
@@ -163,6 +164,38 @@
 	const apprenants = $derived(formation?.formationApprenants ?? []);
 	const formateurs = $derived(formation?.formationFormateurs ?? []);
 	const seancesList = $derived(formation?.seances ?? []);
+
+	const formationUpdatedAt = $derived(formation?.updatedAt ?? null);
+
+	function isDocStale(doc: (typeof documents)[number]): boolean {
+		if (!formationUpdatedAt || !doc.generatedAt) return false;
+		return new Date(formationUpdatedAt) > new Date(doc.generatedAt);
+	}
+
+	let regeneratingDocId = $state<string | null>(null);
+
+	async function regenerateDocument(documentId: string) {
+		regeneratingDocId = documentId;
+		const body = new FormData();
+		body.set('documentId', documentId);
+
+		try {
+			const response = await fetch('?/regenerateDocument', { method: 'POST', body });
+			const result = deserialize(await response.text());
+			if (result.type === 'success') {
+				toast.success('Document régénéré');
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur de régénération');
+			} else if (result.type === 'error') {
+				toast.error(result.error?.message ?? 'Erreur serveur');
+			}
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Erreur de régénération');
+		} finally {
+			regeneratingDocId = null;
+		}
+	}
 
 	let commsExpanded = $state(false);
 
@@ -741,6 +774,36 @@
 						</Button>
 					</div>
 				</div>
+
+				{#if isDocStale(doc) && doc.effectiveStatus !== 'remplace'}
+					<div class="mt-2 flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 dark:border-amber-700 dark:bg-amber-950/40">
+						<AlertTriangle class="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+						<span class="flex-1 text-xs font-medium text-amber-800 dark:text-amber-200">
+							Les données ont changé depuis la génération
+						</span>
+						{#if doc.effectiveStatus === 'signe'}
+							<span class="text-[11px] text-muted-foreground">
+								Créez un avenant pour mettre à jour ce document signé
+							</span>
+						{:else}
+							<Button
+								variant="outline"
+								size="sm"
+								class="h-7 shrink-0 cursor-pointer gap-1 border-amber-300 text-xs text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
+								disabled={regeneratingDocId === doc.id}
+								onclick={() => regenerateDocument(doc.id)}
+							>
+								{#if regeneratingDocId === doc.id}
+									<Loader2 class="size-3 animate-spin" />
+									Régénération...
+								{:else}
+									<RefreshCcw class="size-3" />
+									Régénérer
+								{/if}
+							</Button>
+						{/if}
+					</div>
+				{/if}
 
 				{#if isExpanded}
 					<div class="mt-3 border-t pt-3">

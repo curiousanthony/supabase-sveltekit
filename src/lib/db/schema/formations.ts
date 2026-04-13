@@ -39,6 +39,9 @@ export const formations = pgTable(
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
 			.notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull(),
 		createdBy: uuid('created_by').notNull(),
 		name: text(),
 		description: text(),

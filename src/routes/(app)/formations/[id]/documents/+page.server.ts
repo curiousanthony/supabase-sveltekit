@@ -4,7 +4,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { generateDocument, getDocumentSignedUrl, type DocumentType } from '$lib/services/document-generator';
-import { getEffectiveStatus, transitionStatus } from '$lib/services/document-lifecycle';
+import { getEffectiveStatus, transitionStatus, replaceDocument } from '$lib/services/document-lifecycle';
 import type { PageServerLoad, Actions } from './$types';
 
 async function verifyFormationOwnership(formationId: string, workspaceId: string) {
@@ -231,5 +231,78 @@ export const actions: Actions = {
 		}
 
 		return { success: true };
+	},
+
+	regenerateDocument: async ({ request, params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+		if (!isOwner) return fail(403, { message: 'Accès refusé' });
+
+		const formData = await request.formData();
+		const documentId = formData.get('documentId')?.toString();
+		if (!documentId) return fail(400, { message: 'Document ID manquant' });
+
+		const oldDoc = await db.query.formationDocuments.findFirst({
+			where: and(
+				eq(formationDocuments.id, documentId),
+				eq(formationDocuments.formationId, params.id)
+			),
+			columns: {
+				id: true,
+				type: true,
+				status: true,
+				relatedContactId: true,
+				relatedFormateurId: true,
+				relatedSeanceId: true
+			}
+		});
+
+		if (!oldDoc) return fail(404, { message: 'Document introuvable' });
+
+		if (oldDoc.status === 'signe') {
+			return fail(400, {
+				message: 'Un document signé ne peut pas être régénéré — créez un avenant'
+			});
+		}
+
+		const docType = oldDoc.type as DocumentType;
+		if (!VALID_DOCUMENT_TYPES.includes(docType)) {
+			return fail(400, { message: 'Type de document invalide pour la régénération' });
+		}
+
+		try {
+			const newResult = await generateDocument(docType, params.id, user.id, {
+				contactId: oldDoc.relatedContactId ?? undefined,
+				formateurId: oldDoc.relatedFormateurId ?? undefined,
+				seanceId: oldDoc.relatedSeanceId ?? undefined
+			});
+
+			if (oldDoc.status === 'genere') {
+				await db.delete(formationDocuments).where(
+					and(
+						eq(formationDocuments.id, oldDoc.id),
+						eq(formationDocuments.formationId, params.id)
+					)
+				);
+			} else {
+				const replaceResult = await replaceDocument(
+					{ documentId: oldDoc.id, formationId: params.id, userId: user.id },
+					newResult.documentId
+				);
+				if (!replaceResult.success) {
+					return fail(400, { message: replaceResult.error ?? 'Échec du remplacement' });
+				}
+			}
+
+			return { success: true, documentId: newResult.documentId };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Erreur de régénération';
+			console.error(`[regenerateDocument] docId=${documentId} formationId=${params.id} error:`, err);
+			return fail(500, { message });
+		}
 	}
 };
