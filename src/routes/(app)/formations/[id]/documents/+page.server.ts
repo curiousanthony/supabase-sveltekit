@@ -4,7 +4,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { generateDocument, getDocumentSignedUrl, type DocumentType } from '$lib/services/document-generator';
-import { getEffectiveStatus, transitionStatus, replaceDocument } from '$lib/services/document-lifecycle';
+import { getEffectiveStatus, transitionStatus, replaceDocument, isValidTransition, type DocumentType as LifecycleDocType, type DocumentStatus } from '$lib/services/document-lifecycle';
 import type { PageServerLoad, Actions } from './$types';
 
 async function verifyFormationOwnership(formationId: string, workspaceId: string) {
@@ -274,6 +274,11 @@ export const actions: Actions = {
 			return fail(400, { message: 'Type de document invalide pour la régénération' });
 		}
 
+		const fromStatus = oldDoc.status as DocumentStatus;
+		if (fromStatus !== 'genere' && !isValidTransition(docType as LifecycleDocType, fromStatus, 'remplace')) {
+			return fail(400, { message: `Régénération impossible depuis le statut : ${fromStatus}` });
+		}
+
 		try {
 			const newResult = await generateDocument(docType, params.id, user.id, {
 				contactId: oldDoc.relatedContactId ?? undefined,
@@ -281,19 +286,25 @@ export const actions: Actions = {
 				seanceId: oldDoc.relatedSeanceId ?? undefined
 			});
 
-			if (oldDoc.status === 'genere') {
-				await db.delete(formationDocuments).where(
+			if (fromStatus === 'genere') {
+				const deleted = await db.delete(formationDocuments).where(
 					and(
 						eq(formationDocuments.id, oldDoc.id),
-						eq(formationDocuments.formationId, params.id)
+						eq(formationDocuments.formationId, params.id),
+						eq(formationDocuments.status, 'genere')
 					)
-				);
+				).returning({ id: formationDocuments.id });
+
+				if (deleted.length === 0) {
+					console.warn(`[regenerateDocument] genere delete missed — status changed for ${oldDoc.id}`);
+				}
 			} else {
 				const replaceResult = await replaceDocument(
 					{ documentId: oldDoc.id, formationId: params.id, userId: user.id },
 					newResult.documentId
 				);
 				if (!replaceResult.success) {
+					await db.delete(formationDocuments).where(eq(formationDocuments.id, newResult.documentId));
 					return fail(400, { message: replaceResult.error ?? 'Échec du remplacement' });
 				}
 			}
