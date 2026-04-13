@@ -17,9 +17,17 @@ const STATUT_COLORS: Record<string, string> = {
 	'Archivée': '[&_svg]:text-red-400'
 };
 
+/** Avoid passing non-UUID segment (e.g. `/formations/1`) to Postgres — it throws and surfaces as 500. */
+const FORMATION_ID_UUID =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const load = (async ({ params, depends }) => {
-	depends(`formation:${params.id}`);
 	const formationId = params.id;
+	if (!FORMATION_ID_UUID.test(formationId)) {
+		throw error(404, 'Formation introuvable');
+	}
+
+	depends(`formation:${formationId}`);
 
 	const formation = await db.query.formations.findFirst({
 		where: eq(formations.id, formationId),
