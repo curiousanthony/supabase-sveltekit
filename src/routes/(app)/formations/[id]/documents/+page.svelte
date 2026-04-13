@@ -12,6 +12,7 @@
 	import { page } from '$app/state';
 	import { toast } from 'svelte-sonner';
 	import { getDocumentPrompts, getDocumentTypeForQuest, type QuestActionInput, type DocumentInput } from '$lib/document-prompts';
+	import { PHASE_LABELS, type QuestPhase } from '$lib/formation-quests';
 	import Files from '@lucide/svelte/icons/files';
 	import FileSignature from '@lucide/svelte/icons/file-signature';
 	import Mail from '@lucide/svelte/icons/mail';
@@ -31,6 +32,7 @@
 	import X from '@lucide/svelte/icons/x';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Layers from '@lucide/svelte/icons/layers';
 	import History from '@lucide/svelte/icons/history';
 	import EyeOff from '@lucide/svelte/icons/eye-off';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
@@ -108,6 +110,32 @@
 	const NEEDS_FORMATEUR = new Set(['ordre_mission']);
 	const NEEDS_SEANCE = new Set(['feuille_emargement']);
 
+	const DOC_TYPE_PHASE: Record<string, QuestPhase | null> = {
+		devis: 'conception',
+		convention: 'conception',
+		convocation: 'conception',
+		ordre_mission: 'conception',
+		feuille_emargement: 'deploiement',
+		certificat: 'evaluation',
+		attestation: 'evaluation',
+		autre: null
+	};
+
+	const STATUS_URGENCY: Record<string, number> = {
+		refuse: 0, expire: 0, annule: 0,
+		genere: 1,
+		envoye: 2, signatures_en_cours: 2,
+		accepte: 3, signe: 3, archive: 3,
+		remplace: 4
+	};
+
+	const ERROR_STATUSES = new Set(['refuse', 'expire', 'annule']);
+
+	const GROUPED_TYPE_LABELS: Record<string, { plural: string; sentLabel: string }> = {
+		convocation: { plural: 'Convocations', sentLabel: 'envoyées' },
+		certificat: { plural: 'Certificats de réalisation', sentLabel: 'envoyés' }
+	};
+
 	let typeFilter = $state<string>('all');
 	let statusFilter = $state<string>('all');
 	let previewOpen = $state(false);
@@ -126,6 +154,8 @@
 	let transitioningDocId = $state<string | null>(null);
 	let showReplaced = $state(false);
 	let expandedDocId = $state<string | null>(null);
+	let groupByPhase = $state(false);
+	let groupExpandOverrides = $state(new Map<string, boolean>());
 
 	const formation = $derived(data.formation);
 	const documents = $derived(data.documents ?? []);
@@ -202,7 +232,14 @@
 		if (statusFilter !== 'all') {
 			result = result.filter((d) => d.effectiveStatus === statusFilter);
 		}
-		return result;
+		return [...result].sort((a, b) => {
+			const ua = STATUS_URGENCY[a.effectiveStatus] ?? 4;
+			const ub = STATUS_URGENCY[b.effectiveStatus] ?? 4;
+			if (ua !== ub) return ua - ub;
+			const ta = a.generatedAt ? new Date(a.generatedAt).getTime() : 0;
+			const tb = b.generatedAt ? new Date(b.generatedAt).getTime() : 0;
+			return tb - ta;
+		});
 	});
 
 	const statusCounts = $derived.by(() => {
@@ -212,6 +249,81 @@
 		}
 		return counts;
 	});
+
+	const displayItems = $derived.by(() => {
+		const sorted = filteredDocuments;
+		const groupMap = new Map<string, (typeof sorted)[number][]>();
+
+		for (const doc of sorted) {
+			if (NEEDS_CONTACT.has(doc.type)) {
+				const arr = groupMap.get(doc.type);
+				if (arr) arr.push(doc);
+				else groupMap.set(doc.type, [doc]);
+			}
+		}
+
+		const items: (
+			| { kind: 'doc'; doc: (typeof sorted)[number] }
+			| { kind: 'group'; type: string; total: number; sentCount: number; children: (typeof sorted)[number][]; hasError: boolean }
+		)[] = [];
+		const placed = new Set<string>();
+
+		for (const doc of sorted) {
+			const groupDocs = groupMap.get(doc.type);
+			if (groupDocs && groupDocs.length >= 2) {
+				if (!placed.has(doc.type)) {
+					items.push({
+						kind: 'group',
+						type: doc.type,
+						total: groupDocs.length,
+						sentCount: groupDocs.filter((d) => d.effectiveStatus !== 'genere').length,
+						children: groupDocs,
+						hasError: groupDocs.some((d) => ERROR_STATUSES.has(d.effectiveStatus))
+					});
+					placed.add(doc.type);
+				}
+			} else {
+				items.push({ kind: 'doc', doc });
+			}
+		}
+
+		return items;
+	});
+
+	const phaseGroups = $derived.by(() => {
+		if (!groupByPhase) return [];
+		const order = ['conception', 'deploiement', 'evaluation', 'other'] as const;
+		const labels: Record<string, string> = { ...PHASE_LABELS, other: 'Autre' };
+		const buckets = new Map<string, (typeof displayItems)[number][]>();
+
+		for (const item of displayItems) {
+			const docType = item.kind === 'doc' ? item.doc.type : item.type;
+			const phase = DOC_TYPE_PHASE[docType] ?? 'other';
+			if (!buckets.has(phase)) buckets.set(phase, []);
+			buckets.get(phase)!.push(item);
+		}
+
+		return order
+			.filter((p) => buckets.has(p))
+			.map((p) => {
+				const items = buckets.get(p)!;
+				let docCount = 0;
+				for (const it of items) {
+					docCount += it.kind === 'doc' ? 1 : it.children.length;
+				}
+				return { phase: p, label: labels[p], items, docCount };
+			});
+	});
+
+	function isGroupExpanded(type: string, hasError: boolean): boolean {
+		if (groupExpandOverrides.has(type)) return groupExpandOverrides.get(type)!;
+		return hasError;
+	}
+
+	function toggleGroup(type: string, hasError: boolean) {
+		const current = isGroupExpanded(type, hasError);
+		groupExpandOverrides.set(type, !current);
+	}
 
 	function formatDate(dateStr: string | null | undefined) {
 		if (!dateStr) return '';
@@ -431,6 +543,15 @@
 			{/each}
 		</div>
 
+		<button
+			type="button"
+			class="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+			onclick={() => (groupByPhase = !groupByPhase)}
+		>
+			<Layers class="size-3" />
+			{groupByPhase ? 'Liste plate' : 'Grouper par phase'}
+		</button>
+
 		{#if replacedCount > 0}
 			<button
 				type="button"
@@ -509,6 +630,229 @@
 		</div>
 	{/if}
 
+	{#snippet docCard(doc: (typeof filteredDocuments)[number])}
+		{@const typeConfig = DOC_TYPE_CONFIG[doc.type] ?? DOC_TYPE_CONFIG['autre']}
+		{@const statusConfig = STATUS_CONFIG[doc.effectiveStatus] ?? STATUS_CONFIG['genere']}
+		{@const related = personName(doc)}
+		{@const isExpanded = expandedDocId === doc.id}
+		{@const phase = DOC_TYPE_PHASE[doc.type]}
+		<Card.Root data-doc-type={doc.type}>
+			<Card.Content class="py-4">
+				<div class="flex items-center gap-4">
+					<button
+						type="button"
+						class="flex min-w-0 flex-1 cursor-pointer items-center gap-4 text-left"
+						aria-expanded={isExpanded}
+						aria-label="{isExpanded ? 'Réduire' : 'Détails'} — {doc.title || typeConfig.label}"
+						onclick={() => (expandedDocId = isExpanded ? null : doc.id)}
+					>
+						<div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted transition-colors hover:bg-muted/80">
+							<typeConfig.icon class="size-5 text-muted-foreground" />
+						</div>
+						<div class="min-w-0 flex-1">
+							<div class="flex flex-wrap items-center gap-2">
+								<p class="truncate text-sm font-medium">{doc.title || typeConfig.label}</p>
+								<Badge variant="outline" class="shrink-0 text-[10px] {statusConfig.class}">
+									{statusConfig.label}
+								</Badge>
+								{#if phase}
+									<Badge variant="outline" class="shrink-0 text-[10px] text-muted-foreground">
+										{PHASE_LABELS[phase]}
+									</Badge>
+								{/if}
+							</div>
+							<div class="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+								{#if related}
+									<span>{related}</span>
+								{/if}
+								{#if doc.generatedAt}
+									<span>{formatDate(doc.generatedAt)}</span>
+								{/if}
+							</div>
+						</div>
+					</button>
+
+					<div class="flex shrink-0 items-center gap-1">
+						{#if doc.type === 'devis' && doc.effectiveStatus === 'envoye'}
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 cursor-pointer text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+								disabled={transitioningDocId === doc.id}
+								onclick={() => transitionDevis(doc.id, 'acceptDevis')}
+								aria-label="Accepter le devis"
+								title="Accepter le devis"
+							>
+								{#if transitioningDocId === doc.id}
+									<Loader2 class="size-4 animate-spin" />
+								{:else}
+									<Check class="size-4" />
+								{/if}
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 cursor-pointer text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+								disabled={transitioningDocId === doc.id}
+								onclick={() => transitionDevis(doc.id, 'refuseDevis')}
+								aria-label="Refuser le devis"
+								title="Refuser le devis"
+							>
+								<X class="size-4" />
+							</Button>
+						{/if}
+						{#if doc.effectiveStatus === 'genere'}
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 cursor-pointer text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+								disabled={markingSentId === doc.id}
+								onclick={() => markAsSent(doc.id)}
+								aria-label="Marquer comme envoyé"
+								title="Marquer comme envoyé"
+							>
+								{#if markingSentId === doc.id}
+									<Loader2 class="size-4 animate-spin" />
+								{:else}
+									<MailCheck class="size-4" />
+								{/if}
+							</Button>
+						{/if}
+						{#if doc.storagePath}
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 cursor-pointer"
+								onclick={() => openPreview(doc.id)}
+								aria-label="Voir le PDF"
+							>
+								<Eye class="size-4" />
+							</Button>
+						{/if}
+						<Button
+							variant="ghost"
+							size="icon"
+							class="size-8 cursor-pointer text-destructive hover:text-destructive"
+							onclick={() => confirmDelete({ id: doc.id, title: doc.title || typeConfig.label })}
+							aria-label="Supprimer"
+						>
+							<Trash2 class="size-4" />
+						</Button>
+					</div>
+				</div>
+
+				{#if isExpanded}
+					<div class="mt-3 border-t pt-3">
+						<div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+							<History class="size-3.5" />
+							Historique du cycle de vie
+						</div>
+						<div class="mt-2 space-y-1.5 text-xs text-muted-foreground">
+							{#if doc.generatedAt}
+								<div class="flex items-baseline gap-2">
+									<span class="w-28 shrink-0 text-right font-medium">Généré</span>
+									<span>{formatDate(doc.generatedAt)}</span>
+								</div>
+							{/if}
+							{#if doc.sentAt}
+								<div class="flex items-baseline gap-2">
+									<span class="w-28 shrink-0 text-right font-medium">Envoyé</span>
+									<span>{formatDate(doc.sentAt)}{doc.sentTo?.length ? ` → ${doc.sentTo.join(', ')}` : ''}</span>
+								</div>
+							{/if}
+							{#if doc.acceptedAt}
+								<div class="flex items-baseline gap-2">
+									<span class="w-28 shrink-0 text-right font-medium">Accepté</span>
+									<span>{formatDate(doc.acceptedAt)}</span>
+								</div>
+							{/if}
+							{#if doc.refusedAt}
+								<div class="flex items-baseline gap-2">
+									<span class="w-28 shrink-0 text-right font-medium">Refusé</span>
+									<span>{formatDate(doc.refusedAt)}</span>
+								</div>
+							{/if}
+							{#if doc.signedAt}
+								<div class="flex items-baseline gap-2">
+									<span class="w-28 shrink-0 text-right font-medium">Signé</span>
+									<span>{formatDate(doc.signedAt)}</span>
+								</div>
+							{/if}
+							{#if doc.expiresAt}
+								<div class="flex items-baseline gap-2">
+									<span class="w-28 shrink-0 text-right font-medium">Expire</span>
+									<span>{formatDate(doc.expiresAt)}</span>
+								</div>
+							{/if}
+							{#if doc.archivedAt}
+								<div class="flex items-baseline gap-2">
+									<span class="w-28 shrink-0 text-right font-medium">Archivé</span>
+									<span>{formatDate(doc.archivedAt)}</span>
+								</div>
+							{/if}
+							{#if doc.statusChangedAt}
+								<div class="flex items-baseline gap-2">
+									<span class="w-28 shrink-0 text-right font-medium">Dernière MAJ</span>
+									<span>{formatDate(doc.statusChangedAt)}</span>
+								</div>
+							{/if}
+							{#if !doc.generatedAt && !doc.sentAt && !doc.signedAt && !doc.acceptedAt && !doc.refusedAt && !doc.expiresAt && !doc.archivedAt && !doc.statusChangedAt}
+								<p class="italic">Aucun événement enregistré.</p>
+							{/if}
+						</div>
+					</div>
+				{/if}
+			</Card.Content>
+		</Card.Root>
+	{/snippet}
+
+	{#snippet renderItems(items: (typeof displayItems))}
+		{#each items as item (item.kind === 'doc' ? item.doc.id : 'group-' + item.type)}
+			{#if item.kind === 'group'}
+				{@const typeConfig = DOC_TYPE_CONFIG[item.type] ?? DOC_TYPE_CONFIG['autre']}
+				{@const groupLabels = GROUPED_TYPE_LABELS[item.type]}
+				{@const expanded = isGroupExpanded(item.type, item.hasError)}
+				<Card.Root class={item.hasError ? 'border-red-200 dark:border-red-900' : ''}>
+					<Card.Content class="py-3">
+						<button
+							type="button"
+							class="flex w-full cursor-pointer items-center gap-3 text-left"
+							aria-expanded={expanded}
+							onclick={() => toggleGroup(item.type, item.hasError)}
+						>
+							{#if expanded}
+								<ChevronDown class="size-4 shrink-0 text-muted-foreground" />
+							{:else}
+								<ChevronRight class="size-4 shrink-0 text-muted-foreground" />
+							{/if}
+							<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+								<typeConfig.icon class="size-4 text-muted-foreground" />
+							</div>
+							<span class="flex-1 text-sm font-medium">
+								{groupLabels?.plural ?? typeConfig.label}
+								<span class="ml-1 text-muted-foreground">({item.sentCount}/{item.total} {groupLabels?.sentLabel ?? 'traités'})</span>
+							</span>
+							{#if item.hasError}
+								<Badge variant="outline" class="shrink-0 text-[10px] border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-400">
+									Action requise
+								</Badge>
+							{/if}
+						</button>
+					</Card.Content>
+				</Card.Root>
+				{#if expanded}
+					<div class="ml-4 space-y-2 border-l-2 border-muted pl-4">
+						{#each item.children as doc (doc.id)}
+							{@render docCard(doc)}
+						{/each}
+					</div>
+				{/if}
+			{:else}
+				{@render docCard(item.doc)}
+			{/if}
+		{/each}
+	{/snippet}
+
 	<!-- Document list -->
 	{#if filteredDocuments.length === 0}
 		<Card.Root>
@@ -524,177 +868,23 @@
 				{/if}
 			</Card.Content>
 		</Card.Root>
+	{:else if groupByPhase && phaseGroups.length > 0}
+		<div class="space-y-6">
+			{#each phaseGroups as pg (pg.phase)}
+				<div>
+					<h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+						{pg.label}
+						<Badge variant="secondary" class="text-xs">{pg.docCount}</Badge>
+					</h3>
+					<div class="space-y-2">
+						{@render renderItems(pg.items)}
+					</div>
+				</div>
+			{/each}
+		</div>
 	{:else}
 		<div class="space-y-2">
-			{#each filteredDocuments as doc (doc.id)}
-				{@const typeConfig = DOC_TYPE_CONFIG[doc.type] ?? DOC_TYPE_CONFIG['autre']}
-				{@const statusConfig = STATUS_CONFIG[doc.effectiveStatus] ?? STATUS_CONFIG['genere']}
-				{@const related = personName(doc)}
-				{@const isExpanded = expandedDocId === doc.id}
-				<Card.Root data-doc-type={doc.type}>
-					<Card.Content class="py-4">
-						<div class="flex items-center gap-4">
-							<button
-								type="button"
-								class="flex min-w-0 flex-1 cursor-pointer items-center gap-4 text-left"
-								aria-expanded={isExpanded}
-								aria-label="{isExpanded ? 'Réduire' : 'Détails'} — {doc.title || typeConfig.label}"
-								onclick={() => (expandedDocId = isExpanded ? null : doc.id)}
-							>
-								<div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted transition-colors hover:bg-muted/80">
-									<typeConfig.icon class="size-5 text-muted-foreground" />
-								</div>
-								<div class="min-w-0 flex-1">
-									<div class="flex items-center gap-2">
-										<p class="truncate text-sm font-medium">{doc.title || typeConfig.label}</p>
-										<Badge variant="outline" class="shrink-0 text-[10px] {statusConfig.class}">
-											{statusConfig.label}
-										</Badge>
-									</div>
-									<div class="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-										{#if related}
-											<span>{related}</span>
-										{/if}
-										{#if doc.generatedAt}
-											<span>{formatDate(doc.generatedAt)}</span>
-										{/if}
-									</div>
-								</div>
-							</button>
-
-							<div class="flex shrink-0 items-center gap-1">
-								{#if doc.type === 'devis' && doc.effectiveStatus === 'envoye'}
-									<Button
-										variant="ghost"
-										size="icon"
-										class="size-8 cursor-pointer text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-										disabled={transitioningDocId === doc.id}
-										onclick={() => transitionDevis(doc.id, 'acceptDevis')}
-										aria-label="Accepter le devis"
-										title="Accepter le devis"
-									>
-										{#if transitioningDocId === doc.id}
-											<Loader2 class="size-4 animate-spin" />
-										{:else}
-											<Check class="size-4" />
-										{/if}
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										class="size-8 cursor-pointer text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-										disabled={transitioningDocId === doc.id}
-										onclick={() => transitionDevis(doc.id, 'refuseDevis')}
-										aria-label="Refuser le devis"
-										title="Refuser le devis"
-									>
-										<X class="size-4" />
-									</Button>
-								{/if}
-								{#if doc.effectiveStatus === 'genere'}
-									<Button
-										variant="ghost"
-										size="icon"
-										class="size-8 cursor-pointer text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
-										disabled={markingSentId === doc.id}
-										onclick={() => markAsSent(doc.id)}
-										aria-label="Marquer comme envoyé"
-										title="Marquer comme envoyé"
-									>
-										{#if markingSentId === doc.id}
-											<Loader2 class="size-4 animate-spin" />
-										{:else}
-											<MailCheck class="size-4" />
-										{/if}
-									</Button>
-								{/if}
-								{#if doc.storagePath}
-									<Button
-										variant="ghost"
-										size="icon"
-										class="size-8 cursor-pointer"
-										onclick={() => openPreview(doc.id)}
-										aria-label="Voir le PDF"
-									>
-										<Eye class="size-4" />
-									</Button>
-								{/if}
-								<Button
-									variant="ghost"
-									size="icon"
-									class="size-8 cursor-pointer text-destructive hover:text-destructive"
-									onclick={() => confirmDelete({ id: doc.id, title: doc.title || typeConfig.label })}
-									aria-label="Supprimer"
-								>
-									<Trash2 class="size-4" />
-								</Button>
-							</div>
-						</div>
-
-						{#if isExpanded}
-							<div class="mt-3 border-t pt-3">
-								<div class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-									<History class="size-3.5" />
-									Historique du cycle de vie
-								</div>
-								<div class="mt-2 space-y-1.5 text-xs text-muted-foreground">
-									{#if doc.generatedAt}
-										<div class="flex items-baseline gap-2">
-											<span class="w-28 shrink-0 text-right font-medium">Généré</span>
-											<span>{formatDate(doc.generatedAt)}</span>
-										</div>
-									{/if}
-									{#if doc.sentAt}
-										<div class="flex items-baseline gap-2">
-											<span class="w-28 shrink-0 text-right font-medium">Envoyé</span>
-											<span>{formatDate(doc.sentAt)}{doc.sentTo?.length ? ` → ${doc.sentTo.join(', ')}` : ''}</span>
-										</div>
-									{/if}
-									{#if doc.acceptedAt}
-										<div class="flex items-baseline gap-2">
-											<span class="w-28 shrink-0 text-right font-medium">Accepté</span>
-											<span>{formatDate(doc.acceptedAt)}</span>
-										</div>
-									{/if}
-									{#if doc.refusedAt}
-										<div class="flex items-baseline gap-2">
-											<span class="w-28 shrink-0 text-right font-medium">Refusé</span>
-											<span>{formatDate(doc.refusedAt)}</span>
-										</div>
-									{/if}
-									{#if doc.signedAt}
-										<div class="flex items-baseline gap-2">
-											<span class="w-28 shrink-0 text-right font-medium">Signé</span>
-											<span>{formatDate(doc.signedAt)}</span>
-										</div>
-									{/if}
-									{#if doc.expiresAt}
-										<div class="flex items-baseline gap-2">
-											<span class="w-28 shrink-0 text-right font-medium">Expire</span>
-											<span>{formatDate(doc.expiresAt)}</span>
-										</div>
-									{/if}
-									{#if doc.archivedAt}
-										<div class="flex items-baseline gap-2">
-											<span class="w-28 shrink-0 text-right font-medium">Archivé</span>
-											<span>{formatDate(doc.archivedAt)}</span>
-										</div>
-									{/if}
-									{#if doc.statusChangedAt}
-										<div class="flex items-baseline gap-2">
-											<span class="w-28 shrink-0 text-right font-medium">Dernière MAJ</span>
-											<span>{formatDate(doc.statusChangedAt)}</span>
-										</div>
-									{/if}
-									{#if !doc.generatedAt && !doc.sentAt && !doc.signedAt && !doc.acceptedAt && !doc.refusedAt && !doc.expiresAt && !doc.archivedAt && !doc.statusChangedAt}
-										<p class="italic">Aucun événement enregistré.</p>
-									{/if}
-								</div>
-							</div>
-						{/if}
-					</Card.Content>
-				</Card.Root>
-			{/each}
+			{@render renderItems(displayItems)}
 		</div>
 	{/if}
 
