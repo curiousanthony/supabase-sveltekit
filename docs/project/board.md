@@ -3,7 +3,6 @@
 ## sprint
 
 ## backlog
-T-11 P2 Phase grouping in Documents tab
 T-12 P2 Regeneration prompt
 T-13 P2 Error states with fix paths
 T-14 P2 Batch generation for per-learner documents
