@@ -1,3 +1,1 @@
-# AGENTS.md
-
 Mentore Manager — monolithic SvelteKit 5 app backed by Supabase (Postgres, Auth, Storage, Realtime). Package manager: **Bun**. See `.cursor/rules/` for development workflows and `.cursor/agents/` for the subagent team.

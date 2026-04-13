@@ -173,6 +173,7 @@
 	}
 
 	let regeneratingDocId = $state<string | null>(null);
+	let regeneratingAll = $state(false);
 
 	async function regenerateDocument(documentId: string) {
 		regeneratingDocId = documentId;
@@ -194,6 +195,29 @@
 			toast.error(err instanceof Error ? err.message : 'Erreur de régénération');
 		} finally {
 			regeneratingDocId = null;
+		}
+	}
+
+	async function regenerateAllStale() {
+		regeneratingAll = true;
+		const body = new FormData();
+		try {
+			const response = await fetch('?/regenerateAll', { method: 'POST', body });
+			const result = deserialize(await response.text());
+			if (result.type === 'success') {
+				const d = result.data as { regeneratedCount: number; skippedCount: number };
+				toast.success(`${d.regeneratedCount} document(s) régénéré(s)`);
+				if (d.skippedCount > 0) {
+					toast.info(`${d.skippedCount} document(s) signé(s) ignoré(s)`);
+				}
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+			}
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Erreur de régénération');
+		} finally {
+			regeneratingAll = false;
 		}
 	}
 
@@ -274,6 +298,13 @@
 			return tb - ta;
 		});
 	});
+
+	const staleDocuments = $derived(
+		filteredDocuments.filter((d) => isDocStale(d) && d.effectiveStatus !== 'remplace')
+	);
+	const staleRegenerableDocuments = $derived(
+		staleDocuments.filter((d) => d.effectiveStatus !== 'signe')
+	);
 
 	const statusCounts = $derived.by(() => {
 		const counts: Record<string, number> = {};
@@ -550,12 +581,12 @@
 				class="cursor-pointer"
 				onclick={() => (statusFilter = 'all')}
 			>
-				<Badge
-					variant={statusFilter === 'all' ? 'default' : 'outline'}
-					class="cursor-pointer transition-colors"
-				>
-					Tous
-				</Badge>
+			<Badge
+				variant={statusFilter === 'all' ? 'secondary' : 'outline'}
+				class="cursor-pointer transition-colors {statusFilter === 'all' ? 'font-semibold' : ''}"
+			>
+				Tous
+			</Badge>
 			</button>
 			{#each Object.entries(STATUS_CONFIG) as [key, config] (key)}
 				{#if statusCounts[key]}
@@ -603,28 +634,27 @@
 
 	<!-- Compliance warnings -->
 	{#if complianceWarnings.length > 0}
-		<div class="flex flex-col gap-2">
-			{#each complianceWarnings as warning (warning.documentType)}
-				{@const isRed = warning.level === 'red'}
-				<div
-					role="alert"
-					class="flex items-center gap-3 rounded-lg border px-4 py-3 {isRed
-						? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40'
-						: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40'}"
-				>
-					<AlertTriangle
-						class="size-4 shrink-0 {isRed
-							? 'text-red-600 dark:text-red-400'
-							: 'text-amber-600 dark:text-amber-400'}"
-						aria-hidden="true"
-					/>
-					<p class="text-sm font-medium {isRed
-						? 'text-red-900 dark:text-red-100'
-						: 'text-amber-900 dark:text-amber-100'}">
-						{warning.message}
+		<div
+			role="alert"
+			class="flex items-start gap-3 rounded-lg border-l-4 border-l-red-500 bg-red-50/50 px-4 py-3 dark:bg-red-950/20"
+		>
+			<AlertTriangle class="mt-0.5 size-4 shrink-0 text-red-500" aria-hidden="true" />
+			<div class="min-w-0 flex-1">
+				{#if complianceWarnings.length === 1}
+					<p class="text-sm font-medium text-red-900 dark:text-red-100">
+						{complianceWarnings[0].message}
 					</p>
-				</div>
-			{/each}
+				{:else}
+					<p class="text-sm font-medium text-red-900 dark:text-red-100">
+						{complianceWarnings.length} problèmes de conformité
+					</p>
+					<ul class="mt-1 space-y-0.5">
+						{#each complianceWarnings as warning (warning.documentType)}
+							<li class="text-sm text-red-800 dark:text-red-200">• {warning.message}</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
 		</div>
 	{/if}
 
@@ -649,18 +679,39 @@
 						{prompt.message}
 					</p>
 					{#if prompt.canGenerate}
-						<Button
-							variant="outline"
-							size="sm"
-							class="shrink-0 cursor-pointer border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
-							onclick={() => openGenerate(prompt.documentType)}
-						>
-							Générer
-							<ArrowRight class="ml-1 size-3.5" aria-hidden="true" />
-						</Button>
+					<Button
+						variant="secondary"
+						size="sm"
+						class="shrink-0 cursor-pointer"
+						onclick={() => openGenerate(prompt.documentType)}
+					>
+						Générer
+						<ArrowRight class="ml-1 size-3.5" aria-hidden="true" />
+					</Button>
 					{/if}
 				</div>
 			{/each}
+		</div>
+	{/if}
+
+	<!-- Global stale banner -->
+	{#if staleDocuments.length >= 2}
+		<div class="flex items-center gap-3 rounded-lg border border-muted bg-muted/30 px-4 py-3">
+			<RefreshCcw class="size-4 shrink-0 text-muted-foreground" />
+			<p class="flex-1 text-sm text-muted-foreground">
+				{staleDocuments.length} documents ont des données modifiées depuis la dernière mise à jour
+			</p>
+			{#if staleRegenerableDocuments.length > 0}
+				<Button variant="outline" size="sm" class="shrink-0 cursor-pointer" onclick={regenerateAllStale} disabled={regeneratingAll}>
+					{#if regeneratingAll}
+						<Loader2 class="mr-1.5 size-3 animate-spin" />
+						Régénération...
+					{:else}
+						<RefreshCcw class="mr-1.5 size-3" />
+						Tout régénérer ({staleRegenerableDocuments.length})
+					{/if}
+				</Button>
+			{/if}
 		</div>
 	{/if}
 
@@ -689,11 +740,11 @@
 								<Badge variant="outline" class="shrink-0 text-[10px] {statusConfig.class}">
 									{statusConfig.label}
 								</Badge>
-								{#if phase}
-									<Badge variant="outline" class="shrink-0 text-[10px] text-muted-foreground">
-										{PHASE_LABELS[phase]}
-									</Badge>
-								{/if}
+							{#if phase && groupByPhase}
+								<Badge variant="outline" class="shrink-0 text-[10px] text-muted-foreground">
+									{PHASE_LABELS[phase]}
+								</Badge>
+							{/if}
 							</div>
 							<div class="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
 								{#if related}
@@ -775,24 +826,24 @@
 					</div>
 				</div>
 
-				{#if isDocStale(doc) && doc.effectiveStatus !== 'remplace'}
-					<div class="mt-2 flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 dark:border-amber-700 dark:bg-amber-950/40">
-						<AlertTriangle class="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-						<span class="flex-1 text-xs font-medium text-amber-800 dark:text-amber-200">
-							Les données ont changé depuis la génération
-						</span>
+			{#if isDocStale(doc) && doc.effectiveStatus !== 'remplace' && staleDocuments.length < 2}
+				<div class="mt-2 flex items-center gap-2 rounded-md border border-muted bg-muted/30 px-3 py-1.5">
+					<RefreshCcw class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+					<span class="flex-1 text-xs font-medium text-muted-foreground">
+						Les données ont changé depuis la génération
+					</span>
 						{#if doc.effectiveStatus === 'signe'}
 							<span class="text-[11px] text-muted-foreground">
 								Créez un avenant pour mettre à jour ce document signé
 							</span>
 						{:else}
-							<Button
-								variant="outline"
-								size="sm"
-								class="h-7 shrink-0 cursor-pointer gap-1 border-amber-300 text-xs text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
-								disabled={regeneratingDocId === doc.id}
-								onclick={() => regenerateDocument(doc.id)}
-							>
+						<Button
+							variant="secondary"
+							size="sm"
+							class="h-7 shrink-0 cursor-pointer gap-1 text-xs"
+							disabled={regeneratingDocId === doc.id}
+							onclick={() => regenerateDocument(doc.id)}
+						>
 								{#if regeneratingDocId === doc.id}
 									<Loader2 class="size-3 animate-spin" />
 									Régénération...

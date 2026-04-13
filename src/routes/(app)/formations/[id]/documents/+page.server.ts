@@ -1,6 +1,6 @@
 import { db } from '$lib/db';
 import { formationDocuments, formationEmails, formations } from '$lib/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, gt, notInArray } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { generateDocument, getDocumentSignedUrl, type DocumentType } from '$lib/services/document-generator';
@@ -231,6 +231,97 @@ export const actions: Actions = {
 		}
 
 		return { success: true };
+	},
+
+	regenerateAll: async ({ params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+		if (!isOwner) return fail(403, { message: 'Accès refusé' });
+
+		const formation = await db.query.formations.findFirst({
+			where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
+			columns: { updatedAt: true }
+		});
+		if (!formation?.updatedAt) return fail(404, { message: 'Formation introuvable' });
+
+		const SKIP_STATUSES = ['signe', 'remplace', 'archive'];
+		const staleDocs = await db.query.formationDocuments.findMany({
+			where: and(
+				eq(formationDocuments.formationId, params.id),
+				notInArray(formationDocuments.status, SKIP_STATUSES)
+			),
+			columns: {
+				id: true,
+				type: true,
+				status: true,
+				generatedAt: true,
+				relatedContactId: true,
+				relatedFormateurId: true,
+				relatedSeanceId: true
+			}
+		});
+
+		const formationUpdatedAt = new Date(formation.updatedAt);
+		const docsToRegenerate = staleDocs.filter((doc) => {
+			if (!doc.generatedAt) return false;
+			return formationUpdatedAt > new Date(doc.generatedAt);
+		});
+
+		let regeneratedCount = 0;
+		let skippedCount = 0;
+
+		for (const oldDoc of docsToRegenerate) {
+			const docType = oldDoc.type as DocumentType;
+			if (!VALID_DOCUMENT_TYPES.includes(docType)) {
+				skippedCount++;
+				continue;
+			}
+
+			const fromStatus = oldDoc.status as DocumentStatus;
+
+			try {
+				const newResult = await generateDocument(docType, params.id, user.id, {
+					contactId: oldDoc.relatedContactId ?? undefined,
+					formateurId: oldDoc.relatedFormateurId ?? undefined,
+					seanceId: oldDoc.relatedSeanceId ?? undefined
+				});
+
+				if (fromStatus === 'genere') {
+					await db.delete(formationDocuments).where(
+						and(
+							eq(formationDocuments.id, oldDoc.id),
+							eq(formationDocuments.formationId, params.id),
+							eq(formationDocuments.status, 'genere')
+						)
+					);
+				} else if (isValidTransition(docType as LifecycleDocType, fromStatus, 'remplace')) {
+					const replaceResult = await replaceDocument(
+						{ documentId: oldDoc.id, formationId: params.id, userId: user.id },
+						newResult.documentId
+					);
+					if (!replaceResult.success) {
+						await db.delete(formationDocuments).where(eq(formationDocuments.id, newResult.documentId));
+						skippedCount++;
+						continue;
+					}
+				} else {
+					await db.delete(formationDocuments).where(eq(formationDocuments.id, newResult.documentId));
+					skippedCount++;
+					continue;
+				}
+
+				regeneratedCount++;
+			} catch (err) {
+				console.error(`[regenerateAll] Failed for doc ${oldDoc.id}:`, err);
+				skippedCount++;
+			}
+		}
+
+		return { success: true, regeneratedCount, skippedCount };
 	},
 
 	regenerateDocument: async ({ request, params, locals }) => {

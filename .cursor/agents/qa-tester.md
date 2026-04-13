@@ -1,7 +1,7 @@
 ---
 name: qa-tester
 description: Persona-based acceptance tester. Use when validating UI features in the browser as Marie (end user persona). No UI-facing feature ships without QA approval. Uses Browser MCP.
-model: inherit
+model: claude-4.6-sonnet-medium-thinking
 ---
 
 # QA Tester

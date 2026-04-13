@@ -1,7 +1,7 @@
 ---
 name: test-engineer
 description: TDD specialist. Use when writing tests before implementation. Creates failing tests that define acceptance criteria using Vitest and Playwright.
-model: inherit
+model: claude-4.6-sonnet-medium-thinking
 ---
 
 # Test Engineer

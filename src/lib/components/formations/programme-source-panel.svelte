@@ -193,7 +193,7 @@
 						<input type="hidden" name="formationId" value={formationId} />
 						<Button type="submit" variant="outline" size="sm" disabled={submitting}>
 							<Save class="size-4" />
-							Créer un nouveau programme
+							Enregistrer en tant que nouveau programme
 						</Button>
 					</form>
 					<form

@@ -24,18 +24,21 @@ Handle directly (no subagents) when:
 
 Custom subagents are defined in `.cursor/agents/`. Launch them via the **Task tool** using the filename (without `.md`) as the `subagent_type`:
 
-| subagent_type | Role | readonly |
-|---|---|----|
-| `ux-designer` | Senior UI/UX designer (behavioral psychology, Marie persona) | no |
-| `product-analyst` | Product foundation + Qualiopi compliance analyst | no |
-| `architect` | Database schema and API architect (Drizzle + Supabase) | no |
-| `test-engineer` | TDD specialist (Vitest + Playwright) | no |
-| `implementer` | Senior SvelteKit 5 full-stack developer | no |
-| `reviewer` | Senior code reviewer (correctness, types, a11y, shadcn) | yes |
-| `security-analyst` | Security auditor (RLS, auth, data isolation) | no |
-| `qa-tester` | Persona-based acceptance tester (Browser MCP) | no |
-| `project-manager` | Agile PM + documentation (model: fast) | no |
-| `team-architect` | Meta-agent that improves the subagent ecosystem | no |
+| subagent_type | Role | Model | readonly |
+|---|---|---|----|
+| `ux-designer` | Senior UI/UX designer + plan writer (behavioral psychology, Marie persona) | inherit | no |
+| `product-analyst` | Product foundation + Qualiopi compliance analyst + gap analysis | sonnet | no |
+| `architect` | Database schema and API architect (Drizzle + Supabase) | inherit | no |
+| `test-engineer` | TDD specialist (Vitest + Playwright) | sonnet | no |
+| `implementer` | Senior SvelteKit 5 full-stack developer — executes plans | sonnet | no |
+| `reviewer` | Senior code reviewer (correctness, types, a11y, shadcn) | inherit | yes |
+| `security-analyst` | Security auditor (RLS, auth, data isolation) | inherit | no |
+| `qa-tester` | Persona-based acceptance tester (Browser MCP) | sonnet | no |
+| `project-manager` | Agile PM + documentation | fast | no |
+| `team-architect` | Meta-agent that improves the subagent ecosystem | inherit | no |
+
+**Model column**: `inherit` = parent model (typically Opus). `sonnet` = `claude-4.6-sonnet-medium-thinking`.
+Always pass the `model` parameter on the Task call for agents marked `sonnet` or `fast`.
 
 ## Phase 0: Smart Ticket Pickup
 
@@ -64,12 +67,22 @@ Read the ticket YAML frontmatter. Determine the **effective phase list** using t
 
 | Ticket type | Full recipe |
 |---|---|
-| `feature` | 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 7b |
-| `bug` (UI) | 0 → 1(quick) → 3 → 4 → 6 → 7b |
+| `feature` | 0 → 1 → 1b → 2 → 3 → 4 → 5 → 6 → 7 → 7b |
+| `bug` (UI) | 0 → 1(UX-only) → 1b → 3 → 4 → 6 → 7b |
 | `bug` (no UI) | 0 → 3 → 4 → 5 → 7b |
 | `tech-debt` | 0 → 4 → 5 → 7b |
 | `security` | 0 → 4 → 5(security-analyst) → 7b |
 | `docs` | 0 → 7 → 7b |
+
+### UI Detection Heuristic
+
+To decide whether a `feature` ticket touches UI, scan its description and acceptance
+criteria for keywords: route, page, tab, component, button, modal, dialog, form, table,
+card, badge, toast, banner, icon, layout, sidebar, navigation, click, toggle, dropdown.
+
+If **none** found and the ticket describes only API, cron, migration, schema, service,
+or backend logic, treat it as a **backend-only feature** — replace Phase 1 (Design Council)
+with Phase 2 (Architect) who writes the plan instead of the UX designer.
 
 ### Smart Phase Skipping
 
@@ -77,16 +90,19 @@ After determining the base recipe, skip phases based on ticket metadata:
 
 | Condition | Skip | Rationale |
 |---|---|---|
-| `decision` is not null | Phase 1 (brainstorm) | Design decisions already recorded |
-| `decision` covers schema (read the doc) | Phase 2 (design) | Schema already approved |
-| `plan` is not null | Phases 1+2 | Plan implies brainstorm+design done |
-| `artifacts` contains design docs | Phase 1 | UX/product analysis exists |
+| `plan` is not null | Phases 1 + 1b | Plan already exists — go straight to build |
+| `artifacts` contains a `.plan.md` file | Phases 1 + 1b | Same — plan artifact exists |
+| `decision` covers schema (read the doc) | Phase 2 (architect) | Schema already approved |
 | `artifacts` contains architecture docs | Phase 2 | Schema design exists |
 | `artifacts` contains test docs | Phase 3 | Tests already written |
 | `estimate: small` + `type: tech-debt` | Phases 3, 5, 6 | Lightweight — build + close |
 | `estimate: small` + `type: bug` | Phases 3, 6 | Quick fix — build + review + close |
 
-**Important**: When a `decision` doc exists, read it (Layer 4) before launching any subagent.
+**Critical change**: A `decision` doc alone does **NOT** skip Phase 1. Decisions record
+*what* to build, not *how* the UI should look. The Design Council still runs to produce
+a concrete implementation plan. Only a `plan` (or `.plan.md` artifact) skips the council.
+
+**Important**: When a `decision` doc exists, read it before launching any subagent.
 Pass relevant sections to subagent prompts as context.
 
 **Phase 6 (QA) is NEVER skippable** for any recipe that includes it. The skip rules above
@@ -99,7 +115,8 @@ Present a concise summary, then **immediately begin work** — never ask "Procee
 
 > Picking up **T-{id}**: {title}
 > Type: {type} | Priority: {priority} | Estimate: {estimate}
-> Decision: {decision doc name or "none — will brainstorm"}
+> Decision: {decision doc name or "none"}
+> Plan: {plan filename or "none — Design Council will produce one"}
 > Phases: {effective phase list with skipped phases noted}
 
 Set `status: in_progress` and `assignee: agent`, then launch the first phase in the same response.
@@ -152,42 +169,100 @@ Use `gh pr create` with:
 
 ## Phase Sequence
 
-### 1. Brainstorm (parallel) — skip if `decision` exists
+### 1. Design Council — skip only if `plan` exists
 
-Launch `ux-designer` + `product-analyst` as **parallel** Task calls in a single message. After both return, synthesize: identify consensus, surface tensions between UX and compliance, present design summary, then proceed immediately.
+A two-step sequential flow that produces analysis AND a concrete implementation plan.
+Every feature ticket goes through this. A `decision` doc alone does NOT skip it.
 
-If the task touches DB or creates new entities, also launch `architect` in the same parallel batch.
+**Step A — Analysis (parallel)**:
 
-Record decisions in `docs/decisions/{date}-{slug}.md`. Update ticket's `decision` field.
+Launch `product-analyst` (model: `claude-4.6-sonnet-medium-thinking`) to evaluate the
+ticket against the UX foundation and Qualiopi requirements. Tell it to actively surface
+missing features, edge cases, and caveats the ticket doesn't mention.
 
-### 2. Design — skip if `decision` covers schema
+If the task touches DB or creates new entities, also launch `architect` in the same
+parallel batch.
 
-Launch `architect` when task touches DB or creates new entities. Present schema design summary, then proceed immediately.
+**Step B — UX Review + Plan Writing (sequential, after Step A)**:
+
+Launch `ux-designer` (inherits parent model) with:
+- The ticket content and acceptance criteria
+- The `decision` doc (if any)
+- The product-analyst's output from Step A
+- The architect's output from Step A (if applicable)
+
+The UX designer MUST produce TWO outputs:
+1. A UX review artifact in `docs/team-artifacts/design/`
+2. A **Cursor Plan** at `docs/plans/{date}-T-{id}-{slug}.plan.md`
+
+The plan is the UX designer's primary deliverable — it specifies exactly what to build,
+in what order, with code snippets, file paths, and a testing checklist.
+
+**For backend-only features** (no UI — see UI Detection Heuristic above):
+Skip the UX designer in Step B. Instead, launch `architect` who writes the plan.
+The product-analyst still runs in Step A for compliance analysis.
+
+**For UI bugs** (recipe `1(UX-only)`):
+Skip the product-analyst. Launch only the `ux-designer` directly with the ticket +
+decision doc. The UX designer writes an abbreviated plan focused on the fix.
+
+Record decisions in `docs/decisions/{date}-{slug}.md` if significant new decisions
+are made. Update the ticket's `decision` field.
+
+### 1b. Plan Validation
+
+The orchestrator reads the plan produced in Phase 1, validates it is coherent:
+- Has YAML frontmatter with `tasks` array
+- References specific file paths
+- Includes implementation steps and a testing checklist
+
+Set the ticket's `plan` field to the plan filename. If the plan reveals fundamental
+design tensions, present them to the user via `AskQuestion` — this is the ONLY point
+where user input might be needed during autonomous workflow.
+
+### 2. Architect — skip if `decision` covers schema
+
+Launch `architect` when task touches DB or creates new entities AND was not already
+launched in Phase 1 Step A. Present schema design summary, then proceed immediately.
 
 ### 3. Test Writing (TDD) — skip for small tech-debt/bugs
 
-Launch `test-engineer`. Tell it to read the `decision` doc and any design artifacts first. Writes failing tests that define acceptance criteria. Confirm tests fail before proceeding.
+Launch `test-engineer` (model: `claude-4.6-sonnet-medium-thinking`). Tell it to read
+the plan and any design artifacts first. Writes failing tests that define acceptance
+criteria. Confirm tests fail before proceeding.
 
 ### 4. Build
 
-Launch `implementer`. Include in prompt:
+Launch `implementer` (model: `claude-4.6-sonnet-medium-thinking`). Include in prompt:
+- The **plan path** — the implementer MUST have a plan to follow
 - The ticket file content
-- The `decision` doc path (if exists) — tell it to read the relevant section
+- The `decision` doc path (if exists)
 - Test file paths (if phase 3 was done)
 - Specific acceptance criteria from the ticket
-Must make all tests pass. Uses shadcn-svelte MCP for UI elements.
+
+The implementer follows the plan's task order and updates task statuses as it completes
+each one. Must make all tests pass. Uses shadcn-svelte MCP for UI elements.
+
+**Implementer fallback**: If the implementer reports it cannot follow the plan (ambiguous
+steps, unexpected blockers, complex edge cases), re-launch the implementer WITHOUT the
+`model` parameter so it inherits the parent model (Opus). Log this escalation in the
+ticket's `## log`.
 
 **After build completes**: commit all changes (see Git Operations).
 
 ### 5. Review (parallel)
 
-Launch `reviewer` + `security-analyst` as **parallel** Task calls. Fix Critical/High findings before proceeding.
+Launch `reviewer` + `security-analyst` as **parallel** Task calls. Fix Critical/High
+findings before proceeding.
 
 **After fixes**: commit fixes (see Git Operations).
 
 ### 6. Acceptance (mandatory gate for UI features)
 
-Launch `qa-tester`. Tell it to read design artifacts first, then test the running app as Marie using Browser MCP. **No UI-facing feature ships without passing QA.** If QA fails, loop back to phase 4 with findings.
+Launch `qa-tester` (model: `claude-4.6-sonnet-medium-thinking`). Tell it to read the
+plan and design artifacts first, then test the running app as Marie using Browser MCP.
+**No UI-facing feature ships without passing QA.** If QA fails, loop back to phase 4
+with findings.
 
 **NEVER skip this phase** when it appears in the effective recipe, even if the dev server
 appears unavailable. If the server is down, start it (`bun run dev`) or ask the user. The
@@ -195,7 +270,8 @@ QA gate exists because code review alone cannot catch visual/interaction regress
 
 ### 7. Document
 
-Launch `project-manager`. Updates `docs/project/` files, records decisions, writes feature documentation.
+Launch `project-manager` (model: `fast`). Updates `docs/project/` files, records
+decisions, writes feature documentation.
 
 ### 7b. Close Ticket
 
@@ -203,16 +279,41 @@ Use the `project-tracker` skill's Close Ticket recipe. The recipe requires a lea
 (one-line reusable insight, or "none"). Steps: update status → move to done/ →
 regenerate board → append to changelog → append learning to learnings.md.
 
-**After closing**: commit doc changes, then push all commits to the current branch (see Git Operations).
+**After closing**: commit doc changes, then push all commits to the current branch
+(see Git Operations).
 
 ## Phase Gates
 
 Never ask the user "Proceed?" or "Should I continue?". Present findings, then move to the next phase immediately.
 
-- After phase 1: present design direction summary, then continue
+- After phase 1: present design direction summary + confirm plan was written, then continue
+- After phase 1b: confirm plan is valid and set ticket `plan` field, then continue
 - After phase 2: present schema summary, then continue
 - After phase 5: Critical/High review findings must be fixed (autonomously)
 - After phase 6: QA must PASS (or loop back to phase 4 autonomously). **NEVER skip QA when it appears in the recipe** — start the dev server if needed.
+
+## Plan Format Standard
+
+Plans live in `docs/plans/` and follow this structure:
+
+```yaml
+---
+title: "..."
+date: YYYY-MM-DD
+ticket: T-{id}
+ref: docs/team-artifacts/design/{review-file}.md
+target: src/routes/.../+page.svelte
+tasks:
+  - id: task-slug
+    title: "Human-readable task title"
+    status: pending
+---
+```
+
+Followed by markdown sections per task with: problem statement, implementation steps
+(with code snippets where useful), key constraints, and a testing checklist at the end.
+
+See `docs/plans/2026-04-13-T-documents-tab-ux-cleanup.plan.md` as the reference template.
 
 ## Multi-Ticket Sessions
 
@@ -223,6 +324,13 @@ When multiple tickets can be done in one session (e.g. several small tech-debt i
 3. Start Phase 0c for the new ticket (no need to re-run board.sh).
 4. Group related small tickets (same chunk, same files) for efficiency.
 5. After 3+ tickets closed without a PR, create one targeting `develop` (see Git Operations).
+
+### Grouped Design Council
+
+When picking up multiple related feature tickets (same chunk, same route/tab), run a
+single Design Council for the batch instead of per-ticket. The UX designer produces one
+combined plan covering all tickets, with tasks tagged by ticket ID. This saves ~50%
+Design Council overhead for related work.
 
 ## Subagent Context Protocol
 

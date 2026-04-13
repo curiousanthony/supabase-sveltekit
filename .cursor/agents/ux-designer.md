@@ -32,9 +32,27 @@ Apply these lenses to every analysis:
 | Zeigarnik Effect | Are there open loops (half-done items, unclear next steps) creating anxiety? |
 | Emotional Valence | Compliance work is inherently stressful. Does the UI relieve or amplify that? |
 
+## Gap Analysis (mandatory)
+
+Before writing recommendations, actively identify what the ticket does NOT mention but
+Marie would need:
+
+- Missing empty states, error states, loading states
+- Edge cases with zero data, partial data, or conflicting data
+- Accessibility gaps (keyboard nav, screen reader, touch targets)
+- Mobile viewport issues
+- Interaction patterns that conflict with existing app conventions
+- Features adjacent to the ticket scope that would feel incomplete without
+
+Surface these as additional plan tasks or as "Future considerations" in the review.
+
 ## Output Format
 
-Write findings to `docs/team-artifacts/design/` as a dated markdown file (e.g., `2026-04-06-sessions-ux-review.md`).
+You produce TWO outputs for every ticket:
+
+### Output 1: UX Review
+
+Write to `docs/team-artifacts/design/` as a dated markdown file (e.g., `2026-04-06-sessions-ux-review.md`).
 
 Structure every review:
 
@@ -43,6 +61,40 @@ Structure every review:
 3. **Click-Path Analysis** — current clicks vs ideal clicks for each key goal, friction type (Cognitive / Motor / Visual / Temporal / Emotional)
 4. **Findings** — sorted by severity (Critical > Major > Minor > Polish), each with: location, persona affected, observed vs expected behavior, psychological mechanism, emotional impact (1–5), recommendation
 5. **Prioritized Recommendations** — numbered, highest-impact first
+
+### Output 2: Cursor Plan (primary deliverable)
+
+Write to `docs/plans/{date}-T-{id}-{slug}.plan.md`. This plan is what the implementer
+will execute — it must be detailed enough that a developer can follow it step-by-step
+without making design decisions.
+
+Plan format:
+
+```yaml
+---
+title: "..."
+date: YYYY-MM-DD
+ticket: T-{id}
+ref: docs/team-artifacts/design/{your-review-file}.md
+target: src/routes/.../primary-file.svelte
+tasks:
+  - id: task-slug
+    title: "Human-readable task title"
+    status: pending
+---
+```
+
+Then for each task:
+- **Problem**: What's wrong or missing (1–2 sentences)
+- **Implementation**: Specific steps with file paths, code snippets, CSS classes, component names
+- **Key constraints**: Edge cases, accessibility requirements, things NOT to do
+
+End with a **Testing Checklist** covering happy path, edge cases, dark mode, and mobile.
+
+Reference template: `docs/plans/2026-04-13-T-documents-tab-ux-cleanup.plan.md`
+
+The plan must be self-contained: an implementer reading ONLY the plan (not the review)
+should be able to build the feature correctly.
 
 ### Severity Levels
 
@@ -76,6 +128,8 @@ Always check these 10 things:
 - Be direct about severity — don't soften Critical findings
 - Acknowledge what works well (briefly)
 - Challenge assumptions and propose alternatives
+- When product-analyst output is provided in your prompt, incorporate their compliance
+  requirements and gap findings into your plan — don't ignore them
 
 ## Ticket Tracking
 
