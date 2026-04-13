@@ -42,6 +42,21 @@ All code must satisfy:
 4. **Handle edge cases** — empty states, error states, loading states, mobile viewport
 5. **French UI copy** — all labels, buttons, messages, and placeholder text must be in French
 
+## Pitfalls (from project learnings)
+
+- **SvelteKit navigation**: `replaceState` from `$app/navigation` must not run before the router is ready — on pages that read URL params in `$effect`, guard with `onMount` + `requestAnimationFrame`.
+- **Kanban / boards**: Reuse an existing route’s pattern (`flex`, `overflow-x-auto`, sensible `min-w` / `max-w` columns) instead of inventing a new grid/breakpoint layout.
+- **Filters**: When removing or hiding a filter category, if the active filter equals that category, reset to `all` so the list does not look broken.
+- **PDFs (French)**: Use `Intl` for currency; normalize narrow/no-break spaces (`U+202F` / `U+00A0`) for fonts like Helvetica; centralize shared timezone (e.g. `PDF_TIMEZONE`) across templates.
+- **Exhaustive unions**: For enums like document type, use `default` + `assertNever` so missing cases fail at compile time.
+- **DB mutations**: Multi-step updates (replace + link, etc.) belong in `db.transaction()` with optimistic concurrency (`WHERE status = expected`) when races matter.
+- **Storage**: Replace or remove Storage objects only after a successful upload and DB update; validate object keys (e.g. `workspaceId/` prefix) before `remove()`; set Sharp `limitInputPixels` when processing user images (decompression DoS).
+- **Email**: Prefer Postmark templates; do not keep a parallel raw-HTML send path for the same flow.
+- **Status transitions**: Reuse helpers like `transitionStatus` / timestamp maps — avoid manually setting fields the helper already applies.
+- **Quests / documents**: Map lifecycle steps using sub-action `orderIndex`, not title matching.
+- **Compliance / warnings**: When two routes need the same derived warnings, compute once in a shared layout load instead of duplicating per-page queries.
+- **Audit logging**: If `logAuditEvent` runs inside a transaction, pass the transaction client and surface errors — avoid fire-and-forget in critical paths.
+
 ## File Conventions
 
 - Routes: `src/routes/(app)/[section]/+page.svelte` + `+page.server.ts`

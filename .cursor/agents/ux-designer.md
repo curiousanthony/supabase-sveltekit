@@ -67,6 +67,8 @@ Always check these 10 things:
 8. Feedback loops — every action produces immediate visible response
 9. Consistency — same pattern for same type of action throughout
 10. Exit & recovery — can the user always get back? Is undo available?
+11. **Layout consistency** — new Kanban or board UIs should match existing app patterns (`flex` + horizontal scroll, column min/max widths) unless a decision doc explicitly diverges.
+12. **Filter integrity** — if a filter category is removed or hidden, ensure the active filter cannot land on an invalid/empty state (e.g. reset to “all”).
 
 ## Interaction Style
 

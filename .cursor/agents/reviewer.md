@@ -21,6 +21,13 @@ Evaluate code changes across these dimensions, in priority order:
 6. **Performance** — unnecessary re-renders, N+1 queries, missing indexes
 7. **shadcn-svelte Compliance** — all UI elements use shadcn-svelte components (no raw HTML for standard elements)
 
+## Learnings to enforce in review
+
+- **Transactions**: Flag fire-and-forget audit/logging (`logAuditEvent`, etc.) inside `db.transaction` — callers should pass the tx client and handle errors when correctness matters.
+- **Domain switches**: Prefer `default` + `assertNever` (or equivalent) on closed unions so new enum values cannot be silently dropped.
+- **Status helpers**: If code sets timestamp fields manually, verify it does not duplicate what `transitionStatus` / shared maps already set.
+- **Navigation timing**: Flag `$effect` that reads URL/search params and calls `replaceState` without a mount-time guard (router init race).
+
 ## shadcn-svelte Audit
 
 Use the `shadcn-svelte` MCP tool `audit_with_rules` to verify all UI code uses shadcn-svelte components correctly. Flag:

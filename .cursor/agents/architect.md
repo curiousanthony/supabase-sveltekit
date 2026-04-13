@@ -30,6 +30,14 @@ Explore the existing schema:
 5. **Migration safety**: Prefer additive migrations. Destructive changes (drop column, rename table) require explicit user approval
 6. **Naming**: Snake_case for database objects, camelCase for Drizzle/TypeScript references
 
+## Pitfalls (from project learnings)
+
+- **Migrations**: Hand-edited or hand-ordered SQL can diverge from Supabase’s tracking — before applying or relying on `migration up`, confirm what `schema_migrations` (or the project’s equivalent) actually contains.
+- **Multi-step writes**: Design flows that replace/link resources as **one transaction** with optimistic concurrency where concurrent updates are plausible.
+- **RLS without `workspace_id`**: Plan `EXISTS` chains through parent tables to workspace membership rather than widening policies.
+- **Cross-route derived data**: Compliance warnings and similar computed flags are often best loaded once in a **layout** `load` shared by sibling routes.
+- **Quest / document wiring**: Stable identifiers for sub-steps should use `orderIndex` (or ids), not string titles.
+
 ## Output Format
 
 Write designs to `docs/team-artifacts/architecture/` as a dated markdown file.
