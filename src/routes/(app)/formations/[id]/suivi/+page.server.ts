@@ -6,6 +6,8 @@ import {
 	questComments,
 	formations,
 	formationFormateurs,
+	formationApprenants,
+	formationDocuments,
 	workspaces
 } from '$lib/db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -20,6 +22,7 @@ import {
 	validateFileType
 } from '$lib/services/document-service';
 import { generateDocument, type DocumentType } from '$lib/services/document-generator';
+import { evaluatePreflight, assertPreflightOrThrow } from '$lib/preflight/document-preflight';
 import { sendFormationTemplateEmail, EMAIL_TYPE_TO_TEMPLATE } from '$lib/services/email-service';
 import { transitionStatus } from '$lib/services/document-lifecycle';
 import { formationDocuments } from '$lib/db/schema';
@@ -464,7 +467,14 @@ export const actions: Actions = {
 
 		const formation = await db.query.formations.findFirst({
 			where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
-			columns: { id: true }
+			columns: { id: true, clientId: true, typeFinancement: true, dateDebut: true, dateFin: true },
+			with: {
+				client: { columns: { id: true, type: true } },
+				seances: {
+					columns: { id: true, endAt: true },
+					with: { emargements: { columns: { signedAt: true } } }
+				}
+			}
 		});
 		if (!formation) return fail(404, { message: 'Formation introuvable' });
 
@@ -476,6 +486,62 @@ export const actions: Actions = {
 
 		if (!documentType || typeof documentType !== 'string') {
 			return fail(400, { message: 'Type de document requis' });
+		}
+
+		// ── Server-side preflight guard ────────────────────────────────────────
+		const [workspaceRow, apprenantRows, docRows] = await Promise.all([
+			db.query.workspaces.findFirst({
+				where: eq(workspaces.id, workspaceId),
+				columns: { id: true, nda: true }
+			}),
+			db.query.formationApprenants.findMany({
+				where: eq(formationApprenants.formationId, params.id),
+				with: { contact: { columns: { email: true } } }
+			}),
+			db.query.formationDocuments.findMany({
+				where: eq(formationDocuments.formationId, params.id),
+				columns: { type: true, status: true }
+			})
+		]);
+
+		if (workspaceRow) {
+			const now = new Date().toISOString();
+			const hasAcceptedDevis = docRows.some((d) => d.type === 'devis' && d.status === 'accepte');
+			const hasSignedConvention = docRows.some(
+				(d) => d.type === 'convention' && (d.status === 'signe' || d.status === 'archive')
+			);
+			const hasSignedEmargements = !(formation.seances ?? []).some((seance) => {
+				if (!seance.endAt || seance.endAt > now) return false;
+				return seance.emargements.some((e) => !e.signedAt);
+			});
+			const hasLearnerWithEmail = apprenantRows.some((a) => a.contact?.email);
+			const seanceId = formData.get('seanceId')?.toString();
+
+			const preflightResult = evaluatePreflight(
+				{
+					id: formation.id,
+					clientId: formation.clientId,
+					clientType: formation.client?.type ?? null,
+					typeFinancement: formation.typeFinancement,
+					dateDebut: formation.dateDebut,
+					dateFin: formation.dateFin
+				},
+				{ id: workspaceRow.id, nda: workspaceRow.nda },
+				{ documentType, contactId: contactId?.toString(), seanceId, hasAcceptedDevis, hasSignedConvention, hasSignedEmargements, hasLearnerWithEmail }
+			);
+
+			try {
+				assertPreflightOrThrow(preflightResult);
+			} catch {
+				const blockingIds = preflightResult.items
+					.filter((i) => i.severity === 'block' || i.severity === 'prerequisite')
+					.map((i) => i.id)
+					.join(', ');
+				return fail(400, {
+					message: `Génération impossible — données manquantes : ${blockingIds}`,
+					preflightItems: preflightResult.items
+				});
+			}
 		}
 
 		try {

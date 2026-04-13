@@ -1,10 +1,12 @@
 import { db } from '$lib/db';
-import { formationDocuments, formationEmails, formations } from '$lib/db/schema';
-import { eq, and, desc, gt, notInArray } from 'drizzle-orm';
+import { formationDocuments, formationEmails, formations, formationApprenants, workspaces } from '$lib/db/schema';
+import { eq, and, desc, notInArray } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { generateDocument, getDocumentSignedUrl, type DocumentType } from '$lib/services/document-generator';
 import { getEffectiveStatus, transitionStatus, replaceDocument, isValidTransition, type DocumentType as LifecycleDocType, type DocumentStatus } from '$lib/services/document-lifecycle';
+import { logAuditEvent } from '$lib/services/audit-log';
+import { evaluatePreflight, assertPreflightOrThrow } from '$lib/preflight/document-preflight';
 import type { PageServerLoad, Actions } from './$types';
 
 async function verifyFormationOwnership(formationId: string, workspaceId: string) {
@@ -17,29 +19,36 @@ async function verifyFormationOwnership(formationId: string, workspaceId: string
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
-	if (!workspaceId) return { documents: [] };
+	if (!workspaceId) return { documents: [], workspaceNda: null };
 
 	const isOwner = await verifyFormationOwnership(params.id, workspaceId);
-	if (!isOwner) return { documents: [] };
+	if (!isOwner) return { documents: [], workspaceNda: null };
 
-	const documents = await db.query.formationDocuments.findMany({
-		where: eq(formationDocuments.formationId, params.id),
-		orderBy: [desc(formationDocuments.createdAt)],
-		with: {
-			generatedByUser: {
-				columns: { firstName: true, lastName: true }
-			},
-			relatedContact: {
-				columns: { firstName: true, lastName: true }
-			},
-			relatedFormateur: {
-				columns: { id: true },
-				with: {
-					user: { columns: { firstName: true, lastName: true } }
+	const [workspace, documents] = await Promise.all([
+		db.query.workspaces.findFirst({
+			where: eq(workspaces.id, workspaceId),
+			columns: { nda: true }
+		}),
+		db.query.formationDocuments.findMany({
+		db.query.formationDocuments.findMany({
+			where: eq(formationDocuments.formationId, params.id),
+			orderBy: [desc(formationDocuments.createdAt)],
+			with: {
+				generatedByUser: {
+					columns: { firstName: true, lastName: true }
+				},
+				relatedContact: {
+					columns: { firstName: true, lastName: true }
+				},
+				relatedFormateur: {
+					columns: { id: true },
+					with: {
+						user: { columns: { firstName: true, lastName: true } }
+					}
 				}
 			}
-		}
-	});
+		})
+	]);
 
 	const emails = await db.query.formationEmails.findMany({
 		where: eq(formationEmails.formationId, params.id),
@@ -60,7 +69,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		})
 	}));
 
-	return { documents: docsWithEffectiveStatus, emails };
+	return { documents: docsWithEffectiveStatus, emails, workspaceNda: workspace?.nda ?? null };
 };
 
 const VALID_DOCUMENT_TYPES: DocumentType[] = [
@@ -88,9 +97,78 @@ export const actions: Actions = {
 		const contactId = formData.get('contactId')?.toString() || undefined;
 		const formateurId = formData.get('formateurId')?.toString() || undefined;
 		const seanceId = formData.get('seanceId')?.toString() || undefined;
+		const warningsAcknowledgedRaw = formData.get('warningsAcknowledged')?.toString();
+		const warningsAcknowledged: string[] = warningsAcknowledgedRaw
+			? warningsAcknowledgedRaw.split(',').filter(Boolean)
+			: [];
 
 		if (!type || !VALID_DOCUMENT_TYPES.includes(type as DocumentType)) {
 			return fail(400, { message: 'Type de document invalide' });
+		}
+
+		// ── Server-side preflight guard ────────────────────────────────────────
+		const [formationRow, workspaceRow, apprenantRows, docRows] = await Promise.all([
+			db.query.formations.findFirst({
+				where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
+				columns: { id: true, clientId: true, typeFinancement: true, dateDebut: true, dateFin: true },
+				with: {
+					client: { columns: { id: true, type: true } },
+					seances: {
+						columns: { id: true, endAt: true },
+						with: { emargements: { columns: { signedAt: true } } }
+					}
+				}
+			}),
+			db.query.workspaces.findFirst({
+				where: eq(workspaces.id, workspaceId),
+				columns: { id: true, nda: true }
+			}),
+			db.query.formationApprenants.findMany({
+				where: eq(formationApprenants.formationId, params.id),
+				with: { contact: { columns: { email: true } } }
+			}),
+			db.query.formationDocuments.findMany({
+				where: eq(formationDocuments.formationId, params.id),
+				columns: { type: true, status: true }
+			})
+		]);
+
+		if (!formationRow || !workspaceRow) return fail(404, { message: 'Formation introuvable' });
+
+		const now = new Date().toISOString();
+		const hasAcceptedDevis = docRows.some((d) => d.type === 'devis' && d.status === 'accepte');
+		const hasSignedConvention = docRows.some(
+			(d) => d.type === 'convention' && (d.status === 'signe' || d.status === 'archive')
+		);
+		const hasSignedEmargements = !(formationRow.seances ?? []).some((seance) => {
+			if (!seance.endAt || seance.endAt > now) return false;
+			return seance.emargements.some((e) => !e.signedAt);
+		});
+		const hasLearnerWithEmail = apprenantRows.some((a) => a.contact?.email);
+
+		const preflightResult = evaluatePreflight(
+			{
+				id: formationRow.id,
+				clientId: formationRow.clientId,
+				clientType: formationRow.client?.type ?? null,
+				typeFinancement: formationRow.typeFinancement,
+				dateDebut: formationRow.dateDebut,
+				dateFin: formationRow.dateFin
+			},
+			{ id: workspaceRow.id, nda: workspaceRow.nda },
+			{ documentType: type, contactId, seanceId, hasAcceptedDevis, hasSignedConvention, hasSignedEmargements, hasLearnerWithEmail }
+		);
+
+		try {
+			assertPreflightOrThrow(preflightResult);
+		} catch {
+			const blockingIds = preflightResult.items
+				.filter((i) => i.severity === 'block' || i.severity === 'prerequisite')
+				.map((i) => i.id)
+				.join(', ');
+			return fail(400, {
+				message: `Génération impossible — données manquantes : ${blockingIds}`
+			});
 		}
 
 		try {
@@ -100,6 +178,19 @@ export const actions: Actions = {
 				user.id,
 				{ contactId, formateurId, seanceId }
 			);
+
+			// Audit: log if user acknowledged warnings
+			if (warningsAcknowledged.length > 0) {
+				await logAuditEvent({
+					formationId: params.id,
+					userId: user.id,
+					actionType: 'document_generation_warnings_overridden',
+					entityType: 'formation',
+					entityId: params.id,
+					newValue: { documentType: type, warningIds: warningsAcknowledged }
+				});
+			}
+
 			return { success: true, documentId: result.documentId };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Erreur de génération';

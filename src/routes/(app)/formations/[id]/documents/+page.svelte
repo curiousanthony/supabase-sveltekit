@@ -39,7 +39,13 @@
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 	import RefreshCcw from '@lucide/svelte/icons/refresh-ccw';
+	import CircleAlert from '@lucide/svelte/icons/circle-alert';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import Lock from '@lucide/svelte/icons/lock';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import { goto } from '$app/navigation';
 	import { onMount, type Component } from 'svelte';
+	import { evaluatePreflight, type PreflightResult } from '$lib/preflight/document-preflight';
 	import type { ComplianceWarning } from '$lib/compliance-warnings';
 
 	let { data }: PageProps = $props();
@@ -167,6 +173,54 @@
 
 	const formationUpdatedAt = $derived(formation?.updatedAt ?? null);
 
+	// ── Preflight derived state ───────────────────────────────────────────────
+	const preflightFormation = $derived({
+		id: formation?.id ?? '',
+		clientId: formation?.clientId ?? null,
+		clientType: formation?.client?.type ?? null,
+		typeFinancement: formation?.typeFinancement ?? null,
+		dateDebut: formation?.dateDebut ?? null,
+		dateFin: formation?.dateFin ?? null
+	});
+	const preflightWorkspace = $derived({ id: '', nda: data.workspaceNda ?? null });
+	const now = $derived(new Date().toISOString());
+	const hasAcceptedDevis = $derived(documents.some((d) => d.type === 'devis' && d.status === 'accepte'));
+	const hasSignedConvention = $derived(
+		documents.some((d) => d.type === 'convention' && (d.status === 'signe' || d.status === 'archive'))
+	);
+	const hasSignedEmargements = $derived(
+		!seancesList.some((s) => {
+			if (!s.endAt || s.endAt > now) return false;
+			return (s.emargements ?? []).some((e) => !e.signedAt);
+		})
+	);
+	const hasLearnerWithEmail = $derived(apprenants.some((a) => a.contact?.email));
+
+	let warningsAcknowledged = $state(false);
+
+	const preflightResult = $derived<PreflightResult | null>(
+		generateType
+			? evaluatePreflight(preflightFormation, preflightWorkspace, {
+					documentType: generateType,
+					contactId: generateContactId || undefined,
+					seanceId: generateSeanceId || undefined,
+					hasAcceptedDevis,
+					hasLearnerWithEmail,
+					hasSignedConvention,
+					hasSignedEmargements
+				})
+			: null
+	);
+
+	const canGenerate = $derived(
+		preflightResult !== null &&
+			preflightResult.blockingCount === 0 &&
+			(preflightResult.warningCount === 0 || warningsAcknowledged) &&
+			(NEEDS_CONTACT.has(generateType) ? !!generateContactId : true) &&
+			(NEEDS_FORMATEUR.has(generateType) ? !!generateFormateurId : true) &&
+			(NEEDS_SEANCE.has(generateType) ? !!generateSeanceId : true)
+	);
+
 	function isDocStale(doc: (typeof documents)[number]): boolean {
 		if (!formationUpdatedAt || !doc.generatedAt) return false;
 		return new Date(formationUpdatedAt) > new Date(doc.generatedAt);
@@ -174,6 +228,20 @@
 
 	let regeneratingDocId = $state<string | null>(null);
 	let regeneratingAll = $state(false);
+
+	// ── Resume generation from URL param (Task 4) ─────────────────────────────
+	onMount(() => {
+		requestAnimationFrame(() => {
+			const resumeType = page.url.searchParams.get('resumeGenerate');
+			if (resumeType) {
+				openGenerate(resumeType);
+				// Clean up URL param without triggering navigation
+				const url = new URL(page.url);
+				url.searchParams.delete('resumeGenerate');
+				replaceState(url.toString(), {});
+			}
+		});
+	});
 
 	async function regenerateDocument(documentId: string) {
 		regeneratingDocId = documentId;
@@ -416,11 +484,8 @@
 		generateContactId = '';
 		generateFormateurId = '';
 		generateSeanceId = '';
-		if (NEEDS_CONTACT.has(type) || NEEDS_FORMATEUR.has(type) || NEEDS_SEANCE.has(type)) {
-			generateOpen = true;
-		} else {
-			submitGenerate(type);
-		}
+		warningsAcknowledged = false;
+		generateOpen = true;
 	}
 
 	async function submitGenerate(type?: string) {
@@ -431,6 +496,15 @@
 		if (generateContactId) body.set('contactId', generateContactId);
 		if (generateFormateurId) body.set('formateurId', generateFormateurId);
 		if (generateSeanceId) body.set('seanceId', generateSeanceId);
+
+		// Pass acknowledged warning IDs for audit log
+		if (preflightResult && preflightResult.warningCount > 0 && warningsAcknowledged) {
+			const warnIds = preflightResult.items
+				.filter((i) => i.severity === 'warn')
+				.map((i) => i.id)
+				.join(',');
+			body.set('warningsAcknowledged', warnIds);
+		}
 
 		try {
 			const response = await fetch('?/generateDocument', { method: 'POST', body });
@@ -1077,79 +1151,141 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- Generate Document Dialog (for types needing a person selector) -->
-<Dialog.Root bind:open={generateOpen}>
-	<Dialog.Content class="sm:max-w-md">
+<!-- Generate Document Dialog — with preflight checklist -->
+<Dialog.Root bind:open={generateOpen} onOpenChange={(open) => { if (!open) warningsAcknowledged = false; }}>
+	<Dialog.Content class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
 		<Dialog.Header>
 			<Dialog.Title>
 				Générer : {DOC_TYPE_CONFIG[generateType]?.label ?? generateType}
 			</Dialog.Title>
-		<Dialog.Description>
-			{#if NEEDS_CONTACT.has(generateType)}
-				Sélectionnez l'apprenant concerné.
-			{:else if NEEDS_FORMATEUR.has(generateType)}
-				Sélectionnez le formateur concerné.
-			{:else if NEEDS_SEANCE.has(generateType)}
-				Sélectionnez la séance concernée.
+			{#if preflightResult}
+				{@const total = preflightResult.items.length}
+				{@const blocking = preflightResult.blockingCount}
+				<Dialog.Description id="preflight-summary" aria-live="polite">
+					{#if blocking > 0}
+						Génération impossible : {blocking} blocage{blocking > 1 ? 's' : ''}.
+					{:else if total > 0}
+						{total - blocking} point{total - blocking > 1 ? 's' : ''} à vérifier.
+					{:else}
+						Prêt à générer.
+					{/if}
+				</Dialog.Description>
 			{/if}
-		</Dialog.Description>
 		</Dialog.Header>
 
 		<div class="space-y-4 py-2">
-		{#if NEEDS_CONTACT.has(generateType)}
-			<Select.Root type="single" bind:value={generateContactId}>
-				<Select.Trigger class="w-full cursor-pointer">
-					{#if generateContactId}
-						{@const found = apprenants.find((a) => a.contact?.id === generateContactId)}
-						{found ? [found.contact.firstName, found.contact.lastName].filter(Boolean).join(' ') : 'Sélectionner'}
-					{:else}
-						<span class="text-muted-foreground">Sélectionner un apprenant</span>
-					{/if}
-				</Select.Trigger>
-				<Select.Content>
-					{#each apprenants as fa (fa.contact?.id)}
-						{@const c = fa.contact}
-						{@const name = [c?.firstName, c?.lastName].filter(Boolean).join(' ') || 'Sans nom'}
-						<Select.Item value={c?.id ?? ''} label={name}>{name}</Select.Item>
+			<!-- Selectors (contact / formateur / séance) -->
+			{#if NEEDS_CONTACT.has(generateType)}
+				<Select.Root type="single" bind:value={generateContactId}>
+					<Select.Trigger class="w-full cursor-pointer">
+						{#if generateContactId}
+							{@const found = apprenants.find((a) => a.contact?.id === generateContactId)}
+							{found ? [found.contact.firstName, found.contact.lastName].filter(Boolean).join(' ') : 'Sélectionner'}
+						{:else}
+							<span class="text-muted-foreground">Sélectionner un apprenant</span>
+						{/if}
+					</Select.Trigger>
+					<Select.Content>
+						{#each apprenants as fa (fa.contact?.id)}
+							{@const c = fa.contact}
+							{@const name = [c?.firstName, c?.lastName].filter(Boolean).join(' ') || 'Sans nom'}
+							<Select.Item value={c?.id ?? ''} label={name}>{name}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			{:else if NEEDS_FORMATEUR.has(generateType)}
+				<Select.Root type="single" bind:value={generateFormateurId}>
+					<Select.Trigger class="w-full cursor-pointer">
+						{#if generateFormateurId}
+							{@const found = formateurs.find((f) => f.formateur?.id === generateFormateurId)}
+							{found ? [found.formateur.user?.firstName, found.formateur.user?.lastName].filter(Boolean).join(' ') : 'Sélectionner'}
+						{:else}
+							<span class="text-muted-foreground">Sélectionner un formateur</span>
+						{/if}
+					</Select.Trigger>
+					<Select.Content>
+						{#each formateurs as ff (ff.formateur?.id)}
+							{@const u = ff.formateur?.user}
+							{@const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'Formateur'}
+							<Select.Item value={ff.formateur?.id ?? ''} label={name}>{name}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			{:else if NEEDS_SEANCE.has(generateType)}
+				<Select.Root type="single" bind:value={generateSeanceId}>
+					<Select.Trigger class="w-full cursor-pointer">
+						{#if generateSeanceId}
+							{@const found = seancesList.find((s) => s.id === generateSeanceId)}
+							{found ? `${new Date(found.startAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })} — ${found.module?.name ?? 'Séance'}` : 'Sélectionner'}
+						{:else}
+							<span class="text-muted-foreground">Sélectionner une séance</span>
+						{/if}
+					</Select.Trigger>
+					<Select.Content>
+						{#each seancesList as s (s.id)}
+							{@const label = `${new Date(s.startAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })} — ${s.module?.name ?? 'Séance'}`}
+							<Select.Item value={s.id} {label}>{label}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			{/if}
+
+			<!-- Preflight checklist -->
+			{#if preflightResult && preflightResult.items.length > 0}
+				<div class="rounded-md border divide-y">
+					{#each preflightResult.items as item (item.id)}
+						<div class="flex items-start gap-3 px-3 py-2.5 text-sm">
+							{#if item.severity === 'block'}
+								<CircleAlert class="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
+							{:else if item.severity === 'warn'}
+								<AlertTriangle class="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden="true" />
+							{:else}
+								<Lock class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+							{/if}
+							<div class="flex-1 min-w-0">
+								<p class={item.severity === 'block' ? 'text-destructive' : item.severity === 'warn' ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}>
+									{item.messageFr}
+								</p>
+								{#if item.severity !== 'warn' || item.tab !== 'fiche'}
+									<button
+										type="button"
+										class="mt-1 inline-flex items-center gap-1 text-xs text-primary underline-offset-2 hover:underline cursor-pointer"
+										aria-label={item.fixLabelFr}
+										onclick={() => {
+											const returnUrl = `/formations/${formation?.id}/documents?resumeGenerate=${generateType}`;
+											const href = item.hrefPath.includes('?')
+												? `${item.hrefPath}&returnTo=${encodeURIComponent(returnUrl)}`
+												: `${item.hrefPath}?returnTo=${encodeURIComponent(returnUrl)}`;
+											generateOpen = false;
+											goto(href);
+										}}
+									>
+										{item.fixLabelFr}
+										<ExternalLink class="size-3" aria-hidden="true" />
+									</button>
+								{/if}
+							</div>
+						</div>
 					{/each}
-				</Select.Content>
-			</Select.Root>
-		{:else if NEEDS_FORMATEUR.has(generateType)}
-			<Select.Root type="single" bind:value={generateFormateurId}>
-				<Select.Trigger class="w-full cursor-pointer">
-					{#if generateFormateurId}
-						{@const found = formateurs.find((f) => f.formateur?.id === generateFormateurId)}
-						{found ? [found.formateur.user?.firstName, found.formateur.user?.lastName].filter(Boolean).join(' ') : 'Sélectionner'}
-					{:else}
-						<span class="text-muted-foreground">Sélectionner un formateur</span>
-					{/if}
-				</Select.Trigger>
-				<Select.Content>
-					{#each formateurs as ff (ff.formateur?.id)}
-						{@const u = ff.formateur?.user}
-						{@const name = [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'Formateur'}
-						<Select.Item value={ff.formateur?.id ?? ''} label={name}>{name}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
-		{:else if NEEDS_SEANCE.has(generateType)}
-			<Select.Root type="single" bind:value={generateSeanceId}>
-				<Select.Trigger class="w-full cursor-pointer">
-					{#if generateSeanceId}
-						{@const found = seancesList.find((s) => s.id === generateSeanceId)}
-						{found ? `${new Date(found.startAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })} — ${found.module?.name ?? 'Séance'}` : 'Sélectionner'}
-					{:else}
-						<span class="text-muted-foreground">Sélectionner une séance</span>
-					{/if}
-				</Select.Trigger>
-				<Select.Content>
-					{#each seancesList as s (s.id)}
-						{@const label = `${new Date(s.startAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })} — ${s.module?.name ?? 'Séance'}`}
-						<Select.Item value={s.id} {label}>{label}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
-		{/if}
+				</div>
+			{:else if preflightResult}
+				<div class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400">
+					<CircleCheck class="size-4 shrink-0" aria-hidden="true" />
+					Prêt à générer.
+				</div>
+			{/if}
+
+			<!-- Warning acknowledgment checkbox -->
+			{#if preflightResult && preflightResult.blockingCount === 0 && preflightResult.warningCount > 0}
+				<label class="flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm hover:bg-muted/50">
+					<input
+						type="checkbox"
+						bind:checked={warningsAcknowledged}
+						class="mt-0.5 cursor-pointer"
+					/>
+					<span>J'ai pris connaissance des avertissements et souhaite générer le document.</span>
+				</label>
+			{/if}
 		</div>
 
 		<Dialog.Footer>
@@ -1162,7 +1298,8 @@
 			</Button>
 			<Button
 				class="cursor-pointer"
-				disabled={generating || (NEEDS_CONTACT.has(generateType) && !generateContactId) || (NEEDS_FORMATEUR.has(generateType) && !generateFormateurId) || (NEEDS_SEANCE.has(generateType) && !generateSeanceId)}
+				disabled={generating || !canGenerate}
+				aria-describedby="preflight-summary"
 				onclick={() => submitGenerate()}
 			>
 				{#if generating}

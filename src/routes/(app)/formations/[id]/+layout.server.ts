@@ -26,7 +26,7 @@ export const load = (async ({ params, depends }) => {
 		with: {
 			thematique: { columns: { id: true, name: true } },
 			sousthematique: { columns: { id: true, name: true } },
-			client: { columns: { id: true, legalName: true } },
+			client: { columns: { id: true, legalName: true, type: true } },
 			company: { columns: { id: true, name: true } },
 			programmeSource: {
 				columns: {

@@ -11,6 +11,8 @@
 	import Stepper from '$lib/components/ui/stepper/stepper.svelte';
 	import { deserialize } from '$app/forms';
 	import { invalidate } from '$app/navigation';
+	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { cn } from '$lib/utils';
 	import { Calendar } from '$lib/components/ui/calendar/index.js';
@@ -227,6 +229,21 @@
 
 	$effect(() => {
 		handleModalityChange(modalityArray);
+	});
+
+	// ── Preflight deep link focus ─────────────────────────────────────────────
+	onMount(() => {
+		requestAnimationFrame(() => {
+			const focusKey = page.url.searchParams.get('preflightFocus');
+			if (!focusKey) return;
+			const el = document.getElementById(`preflight-${focusKey}`) ?? document.querySelector(`[data-preflight-target="${focusKey}"]`);
+			if (el) {
+				el.scrollIntoView({ block: 'center' });
+				if ('focus' in el && typeof el.focus === 'function') (el as HTMLElement).focus();
+			} else {
+				toast.info(`Impossible d'afficher le champ — ouvrez l'onglet Fiche`);
+			}
+		});
 	});
 </script>
 
@@ -518,9 +535,9 @@
 		</Card.Header>
 		<Card.Content class="flex flex-col gap-4">
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-				<!-- dateDebut -->
-				<div class="flex flex-col gap-1">
-					<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date début</span>
+			<!-- dateDebut -->
+			<div class="flex flex-col gap-1" data-preflight-target="dateDebut" id="preflight-dateDebut">
+				<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date début</span>
 					<Popover.Root bind:open={openDateDebutPopover}>
 						<Popover.Trigger
 							type="button"
@@ -603,17 +620,17 @@
 					<p class="text-xs text-muted-foreground">Ex : 12 rue de la Paix, 75002 Paris ou Salle Zoom</p>
 				</div>
 
-				<!-- client / company (searchable combobox) -->
-				<div class="flex flex-col gap-1 sm:col-span-2">
-					<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Client (entreprise)</span>
-					<div class="flex items-center gap-2">
-						<Popover.Root bind:open={openCompanyPopover}>
-							<Popover.Trigger
-								type="button"
-								role="combobox"
-								aria-expanded={openCompanyPopover}
-								class="inline-flex h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							>
+			<!-- client / company (searchable combobox) -->
+			<div class="flex flex-col gap-1 sm:col-span-2" data-preflight-target="client" id="preflight-client">
+				<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Client (entreprise)</span>
+				<div class="flex items-center gap-2">
+					<Popover.Root bind:open={openCompanyPopover}>
+						<Popover.Trigger
+							type="button"
+							role="combobox"
+							aria-expanded={openCompanyPopover}
+							class="inline-flex h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>
 								<span class="flex items-center gap-2">
 									<Building2 class="size-4 text-muted-foreground shrink-0" />
 									<span class={cn(!companyName && 'text-muted-foreground')}>
