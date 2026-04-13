@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-04-13
+- T-17 Scheduled job infrastructure via Vercel Cron with emargement J-1 auto-generation
+
 ## 2026-04-10
 - T-36 Compliance date warnings (amber/red) on Documents tab and Suivi HUD
 - T-35 Devis accept/refuse actions from Documents tab and Suivi quest sub-action

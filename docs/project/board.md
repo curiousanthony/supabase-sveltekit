@@ -9,7 +9,6 @@ T-13 P2 Error states with fix paths
 T-14 P2 Batch generation for per-learner documents
 T-15 P2 Auto-generate emargement_blank J-1
 T-16 P2 Auto-generate emargement_proof post-signatures
-T-17 P2 Scheduled job infrastructure
 T-19 P2 Add devis generation to Deal detail page
 T-20 P2 "Schema: add nullable dealId to formation_documents"
 T-21 P2 closeAndCreateFormation inherits devis

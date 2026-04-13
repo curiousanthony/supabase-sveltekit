@@ -24,4 +24,6 @@ One-line insights discovered during development. Reviewed by team-architect ever
 - 2026-04-10 T-35: When linking quest sub-actions to document lifecycle, use sub-action orderIndex (not title matching) to identify specific actions within a quest
 - 2026-04-10 T-36: Compliance warnings belong in the layout load (not per-page) so both Documents and Suivi share the same computed warnings from a single lightweight query
 
+- 2026-04-13 T-17: Vercel Cron Jobs are the natural fit for SvelteKit-on-Vercel scheduled tasks — configure in vercel.json crons array, auth via CRON_SECRET bearer token, and use service-role Supabase client (not user session) since cron runs without auth context
+
 ## Reviewed 2026-04-13
