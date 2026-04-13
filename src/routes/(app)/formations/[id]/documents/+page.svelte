@@ -546,9 +546,10 @@
 		<button
 			type="button"
 			class="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+			aria-pressed={groupByPhase}
 			onclick={() => (groupByPhase = !groupByPhase)}
 		>
-			<Layers class="size-3" />
+			<Layers class="size-3" aria-hidden="true" />
 			{groupByPhase ? 'Liste plate' : 'Grouper par phase'}
 		</button>
 
@@ -818,12 +819,13 @@
 							type="button"
 							class="flex w-full cursor-pointer items-center gap-3 text-left"
 							aria-expanded={expanded}
+							aria-label="{groupLabels?.plural ?? typeConfig.label}, {item.sentCount} sur {item.total} {groupLabels?.sentLabel ?? 'traités'}"
 							onclick={() => toggleGroup(item.type, item.hasError)}
 						>
 							{#if expanded}
-								<ChevronDown class="size-4 shrink-0 text-muted-foreground" />
+								<ChevronDown class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 							{:else}
-								<ChevronRight class="size-4 shrink-0 text-muted-foreground" />
+								<ChevronRight class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 							{/if}
 							<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
 								<typeConfig.icon class="size-4 text-muted-foreground" />
