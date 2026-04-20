@@ -20,6 +20,9 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { posteOptions } from '$lib/crm/contact-schema';
 	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { replaceState } from '$app/navigation';
 
 	let { data }: PageProps = $props();
 
@@ -117,6 +120,36 @@
 		removeDialogOpen = true;
 	}
 
+	// ── Focus handler for ?preflightFocus=email&focusContactId=... (T-14) ─────
+	onMount(() => {
+		requestAnimationFrame(() => {
+			const focusKey = page.url.searchParams.get('preflightFocus');
+			const focusContactId = page.url.searchParams.get('focusContactId');
+			if (!focusKey) return;
+
+			const root: Element | null = focusContactId
+				? document.querySelector(`[data-contact-row="${CSS.escape(focusContactId)}"]`)
+				: document.documentElement;
+			if (!root) return;
+
+			const el =
+				(root as Element).querySelector?.(`[data-preflight-target="${CSS.escape(focusKey)}"]`) ??
+				root;
+			if (!el) return;
+
+			(el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+			(el as HTMLElement).focus?.();
+			(el as HTMLElement).classList.add('ring-2', 'ring-primary');
+			setTimeout(() => (el as HTMLElement).classList.remove('ring-2', 'ring-primary'), 1500);
+
+			const url = new URL(page.url);
+			url.searchParams.delete('preflightFocus');
+			url.searchParams.delete('focusContactId');
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
+			replaceState(url.toString(), {});
+		});
+	});
+
 	function formatSeanceDate(iso: string) {
 		return new Date(iso).toLocaleDateString('fr-FR', {
 			weekday: 'short',
@@ -173,7 +206,7 @@
 		<div class="space-y-2">
 			{#each apprenants as learner (learner.id)}
 				<Card.Root>
-					<Card.Content class="flex items-center gap-4 py-4">
+					<Card.Content class="flex items-center gap-4 py-4" data-contact-row={learner.id}>
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-2">
 								<a
@@ -193,9 +226,14 @@
 							</div>
 							<div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
 								{#if learner.email}
-									<span class="flex items-center gap-1">
+									<span class="flex items-center gap-1" data-preflight-target="email">
 										<Mail class="size-3.5" />
 										{learner.email}
+									</span>
+								{:else}
+									<span class="flex items-center gap-1 italic text-muted-foreground" data-preflight-target="email">
+										<Mail class="size-3.5" />
+										Aucun e-mail
 									</span>
 								{/if}
 								{#if learner.phone}

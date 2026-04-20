@@ -7,34 +7,34 @@ target: src/routes/(app)/formations/[id]/documents/
 tasks:
   - id: extend-preflight-context
     title: "Add contactEmail to PreflightContext for per-learner semantics"
-    status: pending
+    status: done
   - id: batch-server-action
     title: "Add generateForAll server action with formation-prereq + per-learner loop"
-    status: pending
+    status: done
   - id: audit-log-batch-id
     title: "Per-document audit rows with shared batchId, userId from locals"
-    status: pending
+    status: done
   - id: batch-progress-dialog
     title: "Batch progress + result dialog component (per-learner rows)"
-    status: pending
+    status: done
   - id: cta-placement
     title: "Add 'Générer pour tous' CTA to group card + dropdown"
-    status: pending
+    status: done
   - id: per-learner-fix-links
     title: "Per-learner [Compléter →] links + apprenants tab focusContactId handler"
-    status: pending
+    status: done
   - id: idempotency
     title: "Skip envoye/archive learners; replace-in-place genere"
-    status: pending
+    status: done
   - id: cancellation
     title: "Client-driven cancellation token (no rollback of completed)"
-    status: pending
+    status: done
   - id: concurrency-cap
     title: "Server: bounded parallel inline pool (3 slots)"
-    status: pending
+    status: done
   - id: testing-checklist
     title: "Unit + Playwright happy path + partial-failure recovery"
-    status: pending
+    status: done
 ---
 
 # T-14 — Batch Generation for Per-Learner Documents

@@ -36,6 +36,7 @@ export interface PreflightWorkspace {
 export interface PreflightContext {
 	documentType: string;
 	contactId?: string;
+	contactEmail?: string | null;
 	formateurId?: string;
 	seanceId?: string;
 	hasAcceptedDevis?: boolean;
@@ -149,13 +150,24 @@ export function evaluatePreflight(
 
 	// ── convocation ───────────────────────────────────────────────────────────
 	if (documentType === 'convocation') {
-		if (!context.hasLearnerWithEmail) {
+		// Per-learner mode: contactId is set → check the specific learner's email.
+		// Formation mode: no contactId → check formation-aggregate hasLearnerWithEmail.
+		const perLearnerMode = context.contactId !== undefined;
+		const learnerEmailOk = perLearnerMode
+			? !!context.contactEmail
+			: !!context.hasLearnerWithEmail;
+
+		if (!learnerEmailOk) {
 			items.push({
 				id: 'email_apprenant_manquant',
 				severity: 'block',
 				kind: 'data',
-				messageFr: 'Aucun apprenant avec adresse e-mail',
-				fixLabelFr: "Compléter l'e-mail d'un apprenant",
+				messageFr: perLearnerMode
+					? "L'apprenant n'a pas d'adresse e-mail"
+					: 'Aucun apprenant avec adresse e-mail',
+				fixLabelFr: perLearnerMode
+					? "Compléter l'e-mail de l'apprenant"
+					: "Compléter l'e-mail d'un apprenant",
 				tab: 'apprenants',
 				hrefPath: `${base(formationId)}/apprenants`,
 				focusKey: 'email'

@@ -25,7 +25,6 @@ import { generateDocument, type DocumentType } from '$lib/services/document-gene
 import { evaluatePreflight, assertPreflightOrThrow } from '$lib/preflight/document-preflight';
 import { sendFormationTemplateEmail, EMAIL_TYPE_TO_TEMPLATE } from '$lib/services/email-service';
 import { transitionStatus } from '$lib/services/document-lifecycle';
-import { formationDocuments } from '$lib/db/schema';
 import { env } from '$env/dynamic/private';
 import type { Actions } from './$types';
 

@@ -37,7 +37,7 @@ async function loadPreflightRows(formationId: string, workspaceId: string) {
 		}),
 		db.query.formationApprenants.findMany({
 			where: eq(formationApprenants.formationId, formationId),
-			with: { contact: { columns: { email: true } } }
+			with: { contact: { columns: { email: true, firstName: true, lastName: true } } }
 		}),
 		db.query.formationDocuments.findMany({
 			where: eq(formationDocuments.formationId, formationId),
@@ -53,7 +53,7 @@ function evaluatePreflightForServer(
 	apprenantRows: Awaited<ReturnType<typeof loadPreflightRows>>['apprenantRows'],
 	docRows: Awaited<ReturnType<typeof loadPreflightRows>>['docRows'],
 	documentType: string,
-	ids: { contactId?: string; formateurId?: string; seanceId?: string }
+	ids: { contactId?: string; contactEmail?: string | null; formateurId?: string; seanceId?: string }
 ) {
 	const now = new Date().toISOString();
 	const hasAcceptedDevis = docRows.some((d) => d.type === 'devis' && d.status === 'accepte');
@@ -80,6 +80,7 @@ function evaluatePreflightForServer(
 		{
 			documentType,
 			contactId: ids.contactId,
+			contactEmail: ids.contactEmail,
 			formateurId: ids.formateurId,
 			seanceId: ids.seanceId,
 			hasAcceptedDevis,
@@ -600,5 +601,262 @@ export const actions: Actions = {
 			console.error(`[regenerateDocument] docId=${documentId} formationId=${params.id} error:`, err);
 			return fail(500, { message });
 		}
+	},
+
+	generateForAll: async ({ request, params, locals }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		const isOwner = await verifyFormationOwnership(params.id, workspaceId);
+		if (!isOwner) return fail(403, { message: 'Accès refusé' });
+
+		const formData = await request.formData();
+		const type = formData.get('type')?.toString();
+		const warningsAcknowledgedRaw = formData.get('warningsAcknowledged')?.toString();
+		const warningsAcknowledged: string[] = warningsAcknowledgedRaw
+			? warningsAcknowledgedRaw.split(',').filter(Boolean)
+			: [];
+
+		if (type !== 'convocation' && type !== 'certificat') {
+			return fail(400, { message: 'Type invalide pour génération en masse' });
+		}
+		// Narrowed const alias so closure captures non-nullable type
+		const batchDocType = type;
+
+		// ── Load preflight rows ONCE (mirrors regenerateAll) ──────────────────
+		const { formationRow, workspaceRow, apprenantRows, docRows } = await loadPreflightRows(
+			params.id,
+			workspaceId
+		);
+		if (!formationRow || !workspaceRow) return fail(404, { message: 'Formation introuvable' });
+
+		// Non-null aliases for use inside processLearner closure
+		// (TypeScript control-flow narrowing does not cross function boundaries)
+		const checkedFormation = formationRow;
+		const checkedWorkspace = workspaceRow;
+		const checkedUser = user;
+
+		// ── Formation-level prerequisite gate (one-shot) ──────────────────────
+		// Evaluate once without contactId — any prerequisite or formation-wide block fails fast.
+		// Per-learner data checks (e.g. email) are deferred to the loop.
+		const formationGate = evaluatePreflightForServer(
+			checkedFormation,
+			checkedWorkspace,
+			apprenantRows,
+			docRows,
+			batchDocType,
+			{}
+		);
+		const formationPrereqBlocks = formationGate.items.filter(
+			(i) => i.severity === 'prerequisite' || (i.severity === 'block' && i.id !== 'email_apprenant_manquant')
+		);
+		if (formationPrereqBlocks.length > 0) {
+			return fail(400, {
+				message: 'Prérequis formation non remplis',
+				formationBlocks: formationPrereqBlocks
+			});
+		}
+
+		// ── Warning ack gate (single batch ack) ───────────────────────────────
+		const warnIds = formationGate.items.filter((i) => i.severity === 'warn').map((i) => i.id);
+		const warnIdSet = new Set(warnIds);
+		const sanitizedWarnings = [...new Set(warningsAcknowledged)].filter((id) => warnIdSet.has(id));
+		if (warnIds.length > 0 && !warnIds.every((id) => sanitizedWarnings.includes(id))) {
+			return fail(400, { message: 'Veuillez prendre connaissance de tous les avertissements.' });
+		}
+
+		// ── Existing-document idempotency map ─────────────────────────────────
+		const existingByContact = new Map<string, { status: string; id: string }>();
+		const existingForType = await db.query.formationDocuments.findMany({
+			where: and(
+				eq(formationDocuments.formationId, params.id),
+				eq(formationDocuments.type, batchDocType)
+			),
+			columns: { id: true, status: true, relatedContactId: true }
+		});
+		for (const d of existingForType) {
+			if (d.relatedContactId && d.status !== 'remplace') {
+				existingByContact.set(d.relatedContactId, { status: d.status, id: d.id });
+			}
+		}
+
+		const SKIP_IF_STATUS = new Set(['envoye', 'signe', 'archive', 'accepte']);
+		const REPLACE_IF_STATUS = new Set(['genere']);
+
+		// ── Per-learner result accumulator ────────────────────────────────────
+		type LearnerResult =
+			| { contactId: string; learnerName: string; status: 'done'; documentId: string }
+			| { contactId: string; learnerName: string; status: 'skipped'; reason: 'already_sent' }
+			| { contactId: string; learnerName: string; status: 'failed'; reason: string; blockingIds: string[] };
+
+		const batchId = crypto.randomUUID();
+		const results: LearnerResult[] = [];
+
+		// ── Inline 3-slot promise pool (no p-limit dep) ───────────────────────
+		// We avoid p-limit because (a) we want zero new deps, (b) the loop is short
+		// (max ~25 learners), (c) PDF generation is the bottleneck not scheduling
+		// overhead, and (d) AbortSignal integration is simpler with our own pool.
+		const CONCURRENCY = 3;
+		const eligibleLearners = apprenantRows.filter((a) => a.contactId);
+		const queue = [...eligibleLearners];
+		const inFlight: Promise<void>[] = [];
+
+		async function processLearner(learner: (typeof eligibleLearners)[number]) {
+			const contactId = learner.contactId!;
+			const learnerName =
+				[learner.contact?.firstName, learner.contact?.lastName].filter(Boolean).join(' ') ||
+				'Apprenant';
+
+			if (request.signal.aborted) return;
+
+			// Idempotency: skip if already sent/signed/archived
+			const existing = existingByContact.get(contactId);
+			if (existing && SKIP_IF_STATUS.has(existing.status)) {
+				results.push({ contactId, learnerName, status: 'skipped', reason: 'already_sent' });
+				return;
+			}
+
+			// Per-learner preflight with contactEmail (Task 1 per-learner mode)
+			const perLearnerPreflight = evaluatePreflightForServer(
+				checkedFormation,
+				checkedWorkspace,
+				apprenantRows,
+				docRows,
+				batchDocType,
+				{ contactId, contactEmail: learner.contact?.email ?? null }
+			);
+
+			try {
+				assertPreflightOrThrow(perLearnerPreflight);
+			} catch {
+				const blockingIds = perLearnerPreflight.items
+					.filter((i) => i.severity === 'block' || i.severity === 'prerequisite')
+					.map((i) => i.id);
+				results.push({
+					contactId,
+					learnerName,
+					status: 'failed',
+					reason: blockingIds.includes('email_apprenant_manquant')
+						? 'email_manquant'
+						: (blockingIds[0] ?? 'unknown'),
+					blockingIds
+				});
+				return;
+			}
+
+			try {
+				const newResult = await generateDocument(batchDocType as DocumentType, params.id, checkedUser.id, {
+					contactId
+				});
+
+				// Replace-in-place if a 'genere' doc existed (T-12 path)
+				// Defense-in-depth: scope delete by formationId in addition to id + status.
+				if (existing && REPLACE_IF_STATUS.has(existing.status)) {
+					await db.delete(formationDocuments).where(
+						and(
+							eq(formationDocuments.id, existing.id),
+							eq(formationDocuments.formationId, params.id),
+							eq(formationDocuments.status, 'genere')
+						)
+					);
+				}
+
+				// Audit log — failures must NOT be silently swallowed (architect caveat 1).
+				// Pass `db` as the explicit client so the throwing branch of logAuditEvent is
+				// used (the single-arg branch swallows errors). On failure: roll back the
+				// just-created doc row and surface as a per-learner failure so the Qualiopi
+				// audit trail is never broken.
+				// Note: newValue.batchId is searchable only via (new_value::jsonb ->> 'batchId')
+				// since the audit table stores new_value as text (JSON.stringify'd).
+				// TODO(storage-orphan): the PDF in Supabase Storage survives this rollback —
+				// pre-existing risk shared with regenerateAll; track in a Storage-GC ticket.
+				try {
+					await logAuditEvent(
+						{
+							formationId: params.id,
+							userId: checkedUser.id, // T-46: from locals, never from client
+							actionType: 'document_batch_generated',
+							entityType: 'formation_document',
+							entityId: newResult.documentId,
+							newValue: {
+								documentType: batchDocType,
+								contactId,
+								batchId, // shared correlator across all rows in this batch
+								warningsAcknowledged: sanitizedWarnings
+							}
+						},
+						db
+					);
+				} catch (auditErr) {
+					console.error(
+						`[generateForAll] audit log failed for contact ${contactId}:`,
+						auditErr
+					);
+					// Roll back the just-created doc row to keep DB consistent.
+					// Defense-in-depth: scope by formationId.
+					await db
+						.delete(formationDocuments)
+						.where(
+							and(
+								eq(formationDocuments.id, newResult.documentId),
+								eq(formationDocuments.formationId, params.id)
+							)
+						);
+					results.push({
+						contactId,
+						learnerName,
+						status: 'failed',
+						reason: 'audit_log_failed',
+						blockingIds: []
+					});
+					return;
+				}
+
+				results.push({
+					contactId,
+					learnerName,
+					status: 'done',
+					documentId: newResult.documentId
+				});
+			} catch (err) {
+				console.error(`[generateForAll] failed for contact ${contactId}:`, err);
+				results.push({
+					contactId,
+					learnerName,
+					status: 'failed',
+					reason: err instanceof Error ? err.message : 'erreur génération',
+					blockingIds: []
+				});
+			}
+		}
+
+		// Pump the pool
+		while (queue.length > 0 || inFlight.length > 0) {
+			if (request.signal.aborted) break;
+			while (inFlight.length < CONCURRENCY && queue.length > 0) {
+				const learner = queue.shift()!;
+				const p = processLearner(learner).finally(() => {
+					inFlight.splice(inFlight.indexOf(p), 1);
+				});
+				inFlight.push(p);
+			}
+			if (inFlight.length > 0) {
+				await Promise.race(inFlight);
+			}
+		}
+
+		return {
+			success: true,
+			batchId,
+			documentType: batchDocType,
+			results,
+			totals: {
+				done: results.filter((r) => r.status === 'done').length,
+				skipped: results.filter((r) => r.status === 'skipped').length,
+				failed: results.filter((r) => r.status === 'failed').length
+			}
+		};
 	}
 };

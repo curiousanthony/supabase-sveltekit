@@ -464,6 +464,101 @@ describe('evaluatePreflight — certificat', () => {
 	});
 });
 
+// ── per-learner mode (batch) ─────────────────────────────────────────────────
+// These tests FAIL until Task 1 (extend-preflight-context) adds `contactEmail`
+// to PreflightContext and updates the convocation branch logic.
+
+describe('evaluatePreflight — per-learner mode (batch)', () => {
+	it('convocation + contactId + contactEmail: null → BLOCK email_apprenant_manquant with per-learner message', () => {
+		const result = evaluatePreflight(
+			makeFormation({ clientId: 'c-1' }),
+			makeWorkspace(),
+			makeContext({
+				documentType: 'convocation',
+			contactId: 'contact-1',
+			contactEmail: null,
+			hasSignedConvention: true
+			})
+		);
+		expect(hasItemId(result, 'email_apprenant_manquant')).toBe(true);
+		const item = result.items.find((i) => i.id === 'email_apprenant_manquant')!;
+		expect(item.severity).toBe('block');
+		expect(item.messageFr).toContain("L'apprenant n'a pas d'adresse e-mail");
+	});
+
+	it('convocation + contactId + valid contactEmail → no email block (only convention prereq if unsigned)', () => {
+		const result = evaluatePreflight(
+			makeFormation({ clientId: 'c-1' }),
+			makeWorkspace(),
+			makeContext({
+				documentType: 'convocation',
+			contactId: 'contact-1',
+			contactEmail: 'jean@dupont.fr',
+			hasSignedConvention: true
+			})
+		);
+		expect(hasItemId(result, 'email_apprenant_manquant')).toBe(false);
+		expect(result.blockingCount).toBe(0);
+	});
+
+	it('convocation + NO contactId + hasLearnerWithEmail: true → no email block (formation-mode preserved)', () => {
+		const result = evaluatePreflight(
+			makeFormation({ clientId: 'c-1' }),
+			makeWorkspace(),
+			makeContext({
+				documentType: 'convocation',
+				hasLearnerWithEmail: true,
+				hasSignedConvention: true
+			})
+		);
+		expect(hasItemId(result, 'email_apprenant_manquant')).toBe(false);
+		expect(result.blockingCount).toBe(0);
+	});
+
+	it('convocation + NO contactId + hasLearnerWithEmail: false → BLOCK (formation-mode preserved)', () => {
+		const result = evaluatePreflight(
+			makeFormation({ clientId: 'c-1' }),
+			makeWorkspace(),
+			makeContext({
+				documentType: 'convocation',
+				hasLearnerWithEmail: false,
+				hasSignedConvention: true
+			})
+		);
+		expect(hasItemId(result, 'email_apprenant_manquant')).toBe(true);
+	});
+
+	it('convocation + contactId + contactEmail: "" (empty string) → BLOCK (treat empty as missing)', () => {
+		const result = evaluatePreflight(
+			makeFormation({ clientId: 'c-1' }),
+			makeWorkspace(),
+			makeContext({
+				documentType: 'convocation',
+			contactId: 'contact-1',
+			contactEmail: '',
+			hasSignedConvention: true
+			})
+		);
+		expect(hasItemId(result, 'email_apprenant_manquant')).toBe(true);
+		const item = result.items.find((i) => i.id === 'email_apprenant_manquant')!;
+		expect(item.messageFr).toContain("L'apprenant n'a pas d'adresse e-mail");
+	});
+
+	it('certificat + contactId + contactEmail: null → no email block (certificat does not check email)', () => {
+		const result = evaluatePreflight(
+			makeFormation({ clientId: 'c-1' }),
+			makeWorkspace(),
+			makeContext({
+				documentType: 'certificat',
+			contactId: 'contact-1',
+			contactEmail: null,
+			hasSignedEmargements: true
+			})
+		);
+		expect(hasItemId(result, 'email_apprenant_manquant')).toBe(false);
+	});
+});
+
 // ── Cross-type: no items for non-applicable rules ────────────────────────────
 
 describe('evaluatePreflight — cross-type isolation', () => {

@@ -46,6 +46,8 @@
 	import { goto } from '$app/navigation';
 	import { onMount, type Component } from 'svelte';
 	import { evaluatePreflight, type PreflightResult } from '$lib/preflight/document-preflight';
+	import BatchGenerateDialog from '$lib/components/documents/BatchGenerateDialog.svelte';
+	import Users from '@lucide/svelte/icons/users';
 	import type { ComplianceWarning } from '$lib/compliance-warnings';
 
 	let { data }: PageProps = $props();
@@ -239,6 +241,15 @@
 				// Clean up URL param without triggering navigation
 				const url = new URL(page.url);
 				url.searchParams.delete('resumeGenerate');
+				replaceState(url.toString(), {});
+			}
+
+			const resumeBatch = page.url.searchParams.get('resumeBatch');
+			if (resumeBatch === 'convocation' || resumeBatch === 'certificat') {
+				openBatchDialog(resumeBatch);
+				const url = new URL(page.url);
+				url.searchParams.delete('resumeBatch');
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				replaceState(url.toString(), {});
 			}
 		});
@@ -602,6 +613,47 @@
 		documentToDelete = doc;
 		deleteDialogOpen = true;
 	}
+
+	// ── Batch generation ──────────────────────────────────────────────────────
+	let batchOpen = $state(false);
+	let batchType = $state<'convocation' | 'certificat'>('convocation');
+
+	const formationLearners = $derived(
+		apprenants
+			.filter((a) => a.contactId)
+			.map((a) => ({
+				contactId: a.contact?.id ?? a.contactId!,
+				firstName: a.contact?.firstName ?? '',
+				lastName: a.contact?.lastName ?? '',
+				email: a.contact?.email ?? null
+			}))
+	);
+
+	const batchWarnings = $derived({
+		convocation: evaluatePreflight(preflightFormation, preflightWorkspace, {
+			documentType: 'convocation',
+			hasAcceptedDevis,
+			hasSignedConvention,
+			hasLearnerWithEmail
+		}).items
+			.filter((i) => i.severity === 'warn')
+			.map((i) => ({ id: i.id, messageFr: i.messageFr })),
+		certificat: evaluatePreflight(preflightFormation, preflightWorkspace, {
+			documentType: 'certificat',
+			hasSignedEmargements
+		}).items
+			.filter((i) => i.severity === 'warn')
+			.map((i) => ({ id: i.id, messageFr: i.messageFr }))
+	});
+
+	function openBatchDialog(type: string) {
+		if (formationLearners.length === 0) {
+			toast.info('Aucun apprenant inscrit — ajoutez des apprenants pour générer.');
+			return;
+		}
+		batchType = type as 'convocation' | 'certificat';
+		batchOpen = true;
+	}
 </script>
 
 <div class="space-y-6">
@@ -631,6 +683,15 @@
 						<config.icon class="size-4" />
 						{config.label}
 					</DropdownMenu.Item>
+					{#if type === 'convocation' || type === 'certificat'}
+						<DropdownMenu.Item
+							class="cursor-pointer gap-2 text-muted-foreground"
+							onclick={() => openBatchDialog(type)}
+						>
+							<Users class="size-4" />
+							Pour tous les apprenants ({formationLearners.length})
+						</DropdownMenu.Item>
+					{/if}
 				{/each}
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
@@ -1004,31 +1065,53 @@
 				{@const expanded = isGroupExpanded(item.type, item.hasError)}
 				<Card.Root class={item.hasError ? 'border-red-200 dark:border-red-900' : ''}>
 					<Card.Content class="py-3">
-						<button
-							type="button"
-							class="flex w-full cursor-pointer items-center gap-3 text-left"
-							aria-expanded={expanded}
-							aria-label="{groupLabels?.plural ?? typeConfig.label}, {item.sentCount} sur {item.total} {groupLabels?.sentLabel ?? 'traités'}"
-							onclick={() => toggleGroup(item.type, item.hasError)}
-						>
-							{#if expanded}
-								<ChevronDown class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-							{:else}
-								<ChevronRight class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+						<div class="flex items-center gap-2">
+							<button
+								type="button"
+								class="flex flex-1 cursor-pointer items-center gap-3 text-left"
+								aria-expanded={expanded}
+								aria-label="{groupLabels?.plural ?? typeConfig.label}, {item.sentCount} sur {item.total} {groupLabels?.sentLabel ?? 'traités'}"
+								onclick={() => toggleGroup(item.type, item.hasError)}
+							>
+								{#if expanded}
+									<ChevronDown class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+								{:else}
+									<ChevronRight class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+								{/if}
+								<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+									<typeConfig.icon class="size-4 text-muted-foreground" />
+								</div>
+								<span class="flex-1 text-sm font-medium">
+									{groupLabels?.plural ?? typeConfig.label}
+									<span class="ml-1 text-muted-foreground">({item.sentCount}/{item.total} {groupLabels?.sentLabel ?? 'traités'})</span>
+								</span>
+								{#if item.hasError}
+									<Badge variant="outline" class="shrink-0 text-[10px] border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-400">
+										Action requise
+									</Badge>
+								{/if}
+							</button>
+							{#if item.type === 'convocation' || item.type === 'certificat'}
+								{@const remaining = formationLearners.length - item.total}
+								{@const allExist = remaining <= 0 && item.total > 0}
+								<Button
+									variant={item.total === 0 ? 'default' : 'outline'}
+									size="sm"
+									onclick={() => openBatchDialog(item.type)}
+									disabled={formationLearners.length === 0}
+									title={formationLearners.length === 0 ? 'Aucun apprenant inscrit' : undefined}
+									class="shrink-0"
+								>
+									{#if item.total === 0}
+										Générer pour tous
+									{:else if allExist}
+										Régénérer pour tous
+									{:else}
+										Générer pour les {remaining} restants
+									{/if}
+								</Button>
 							{/if}
-							<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-								<typeConfig.icon class="size-4 text-muted-foreground" />
-							</div>
-							<span class="flex-1 text-sm font-medium">
-								{groupLabels?.plural ?? typeConfig.label}
-								<span class="ml-1 text-muted-foreground">({item.sentCount}/{item.total} {groupLabels?.sentLabel ?? 'traités'})</span>
-							</span>
-							{#if item.hasError}
-								<Badge variant="outline" class="shrink-0 text-[10px] border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-400">
-									Action requise
-								</Badge>
-							{/if}
-						</button>
+						</div>
 					</Card.Content>
 				</Card.Root>
 				{#if expanded}
@@ -1361,3 +1444,12 @@
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>
+
+<BatchGenerateDialog
+	bind:open={batchOpen}
+	formationId={formation?.id ?? ''}
+	documentType={batchType}
+	learners={formationLearners}
+	warnings={batchWarnings[batchType] ?? []}
+	onClose={() => (batchOpen = false)}
+/>
