@@ -69,6 +69,8 @@ capable model if needed.
 - **Quests / documents**: Map lifecycle steps using sub-action `orderIndex`, not title matching.
 - **Compliance / warnings**: When two routes need the same derived warnings, compute once in a shared layout load instead of duplicating per-page queries.
 - **Audit logging**: If `logAuditEvent` runs inside a transaction, pass the transaction client and surface errors — avoid fire-and-forget in critical paths.
+- **Lifecycle generation**: Pre-validate every transition (status, financing, dates, replace/replace-target) BEFORE `generateDocument` writes Storage objects or DB rows — failed validation downstream leaves orphaned uploads.
+- **Server-side preflight parity**: When a compliance/preflight check guards a flow, it must run on EVERY entry point that triggers it (Documents action, Suivi quest sub-action, batch jobs, cron) — covering only the most visible path is a compliance gap.
 
 ## File Conventions
 

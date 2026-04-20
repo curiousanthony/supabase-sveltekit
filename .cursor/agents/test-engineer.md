@@ -27,6 +27,7 @@ Run tests with `bun run test` (Vitest). Check `package.json` for Playwright scri
    - Permission denied (unauthorized access, wrong workspace)
    - Interruption recovery (user leaves mid-flow and returns)
    - State transitions (draft → active → archived — can you skip states?)
+   - Entry-point parity (when a server-side invariant — preflight, RLS check, state guard — protects a flow, exercise EVERY route/action/cron that triggers it, not just the most visible one)
 3. **Write tests** that cover happy path + edge cases
 4. **Run tests** — confirm they ALL FAIL (red phase)
 5. **Hand off** to implementer with the test file paths and a summary of what each test validates

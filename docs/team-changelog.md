@@ -32,3 +32,16 @@ Changes to subagent definitions and the orchestrator rule, maintained by the `te
 - Added **Pitfalls** to `architect.md` for migration truth, transactions, RLS shape, layout loads, and quest wiring.
 - Extended **Quick Audit Checklist** in `ux-designer.md` for Kanban consistency and filter integrity when categories disappear.
 - Reset learnings review marker to `## Reviewed 2026-04-13` in `docs/project/learnings.md`.
+
+---
+
+## 2026-04-20 — Learnings review (T-9 → T-13, 14 entries)
+
+**Agent(s) modified**: implementer, architect, test-engineer
+**Change type**: Enhancement
+**Rationale**: 14 unreviewed learnings (T-9, T-S1, T-S2, T-34, T-6, T-7, T-28, T-37, T-35, T-36, T-12, T-11, T-17, T-13). Most were already absorbed in the 2026-04-13 round. Three new patterns surfaced: (a) generation flows that fail validation downstream of `generateDocument` leave orphaned Storage/DB rows (T-12); (b) server-side preflight checks were skipped on the Suivi quest entry point even though Documents was covered, creating a compliance gap (T-13); (c) Vercel Cron Jobs are the standard for SvelteKit-on-Vercel scheduled work with `CRON_SECRET` + service-role client (T-17).
+**Changes made**:
+- `implementer.md`: added two pitfalls — pre-validate lifecycle transitions BEFORE `generateDocument` writes Storage/DB rows; preflight parity across every generation entry point.
+- `architect.md`: added two pitfalls — Vercel Cron Jobs setup with `CRON_SECRET` + service-role client; design preflight/compliance guards as a single shared helper invoked by every entry point.
+- `test-engineer.md`: added an edge-case enumeration item — exercise EVERY route/action/cron that triggers a server-side invariant, not just the most visible path.
+- Appended `## Reviewed 2026-04-20` with summary paragraph to `docs/project/learnings.md`.

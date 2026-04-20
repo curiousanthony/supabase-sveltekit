@@ -41,14 +41,16 @@ Add an `annule` terminal status. When a formation is cancelled, all in-flight do
 
 The UI does NOT show raw lifecycle states. Instead, documents show **action-oriented display labels**:
 
-| System status | Display label | Color |
-|---------------|--------------|-------|
-| `genere` | **À envoyer** | amber |
-| `envoye` | **En attente** | blue |
-| `signatures_en_cours` | **En attente** | blue |
-| `accepte` / `signe` / `archive` | **Terminé** | green |
-| `refuse` / `expire` / `annule` | **Action requise** | red |
-| `remplace` | *(hidden by default)* | muted |
+
+| System status                   | Display label         | Color |
+| ------------------------------- | --------------------- | ----- |
+| `genere`                        | **À envoyer**         | amber |
+| `envoye`                        | **En attente**        | blue  |
+| `signatures_en_cours`           | **En attente**        | blue  |
+| `accepte` / `signe` / `archive` | **Terminé**           | green |
+| `refuse` / `expire` / `annule`  | **Action requise**    | red   |
+| `remplace`                      | *(hidden by default)* | muted |
+
 
 The detailed lifecycle timeline is visible on document expand/detail.
 
@@ -57,6 +59,7 @@ The detailed lifecycle timeline is visible on document expand/detail.
 ## 3. Automatic vs Manual Transitions
 
 ### Automatic (system-inferred)
+
 - `genere → envoye`: when `formation_emails` record created for this document
 - `envoye → expire`: computed at read time (`expires_at < now()` for devis)
 - `genere → signatures_en_cours`: when first émargement signature collected for the séance
@@ -64,12 +67,14 @@ The detailed lifecycle timeline is visible on document expand/detail.
 - `signe → archive` / `envoye → archive`: when parent quest marked "Terminé"
 
 ### Manual (Marie's action)
+
 - `envoye → accepte`: Marie clicks "Devis accepté" (business decision from client)
 - `envoye → refuse`: Marie clicks "Devis refusé"
 - Any → `archive`: Marie can manually archive
 - "Marquer comme envoyé": for postal sends outside the app
 
 ### Blocked transitions
+
 - Signed documents (convention, ordre de mission) **cannot** be regenerated. Marie is guided to create an avenant (future feature) instead.
 - `archive` and `remplace` are terminal — no transitions out.
 
@@ -174,15 +179,17 @@ When `formation.updatedAt > document.generatedAt`, the specific document gets an
 
 ### New columns on `formation_documents`
 
-| Column | Type | Purpose |
-|--------|------|---------|
-| `accepted_at` | timestamptz | Devis acceptance timestamp |
-| `refused_at` | timestamptz | Devis refusal timestamp |
-| `expires_at` | timestamptz | Devis expiry (computed at generation) |
-| `archived_at` | timestamptz | Archive timestamp |
-| `status_changed_at` | timestamptz | Last transition timestamp |
-| `status_changed_by` | uuid FK→users | Who triggered the change |
-| `replaces_document_id` | uuid FK→self | Version chain |
+
+| Column                 | Type          | Purpose                               |
+| ---------------------- | ------------- | ------------------------------------- |
+| `accepted_at`          | timestamptz   | Devis acceptance timestamp            |
+| `refused_at`           | timestamptz   | Devis refusal timestamp               |
+| `expires_at`           | timestamptz   | Devis expiry (computed at generation) |
+| `archived_at`          | timestamptz   | Archive timestamp                     |
+| `status_changed_at`    | timestamptz   | Last transition timestamp             |
+| `status_changed_by`    | uuid FK→users | Who triggered the change              |
+| `replaces_document_id` | uuid FK→self  | Version chain                         |
+
 
 ### Default change
 
@@ -214,6 +221,7 @@ Keep `status` as `text` (not enum). App-level validation per type via `document-
 ### Query-time computation, not cron
 
 No scheduled job infrastructure exists yet (T-17). Expiry is checked at read time:
+
 - If `type = 'devis'` AND `status = 'envoye'` AND `expires_at < now()` → display as `expire`
 - DB row stays `envoye`; optional future cron can materialize
 
@@ -226,6 +234,7 @@ Old devis → `remplace`. New devis gets fresh `expires_at`.
 ## 13. What This Decision Does NOT Cover
 
 Deferred to future chunks/sessions:
+
 - Auto-generation triggers (Chunk 3, requires T-17 scheduled jobs)
 - Deal-level devis (Chunk 4)
 - Attestation + evaluation tracking (Chunk 5)

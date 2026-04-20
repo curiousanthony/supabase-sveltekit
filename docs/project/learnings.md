@@ -28,3 +28,7 @@ One-line insights discovered during development. Reviewed by team-architect ever
 - 2026-04-20 T-13: Server-side preflight must run on every generation entry point (e.g. Documents actions and Suivi quest generation); skipping one path is a compliance gap even if the UI looks complete.
 
 ## Reviewed 2026-04-13
+
+## Reviewed 2026-04-20
+
+Reviewed 14 entries (T-9 → T-13). Most clusters were already absorbed in earlier rounds (transactional DB writes, RLS EXISTS chains, Storage path policies, Postmark templates-only, `transitionStatus` helpers, sub-action `orderIndex`, shared layout warnings, audit logging in transactions). Three new patterns warranted minimal agent updates: (1) **lifecycle pre-validation before `generateDocument`** to prevent orphaned Storage/DB rows (T-12) → added to `implementer.md` pitfalls; (2) **server-side preflight must run on EVERY generation entry point** — Documents action, Suivi quest, cron — not just the visible path (T-13) → added to `implementer.md`, `architect.md`, and as an edge-case bullet in `test-engineer.md`; (3) **Vercel Cron Jobs as the standard for scheduled SvelteKit work** with `CRON_SECRET` + service-role client (T-17) → added to `architect.md` pitfalls. Remaining entries (Svelte 5 `{#snippet}` reuse, French currency formatting, pdfmake CJS) are one-off insights already encoded in implementer.md or skill files.

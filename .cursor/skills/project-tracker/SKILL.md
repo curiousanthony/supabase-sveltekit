@@ -78,6 +78,9 @@ ls docs/project/tickets/T-*.md docs/project/tickets/done/T-*.md 2>/dev/null | gr
 
    Add 1 to get next ID.
 2. Create `docs/project/tickets/T-{N}.md` using the YAML template below.
+
+   **Frontmatter (required for `scripts/board.sh`)**: The file MUST have two `---` lines wrapping the YAML only (open → fields → close). Put the ticket identifier as `id: T-{N}` inside that block. Do **not** use a markdown heading such as `## id:` or `## ID:` for the identifier — that replaces the closing `---`, merges metadata into the body, and breaks board generation (the script matches lines like `^id:`).
+
 3. Run: `bash scripts/board.sh`
 
 ### Update ticket status
@@ -135,7 +138,9 @@ artifacts: []
 ## log
 ```
 
-## ID Assignment
+Allowed body headings after the closing `---` are descriptive prose (optional), then `## acceptance` and `## log` as in the template. Do not add `## id`, `## title`, or other pseudo-YAML headings in the markdown body.
+
+## Choosing the next T-N
 
 Next sequential integer after the highest existing T-N in `docs/project/tickets/` (including `done/`).
 Shipped historical items use T-S prefix (T-S1, T-S2...) and live in `done/`.

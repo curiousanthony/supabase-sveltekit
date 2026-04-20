@@ -37,6 +37,8 @@ Explore the existing schema:
 - **RLS without `workspace_id`**: Plan `EXISTS` chains through parent tables to workspace membership rather than widening policies.
 - **Cross-route derived data**: Compliance warnings and similar computed flags are often best loaded once in a **layout** `load` shared by sibling routes.
 - **Quest / document wiring**: Stable identifiers for sub-steps should use `orderIndex` (or ids), not string titles.
+- **Scheduled tasks (Vercel)**: Use Vercel Cron Jobs (`vercel.json` `crons` array, `CRON_SECRET` bearer auth, service-role Supabase client) for SvelteKit-on-Vercel scheduled work — cron runs without a user session, so plan auth and RLS bypass explicitly.
+- **Generation entry-point parity**: When a server-side preflight or compliance guard protects generation, design it as a single shared helper invoked by EVERY entry point (form action, quest sub-action, cron) — never let one path skip it.
 
 ## Output Format
 

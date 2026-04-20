@@ -346,6 +346,7 @@ Never say "read the whole directory". Always give specific file paths.
 
 Subagents write artifacts with ticket ID in filename: `{date}-T-{id}-{slug}.md`
 Subagents append to the ticket's `## log` when done: `- {date} {agent}: {summary}`
+When **creating** ticket files, use the project-tracker template exactly: `id:` and other metadata belong only in YAML between `---` lines. Never add `## id:` (or similar) in the body — it destroys frontmatter and breaks `scripts/board.sh`.
 All artifacts in English (preserve French for user-facing app terms).
 
 ## Synthesis Protocol
