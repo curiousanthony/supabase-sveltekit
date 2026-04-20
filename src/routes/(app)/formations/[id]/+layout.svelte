@@ -11,6 +11,7 @@
 	import Wallet from '@lucide/svelte/icons/wallet';
 	import Files from '@lucide/svelte/icons/files';
 	import HudBanner from '$lib/components/formations/hud-banner.svelte';
+	import PreflightResumeBanner from '$lib/components/preflight/PreflightResumeBanner.svelte';
 	import { getHudBannerState } from '$lib/formation-quest-priority';
 
 	let { data, children }: LayoutProps = $props();
@@ -53,7 +54,14 @@
 
 <div class="flex min-h-0 w-full flex-1 flex-col">
 	<div class="sticky top-0 z-40 bg-background">
-		<NavTabs {tabs} sticky={false} ariaLabel="Formation sections" />
+		<div class="flex items-center gap-2">
+			<div class="flex-1">
+				<NavTabs {tabs} sticky={false} ariaLabel="Formation sections" />
+			</div>
+			<div class="shrink-0 pr-4 pb-1">
+				<PreflightResumeBanner />
+			</div>
+		</div>
 		<HudBanner {hudState} {formationId} />
 	</div>
 	<div class="flex-1 pt-4">

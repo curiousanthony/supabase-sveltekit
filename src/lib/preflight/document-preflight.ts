@@ -21,6 +21,7 @@ export interface PreflightResult {
 export interface PreflightFormation {
 	id: string;
 	clientId: string | null;
+	companyId: string | null;
 	clientType: string | null;
 	typeFinancement: string | null;
 	dateDebut: string | null;
@@ -66,7 +67,7 @@ export function evaluatePreflight(
 
 	// ── Client manquant (devis, convention, convocation, certificat) ───────────
 	const CLIENT_REQUIRED = new Set(['devis', 'convention', 'convocation', 'certificat']);
-	if (CLIENT_REQUIRED.has(documentType) && !formation.clientId) {
+	if (CLIENT_REQUIRED.has(documentType) && !formation.clientId && !formation.companyId) {
 		items.push({
 			id: 'client_manquant',
 			severity: 'block',

@@ -169,7 +169,7 @@
 	const emails = $derived(data.emails ?? []);
 	const apprenants = $derived(formation?.formationApprenants ?? []);
 	const formateurs = $derived(formation?.formationFormateurs ?? []);
-	const seancesList = $derived(formation?.seances ?? []);
+	const seancesList = $derived(data.seances ?? formation?.seances ?? []);
 
 	const formationUpdatedAt = $derived(formation?.updatedAt ?? null);
 
@@ -177,6 +177,7 @@
 	const preflightFormation = $derived({
 		id: formation?.id ?? '',
 		clientId: formation?.clientId ?? null,
+		companyId: formation?.companyId ?? null,
 		clientType: formation?.client?.type ?? null,
 		typeFinancement: formation?.typeFinancement ?? null,
 		dateDebut: formation?.dateDebut ?? null,

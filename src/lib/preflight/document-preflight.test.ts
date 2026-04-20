@@ -15,6 +15,7 @@ function makeFormation(overrides: Partial<PreflightFormation> = {}): PreflightFo
 	return {
 		id: 'formation-1',
 		clientId: 'client-1',
+		companyId: null,
 		clientType: 'Entreprise',
 		typeFinancement: null,
 		dateDebut: null,
@@ -218,6 +219,45 @@ describe('evaluatePreflight — devis', () => {
 			makeContext({ documentType: 'devis' })
 		);
 		expect(result.blockingCount).toBe(0);
+	});
+
+	it('B2B with companyId set and clientId null — no client block for devis', () => {
+		const result = evaluatePreflight(
+			makeFormation({ clientId: null, companyId: 'company-1' }),
+			makeWorkspace(),
+			makeContext({ documentType: 'devis' })
+		);
+		expect(hasItemId(result, 'client_manquant')).toBe(false);
+		expect(result.blockingCount).toBe(0);
+	});
+
+	it('B2B with companyId set and clientId null — no client block for convention, convocation, certificat', () => {
+		for (const docType of ['convention', 'convocation', 'certificat'] as const) {
+			const result = evaluatePreflight(
+				makeFormation({ clientId: null, companyId: 'company-1' }),
+				makeWorkspace(),
+				makeContext({
+					documentType: docType,
+					hasAcceptedDevis: true,
+					hasLearnerWithEmail: true,
+					hasSignedConvention: true,
+					hasSignedEmargements: true
+				})
+			);
+			expect(hasItemId(result, 'client_manquant')).toBe(false);
+		}
+	});
+
+	it('blocks when both clientId and companyId are null', () => {
+		const result = evaluatePreflight(
+			makeFormation({ clientId: null, companyId: null }),
+			makeWorkspace(),
+			makeContext({ documentType: 'devis' })
+		);
+		expect(hasItemId(result, 'client_manquant')).toBe(true);
+		const item = result.items.find((i) => i.id === 'client_manquant')!;
+		expect(item.severity).toBe('block');
+		expect(result.blockingCount).toBeGreaterThan(0);
 	});
 });
 

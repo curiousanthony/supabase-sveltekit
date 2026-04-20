@@ -155,3 +155,15 @@ tasks:
 - [ ] **A11y**: VoiceOver reads summary; checklist rows have visible text labels; contrast OK in dark mode.
 - [ ] **Mobile**: dialog scrollable; buttons reachable.
 - [ ] **Bypass**: POST without UI still blocked by server preflight.
+
+---
+
+## QA loop fixes (2026-04-20)
+
+Fixes applied after QA FAIL on 2026-04-20:
+
+| Fix | Status |
+|---|---|
+| F1 — C1 companyId fallback: `PreflightFormation` extended with `companyId`, rule updated to `!clientId && !companyId`, server loaders (documents + suivi) updated, 3 new unit tests | done |
+| F2 — H2 séance dropdown: dedicated `seances` query added to documents `load()`, includes `emargements` for `hasSignedEmargements` check | done |
+| F3 — H1 resume banner: `PreflightResumeBanner.svelte` created in `src/lib/components/preflight/`, mounted in formation `+layout.svelte` (hidden on `/documents`, dismissible via goto) | done |

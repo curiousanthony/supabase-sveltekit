@@ -467,7 +467,7 @@ export const actions: Actions = {
 
 		const formation = await db.query.formations.findFirst({
 			where: and(eq(formations.id, params.id), eq(formations.workspaceId, workspaceId)),
-			columns: { id: true, clientId: true, typeFinancement: true, dateDebut: true, dateFin: true },
+			columns: { id: true, clientId: true, companyId: true, typeFinancement: true, dateDebut: true, dateFin: true },
 			with: {
 				client: { columns: { id: true, type: true } },
 				seances: {
@@ -522,6 +522,7 @@ export const actions: Actions = {
 			{
 				id: formation.id,
 				clientId: formation.clientId,
+				companyId: formation.companyId,
 				clientType: formation.client?.type ?? null,
 				typeFinancement: formation.typeFinancement,
 				dateDebut: formation.dateDebut,

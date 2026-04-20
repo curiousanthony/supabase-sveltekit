@@ -1,6 +1,6 @@
 import { db } from '$lib/db';
-import { formationDocuments, formationEmails, formations, formationApprenants, workspaces } from '$lib/db/schema';
-import { eq, and, desc, notInArray } from 'drizzle-orm';
+import { formationDocuments, formationEmails, formations, formationApprenants, workspaces, seances } from '$lib/db/schema';
+import { eq, and, desc, notInArray, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { generateDocument, getDocumentSignedUrl, type DocumentType } from '$lib/services/document-generator';
@@ -22,7 +22,7 @@ async function loadPreflightRows(formationId: string, workspaceId: string) {
 	const [formationRow, workspaceRow, apprenantRows, docRows] = await Promise.all([
 		db.query.formations.findFirst({
 			where: and(eq(formations.id, formationId), eq(formations.workspaceId, workspaceId)),
-			columns: { id: true, clientId: true, typeFinancement: true, dateDebut: true, dateFin: true },
+			columns: { id: true, clientId: true, companyId: true, typeFinancement: true, dateDebut: true, dateFin: true },
 			with: {
 				client: { columns: { id: true, type: true } },
 				seances: {
@@ -70,6 +70,7 @@ function evaluatePreflightForServer(
 		{
 			id: formationRow.id,
 			clientId: formationRow.clientId,
+			companyId: formationRow.companyId,
 			clientType: formationRow.client?.type ?? null,
 			typeFinancement: formationRow.typeFinancement,
 			dateDebut: formationRow.dateDebut,
@@ -96,7 +97,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const isOwner = await verifyFormationOwnership(params.id, workspaceId);
 	if (!isOwner) return { documents: [], workspaceNda: null };
 
-	const [workspace, documents] = await Promise.all([
+	const [workspace, documents, seancesForFormation] = await Promise.all([
 		db.query.workspaces.findFirst({
 			where: eq(workspaces.id, workspaceId),
 			columns: { nda: true }
@@ -117,6 +118,15 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 						user: { columns: { firstName: true, lastName: true } }
 					}
 				}
+			}
+		}),
+		db.query.seances.findMany({
+			where: eq(seances.formationId, params.id),
+			orderBy: [asc(seances.startAt)],
+			columns: { id: true, startAt: true, endAt: true },
+			with: {
+				module: { columns: { id: true, name: true } },
+				emargements: { columns: { signedAt: true } }
 			}
 		})
 	]);
@@ -140,7 +150,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		})
 	}));
 
-	return { documents: docsWithEffectiveStatus, emails, workspaceNda: workspace?.nda ?? null };
+	return { documents: docsWithEffectiveStatus, emails, workspaceNda: workspace?.nda ?? null, seances: seancesForFormation };
 };
 
 const VALID_DOCUMENT_TYPES: DocumentType[] = [
