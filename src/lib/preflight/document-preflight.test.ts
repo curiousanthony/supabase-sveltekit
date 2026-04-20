@@ -248,6 +248,23 @@ describe('evaluatePreflight — devis', () => {
 		}
 	});
 
+	it('B2C with clientId set and companyId null (Particulier) — no client block for convention, convocation, certificat', () => {
+		for (const docType of ['convention', 'convocation', 'certificat'] as const) {
+			const result = evaluatePreflight(
+				makeFormation({ clientId: 'c-1', companyId: null, clientType: 'Particulier' }),
+				makeWorkspace(),
+				makeContext({
+					documentType: docType,
+					hasAcceptedDevis: true,
+					hasLearnerWithEmail: true,
+					hasSignedConvention: true,
+					hasSignedEmargements: true
+				})
+			);
+			expect(hasItemId(result, 'client_manquant')).toBe(false);
+		}
+	});
+
 	it('blocks when both clientId and companyId are null', () => {
 		const result = evaluatePreflight(
 			makeFormation({ clientId: null, companyId: null }),
