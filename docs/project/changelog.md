@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-04-20
+- T-13 Pre-flight validation before document generation — checklist with block/warn/prerequisite, deep links, resume banner, server enforcement, suivi parity
+
 ## 2026-04-13
 - T-12 Regeneration prompts — per-document stale indicators with versioning (genere→replace, envoye+→remplace, signe→blocked)
 - T-11 Phase grouping in Documents tab — urgency sort, phase chips, grouper-par-phase toggle, per-learner collapsing

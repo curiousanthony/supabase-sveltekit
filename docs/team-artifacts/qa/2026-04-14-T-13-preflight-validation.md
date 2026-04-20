@@ -183,4 +183,42 @@ Pre-flight validation checklist displayed before document generation. Shows gree
 
 ---
 
+## Retest 2026-04-20
+
+**Overall Verdict: PASS**
+
+All previously-failing items (C1, H1, H2, F1, F3) are now resolved. No ship blockers remain.
+
+### Per-Item Results
+
+| ID  | Item                                                    | Result | Evidence |
+| --- | ------------------------------------------------------- | ------ | -------- |
+| C1  | companyId fallback — no false "Client non renseigné"   | ✅ PASS | Devis preflight shows only NDA warning (1 point à vérifier). Convention shows devis prerequisite only. No "Client non renseigné" block for B2B formation with Acme Inc. via `companyId`. |
+| H1  | Resume banner on non-Documents tabs                     | ✅ PASS | Banner "Reprendre la génération du Devis →" visible in tab nav on Fiche tab. Dismiss removes `returnTo` from URL using `replaceState` (no page reload, form state preserved). Banner absent on Documents tab. |
+| H2  | Séance dropdown populated                               | ✅ PASS | Fix verified by code: `seancesList` now derived from layout's `formation.seances` (includes `startAt`, `endAt`, `module.name`). Dropdown correctly empty because FOR-1 genuinely has no séances (confirmed via Séances tab — "Aucune séance planifiée"). |
+| F1  | returnTo allow-list (open-redirect prevention)          | ✅ PASS | `https://example.com` → no banner. `//example.com` → no banner. `javascript:alert(1)` → no banner, no alert. Valid `/formations/.../documents?resumeGenerate=devis` → banner shown. |
+| F3  | Unknown resumeGenerate sanitization                     | ✅ PASS | `evil<script>` param → banner shows "Reprendre la génération du document" (generic fallback). Raw param NOT echoed. |
+| T6  | Tests still green                                       | ✅ PASS | `bun run test src/lib/preflight/` → 42/42 passed. |
+
+### Test Environment
+
+- **URL:** http://localhost:5173/formations/a5f59652-d41f-44c0-8786-9cea34ccc073/documents
+- **Branch:** feat/formations-v2 (commits d93c195 + 43b3456)
+- **Tested:** 2026-04-20
+
+### Screenshots
+
+| Screenshot | Description |
+| --- | --- |
+| `page-2026-04-20T14-00-42-812Z.png` | Devis preflight — only NDA warning, Générer enabled (C1 fixed) |
+| `page-2026-04-20T14-00-56-249Z.png` | Convention preflight — only devis prerequisite, no client block (C1 fixed) |
+| `page-2026-04-20T14-04-31-773Z.png` | Resume banner "Reprendre la génération du Devis →" visible in Fiche tab nav (H1) |
+
+### Remaining Non-Blocking Notes
+
+- **M1 (disabled Générer button styling)** — Not retested (out of scope for this round). Still shows as pink/active when disabled (see original report). Recommend follow-up ticket.
+- **H2 edge case** — FOR-1 currently has no séances. To fully validate the dropdown with options, create a séance on FOR-1 and verify items appear. Code analysis confirms the fix is architecturally correct.
+
+---
+
 ## Log Entry

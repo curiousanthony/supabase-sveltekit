@@ -15,7 +15,6 @@ One-line insights discovered during development. Reviewed by team-architect ever
 - 2026-04-09 T-9: Multi-step DB mutations (replace old + link new doc) must be wrapped in db.transaction() and use optimistic concurrency (WHERE status = expected) to prevent races
 - 2026-04-08 T-S1: Locale-aware number formatting needed for French currency (not just toFixed)
 - 2026-04-08 T-S2: pdfmake CJS via createRequire works but needs setFonts() before createPdf()
-
 - 2026-04-10 T-34: logAuditEvent must accept a tx client and propagate errors when called transactionally — fire-and-forget is only safe for non-critical callers
 - 2026-04-10 T-6: RLS via EXISTS subquery joining child→parent→workspaces_users is the standard pattern for tables without direct workspace_id
 - 2026-04-10 T-7: Storage policies use (storage.foldername(name))[1]::uuid to extract entity ID from path convention {entityId}/filename.ext
@@ -23,9 +22,9 @@ One-line insights discovered during development. Reviewed by team-architect ever
 - 2026-04-10 T-37: transitionStatus already sets timestamp fields via STATUS_TIMESTAMP_FIELD map — no need to manually set sentAt when transitioning to envoye
 - 2026-04-10 T-35: When linking quest sub-actions to document lifecycle, use sub-action orderIndex (not title matching) to identify specific actions within a quest
 - 2026-04-10 T-36: Compliance warnings belong in the layout load (not per-page) so both Documents and Suivi share the same computed warnings from a single lightweight query
-
 - 2026-04-13 T-12: Pre-validate lifecycle transitions before generating a replacement doc — generateDocument creates storage + DB rows that become orphans if replaceDocument rejects afterward
 - 2026-04-13 T-11: Svelte 5 {#snippet} avoids template duplication when the same card layout is rendered in flat, grouped, and nested contexts — define once, @render everywhere
 - 2026-04-13 T-17: Vercel Cron Jobs are the natural fit for SvelteKit-on-Vercel scheduled tasks — configure in vercel.json crons array, auth via CRON_SECRET bearer token, and use service-role Supabase client (not user session) since cron runs without auth context
+- 2026-04-20 T-13: Server-side preflight must run on every generation entry point (e.g. Documents actions and Suivi quest generation); skipping one path is a compliance gap even if the UI looks complete.
 
 ## Reviewed 2026-04-13
