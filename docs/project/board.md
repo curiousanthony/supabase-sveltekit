@@ -27,3 +27,4 @@ T-41 P3 Disabled "Générer" button visual styling in preflight dialog
 T-42 P3 Preflight summary separates blocages from prérequis
 T-43 P3 Preflight dialog header shows "X sur Y éléments prêts"
 T-44 P3 Remove redundant "Créer ou sélectionner une séance" fix link
+T-49 P3 "Refactor: extract seedFormationQuests helper + cover with tests"

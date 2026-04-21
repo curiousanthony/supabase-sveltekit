@@ -1,14 +1,22 @@
 # Changelog
 
+## 2026-04-21
+
+- T-48 Bug fix — Suivi quests now seeded inside the closeAndCreateFormation transaction so deal→formation flow produces a populated Suivi tab (mirrors /formations/creer behavior)
+
 ## 2026-04-20
+
+- T-14 Batch generation for per-learner documents — "Générer pour tous" with 3-slot pool, partial-failure surfacing, per-learner deep links, AlertDialog cancel, full audit trail
 - T-13 Pre-flight validation before document generation — checklist with block/warn/prerequisite, deep links, resume banner, server enforcement, suivi parity
 
 ## 2026-04-13
+
 - T-12 Regeneration prompts — per-document stale indicators with versioning (genere→replace, envoye+→remplace, signe→blocked)
 - T-11 Phase grouping in Documents tab — urgency sort, phase chips, grouper-par-phase toggle, per-learner collapsing
 - T-17 Scheduled job infrastructure via Vercel Cron with emargement J-1 auto-generation
 
 ## 2026-04-10
+
 - T-36 Compliance date warnings (amber/red) on Documents tab and Suivi HUD
 - T-35 Devis accept/refuse actions from Documents tab and Suivi quest sub-action
 - T-37 "Marquer comme envoyé" action for postal sends outside the app
@@ -17,6 +25,7 @@
 - T-39 Formations Kanban: horizontal scroll columns (match deals pipeline layout)
 
 ## 2026-04-09
+
 - T-10 Contextual generation prompts: quest-driven inline prompts in Documents tab with deep-link scroll from Suivi
 - T-9 Document lifecycle service (per-type state machines, transition validation, annule/remplace, devis expiry)
 - T-33 Action-oriented display states: 4 color-coded labels, hidden remplace docs, expandable lifecycle timeline
@@ -28,11 +37,13 @@
 - T-5 Certificat émargements filtered by formation at DB (join)
 
 ## 2026-04-10
+
 - T-34 Document lifecycle transition service with type-safe statuses, transactional audit logging, and devis read-time expiry
 - T-6 Workspace-scoped RLS for formation_documents (SELECT/INSERT/UPDATE/DELETE)
 - T-7 Workspace-scoped storage policies for formation-documents bucket
 
 ## 2026-04-08
+
 - T-S1 Convention fix: participant count + pricing
 - T-S2 3 new PDF templates (feuille_emargement, devis, ordre_mission)
 - T-S3 Email relance templates + ctaUrl

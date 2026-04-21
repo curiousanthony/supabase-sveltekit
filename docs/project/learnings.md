@@ -26,6 +26,8 @@ One-line insights discovered during development. Reviewed by team-architect ever
 - 2026-04-13 T-11: Svelte 5 {#snippet} avoids template duplication when the same card layout is rendered in flat, grouped, and nested contexts — define once, @render everywhere
 - 2026-04-13 T-17: Vercel Cron Jobs are the natural fit for SvelteKit-on-Vercel scheduled tasks — configure in vercel.json crons array, auth via CRON_SECRET bearer token, and use service-role Supabase client (not user session) since cron runs without auth context
 - 2026-04-20 T-13: Server-side preflight must run on every generation entry point (e.g. Documents actions and Suivi quest generation); skipping one path is a compliance gap even if the UI looks complete.
+- 2026-04-20 T-14: For batch async work that may partial-fail, share one `batchId` across every audit-log entry (success and failure) so post-hoc replay/grouping is trivial — and pass the `tx`/`db` client to `logAuditEvent` so the throwing branch actually fires the rollback (silent fire-and-forget hides the recovery path).
+- 2026-04-21 T-48: When two creation paths produce the same entity (e.g. Formation via /formations/creer vs deal closeAndCreateFormation), seeding-related side-effects (quests, sub-actions, default rows) MUST be replicated on both paths or extracted into a shared helper from day one — silent divergence between paths produces "ghost-empty" entities (e.g. Suivi tabs with zero quests) that look like UI bugs but are actually missing seed data.
 
 ## Reviewed 2026-04-13
 
