@@ -5,7 +5,8 @@ import {
 	uuid,
 	text,
 	jsonb,
-	index
+	index,
+	check
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { formations } from './formations';
@@ -13,12 +14,14 @@ import { users } from './users';
 import { contacts } from './contacts';
 import { formateurs } from './formateurs';
 import { seances } from './seances';
+import { deals } from './deals';
 
 export const formationDocuments = pgTable(
 	'formation_documents',
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
-		formationId: uuid('formation_id').notNull(),
+		formationId: uuid('formation_id'),
+		dealId: uuid('deal_id'),
 		type: text().notNull(),
 		title: text().notNull(),
 		status: text().default('genere').notNull(),
@@ -54,6 +57,13 @@ export const formationDocuments = pgTable(
 		})
 			.onUpdate('cascade')
 			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.dealId],
+			foreignColumns: [deals.id],
+			name: 'formation_documents_deal_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('set null'),
 		foreignKey({
 			columns: [table.generatedBy],
 			foreignColumns: [users.id],
@@ -103,7 +113,14 @@ export const formationDocuments = pgTable(
 			.where(sql`expires_at IS NOT NULL`),
 		index('formation_documents_replaces_document_id_idx')
 			.on(table.replacesDocumentId)
-			.where(sql`replaces_document_id IS NOT NULL`)
+			.where(sql`replaces_document_id IS NOT NULL`),
+		index('formation_documents_deal_id_idx')
+			.on(table.dealId)
+			.where(sql`deal_id IS NOT NULL`),
+		check(
+			'formation_documents_belongs_to_formation_or_deal',
+			sql`formation_id IS NOT NULL OR deal_id IS NOT NULL`
+		)
 	]
 );
 

@@ -568,6 +568,10 @@ export const formationDocumentsRelations = relations(formationDocuments, ({ one,
 		fields: [formationDocuments.formationId],
 		references: [formations.id]
 	}),
+	deal: one(deals, {
+		fields: [formationDocuments.dealId],
+		references: [deals.id]
+	}),
 	generatedByUser: one(users, {
 		fields: [formationDocuments.generatedBy],
 		references: [users.id]
@@ -696,5 +700,6 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
 		fields: [deals.formationId],
 		references: [formations.id]
 	}),
-	dealCompanies: many(dealCompanies)
+	dealCompanies: many(dealCompanies),
+	formationDocuments: many(formationDocuments)
 }));
