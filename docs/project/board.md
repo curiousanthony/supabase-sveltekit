@@ -3,7 +3,6 @@
 ## sprint
 
 ## backlog
-T-54 P1 "UI Fiche: remove Financement, add Pédagogique + Tarification + Référencement collapsed"
 T-56 P1 "Workspace default + Fiche override for accessibilité (Qualiopi ind. 26)"
 T-15 P2 Auto-generate emargement_blank J-1
 T-16 P2 Auto-generate emargement_proof post-signatures

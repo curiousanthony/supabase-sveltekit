@@ -70,10 +70,10 @@ export const actions: Actions = {
 			'companyId',
 			'topicId',
 			'subtopicsIds',
-			'typeFinancement',
-			'montantAccorde',
-			'financementAccorde',
-			'tjmFormateur'
+			'prerequis',
+			'publicVise',
+			'prixPublic',
+			'prixConvenu'
 		];
 
 		if (!field || !allowedFields.includes(field)) {
@@ -105,10 +105,9 @@ export const actions: Actions = {
 				processedValue = null;
 			}
 		}
-		if (field === 'financementAccorde') processedValue = value === 'true';
-		if (field === 'montantAccorde' || field === 'tjmFormateur') {
+		if (field === 'prixPublic' || field === 'prixConvenu') {
 			const num = value ? parseFloat(value) : NaN;
-			processedValue = Number.isFinite(num) ? num : null;
+			processedValue = Number.isFinite(num) && num >= 0 ? num : null;
 		}
 		if (['dateDebut', 'dateFin', 'dateEnregistrementRncp'].includes(field))
 			processedValue = value || null;
@@ -122,7 +121,7 @@ export const actions: Actions = {
 			.set({ [field]: processedValue })
 			.where(eq(formations.id, params.id));
 
-		if (['dateDebut', 'dateFin', 'type', 'typeFinancement'].includes(field)) {
+		if (['dateDebut', 'dateFin', 'type'].includes(field)) {
 			await recalculateActionDueDates(params.id);
 		}
 
