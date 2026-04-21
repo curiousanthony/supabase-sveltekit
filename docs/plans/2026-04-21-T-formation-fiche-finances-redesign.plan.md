@@ -12,7 +12,7 @@ agent_loading_protocol:
     This master plan is ~1000 lines covering 12 tickets (T-50..T-61). Loading it whole into every
     implementer subagent wastes ~85% of context. Use lazy extraction.
   ticket_to_task_map:
-    T-50: [schema-funding-sources]
+    T-63: [schema-funding-sources]   # was reserved as T-50 in the original plan; T-50 was assigned to the unrelated pgTAP ticket
     T-51: [schema-drop-tjm-formateur]
     T-52: [backend-finances-loader, backend-funding-actions, service-funding-summary]
     T-53: [ui-finances-revenus-rebuild, ui-finances-synthesis-tile, ui-onboarding-empty-state]
@@ -53,7 +53,7 @@ tasks:
     title: "Create formation_funding_sources table + enums + invoice FK"
     status: pending
     blocked_by: []
-    ticket: T-50
+    ticket: T-63
   - id: schema-pedagogique-fields
     title: "Schema: codeRs, codeCpfFiche, niveauQualification, certificateur, dateEnregistrementRncp"
     status: pending

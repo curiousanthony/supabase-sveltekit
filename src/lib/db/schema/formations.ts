@@ -32,6 +32,7 @@ import { biblioProgrammes } from './biblio-programmes';
 import { biblioModules } from './biblio-modules';
 import { contacts } from './contacts';
 import { formateurs } from './formateurs';
+import { formationFundingSources } from './funding-sources';
 
 export const formations = pgTable(
 	'formations',
@@ -478,6 +479,7 @@ export const formationInvoices = pgTable(
 		paymentDate: date('payment_date'),
 		documentUrl: text('document_url'),
 		notes: text(),
+		fundingSourceId: uuid('funding_source_id'),
 		createdBy: uuid('created_by'),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
@@ -497,9 +499,17 @@ export const formationInvoices = pgTable(
 			foreignColumns: [users.id],
 			name: 'formation_invoices_created_by_fkey'
 		}),
+		foreignKey({
+			columns: [table.fundingSourceId],
+			foreignColumns: [formationFundingSources.id],
+			name: 'formation_invoices_funding_source_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('set null'),
 		index('formation_invoices_formation_id_idx').on(table.formationId),
 		index('formation_invoices_status_idx').on(table.status),
-		index('formation_invoices_due_date_idx').on(table.dueDate)
+		index('formation_invoices_due_date_idx').on(table.dueDate),
+		index('formation_invoices_funding_source_id_idx').on(table.fundingSourceId)
 	]
 );
 

@@ -24,6 +24,7 @@ import {
 	formationDocuments,
 	formationEmails,
 	formationInvoices,
+	formationFundingSources,
 	formationCostItems,
 	modules,
 	apprenants,
@@ -223,6 +224,7 @@ export const formationsRelations = relations(formations, ({ one, many }) => ({
 	emails: many(formationEmails),
 	invoices: many(formationInvoices),
 	costItems: many(formationCostItems),
+	fundingSources: many(formationFundingSources),
 	dealsFromFormation: many(deals)
 }));
 
@@ -614,8 +616,23 @@ export const formationInvoicesRelations = relations(formationInvoices, ({ one })
 	createdByUser: one(users, {
 		fields: [formationInvoices.createdBy],
 		references: [users.id]
+	}),
+	fundingSource: one(formationFundingSources, {
+		fields: [formationInvoices.fundingSourceId],
+		references: [formationFundingSources.id]
 	})
 }));
+
+export const formationFundingSourcesRelations = relations(
+	formationFundingSources,
+	({ one, many }) => ({
+		formation: one(formations, {
+			fields: [formationFundingSources.formationId],
+			references: [formations.id]
+		}),
+		invoices: many(formationInvoices)
+	})
+);
 
 export const formationCostItemsRelations = relations(formationCostItems, ({ one }) => ({
 	formation: one(formations, {
