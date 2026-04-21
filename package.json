@@ -42,7 +42,7 @@
 		"@types/pg": "^8.15.5",
 		"bits-ui": "^2.16.3",
 		"clsx": "^2.1.1",
-		"context-mode": "^1.0.75",
+		"context-mode": "^1.0.89",
 		"d3-scale": "^4.0.2",
 		"d3-shape": "^3.2.0",
 		"drizzle-kit": "^0.31.5",
