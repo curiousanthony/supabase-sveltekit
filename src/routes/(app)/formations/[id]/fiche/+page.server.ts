@@ -58,6 +58,11 @@ export const actions: Actions = {
 			'modalite',
 			'duree',
 			'codeRncp',
+			'codeRs',
+			'codeCpfFiche',
+			'niveauQualification',
+			'certificateur',
+			'dateEnregistrementRncp',
 			'dateDebut',
 			'dateFin',
 			'location',
@@ -92,12 +97,21 @@ export const actions: Actions = {
 				processedValue = null;
 			}
 		}
+		if (field === 'niveauQualification') {
+			if (value) {
+				const n = parseInt(value, 10);
+				processedValue = Number.isFinite(n) && n >= 1 && n <= 8 ? n : null;
+			} else {
+				processedValue = null;
+			}
+		}
 		if (field === 'financementAccorde') processedValue = value === 'true';
 		if (field === 'montantAccorde' || field === 'tjmFormateur') {
 			const num = value ? parseFloat(value) : NaN;
 			processedValue = Number.isFinite(num) ? num : null;
 		}
-		if (['dateDebut', 'dateFin'].includes(field)) processedValue = value || null;
+		if (['dateDebut', 'dateFin', 'dateEnregistrementRncp'].includes(field))
+			processedValue = value || null;
 		if (['clientId', 'companyId', 'topicId', 'subtopicsIds'].includes(field)) {
 			processedValue = value && UUID_REGEX.test(value) ? value : null;
 		}

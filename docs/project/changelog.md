@@ -2,6 +2,7 @@
 
 ## 2026-04-21
 
+- T-55 Schema — adds 5 référencement columns to `formations` (`code_rs`, `code_cpf_fiche`, `niveau_qualification` CHECK 1–8, `certificateur`, `date_enregistrement_rncp`); Fiche `+page.server.ts` `allowedFields` extended with server-side bounds enforcement on `niveauQualification`. UI lands with T-54 (Référencement collapsible card).
 - T-63 Schema — `formation_funding_sources` table + `funding_source_type`/`funding_source_status` enums + nullable `formation_invoices.funding_source_id` FK; idempotent migration with RLS, `updated_at` trigger, and a non-destructive backfill from legacy `formations.{type_financement, montant_accorde, financement_accorde}` (legacy columns kept one release for rollback). Foundation for the Finances multi-source rebuild (unblocks T-51, T-52, T-55).
 - T-20 Schema — formation_documents.formation_id is now nullable and a nullable deal_id was added (FK to deals, ON DELETE SET NULL) so deal-stage docs can pre-exist any formation; CHECK guarantees one is always set; RLS hardened to AND-not-OR across formation/deal branches with explicit WITH CHECK on UPDATE (security review caught a HIGH cross-workspace data poisoning vector during the OR-permissive draft — now closed)
 - T-46 Security — formation_audit_log INSERT policy now binds user_id to auth.uid() (RLS hardening) and AuditEntry.userId is a brand type (`AuthenticatedUserId`) that can only be minted server-side from a verified session

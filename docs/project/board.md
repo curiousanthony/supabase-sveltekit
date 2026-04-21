@@ -6,7 +6,6 @@
 T-52 P1 "Backend: Finances loader + funding source CRUD actions"
 T-53 P1 "UI Finances: synthesis card + multi-source funding card + add/edit dialog"
 T-54 P1 "UI Fiche: remove Financement, add Pédagogique + Tarification + Référencement collapsed"
-T-55 P1 "Schema + Fiche fields: codeRs, codeCpfFiche, niveauQualification, certificateur, dateEnregistrementRncp"
 T-56 P1 "Workspace default + Fiche override for accessibilité (Qualiopi ind. 26)"
 T-15 P2 Auto-generate emargement_blank J-1
 T-16 P2 Auto-generate emargement_proof post-signatures
