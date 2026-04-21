@@ -57,12 +57,23 @@ export const fundingSourceStatus = pgEnum('funding_source_status', [
 	'Annulé'
 ]);
 
+/**
+ * Who actually owes the money behind this funding line. Drives the per-payer
+ * "Reste à charge" split on the Finances synthesis card.
+ *
+ * Apprenant — CPF, FranceTravail (AIF / POEI / POEC), TransitionsPro, AutoFinancement.
+ * Entreprise — OPCO_*, EmployeurDirect, FNE, AGEFICE, FIFPL, FAFCEA.
+ * OF — promotional / waived amounts (rare; never auto-assigned).
+ */
+export const payerType = pgEnum('payer_type', ['apprenant', 'entreprise', 'OF']);
+
 export const formationFundingSources = pgTable(
 	'formation_funding_sources',
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		formationId: uuid('formation_id').notNull(),
 		source: fundingSourceType().notNull(),
+		payerType: payerType('payer_type').default('apprenant').notNull(),
 		payerLabel: text('payer_label'),
 		requestedAmount: numeric('requested_amount', { precision: 12, scale: 2 }),
 		grantedAmount: numeric('granted_amount', { precision: 12, scale: 2 }),

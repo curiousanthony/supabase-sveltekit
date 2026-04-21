@@ -3,7 +3,6 @@
 ## sprint
 
 ## backlog
-T-52 P1 "Backend: Finances loader + funding source CRUD actions"
 T-53 P1 "UI Finances: synthesis card + multi-source funding card + add/edit dialog"
 T-54 P1 "UI Fiche: remove Financement, add Pédagogique + Tarification + Référencement collapsed"
 T-56 P1 "Workspace default + Fiche override for accessibilité (Qualiopi ind. 26)"
