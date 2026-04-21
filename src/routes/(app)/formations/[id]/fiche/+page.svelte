@@ -906,7 +906,7 @@
 					objectifs: m.objectifs ?? null,
 					orderIndex: m.orderIndex
 				}))}
-				programmeHref="../programme"
+				programmeHref="/formations/{page.params.id}/programme"
 			/>
 
 			<PedagogiqueTextarea
@@ -996,7 +996,7 @@
 			</div>
 			<p class="text-xs text-muted-foreground">
 				Le détail des financements (CPF, OPCO, employeur…) se gère dans l'onglet
-				<a href="../finances" class="font-medium text-primary hover:underline">Finances</a>.
+				<a href="/formations/{page.params.id}/finances" class="font-medium text-primary hover:underline">Finances</a>.
 			</p>
 		</Card.Content>
 	</Card.Root>
