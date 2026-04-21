@@ -8,7 +8,7 @@ import {
 	FORMATION_SCHEDULE_TIMEZONE,
 	seanceFormInputToUtcIso
 } from '$lib/datetime/seance-schedule';
-import { logAuditEvent } from '$lib/services/audit-log';
+import { logAuditEvent, authenticatedUserId } from '$lib/services/audit-log';
 import { POSTMARK_SANDBOX_PROVIDER_HINT, sendFormationTemplateEmail } from '$lib/services/email-service';
 import { workspaces } from '$lib/db/schema';
 import { env } from '$env/dynamic/private';
@@ -161,7 +161,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'session_created',
 				entityType: 'seance',
 				entityId: created.id
@@ -275,7 +275,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'sessions_batch_created',
 				entityType: 'seance',
 				newValue: { count: createdIds.length }
@@ -367,7 +367,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'session_updated',
 				entityType: 'seance',
 				entityId: seanceId
@@ -406,7 +406,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'session_deleted',
 				entityType: 'seance',
 				entityId: seanceId
@@ -497,7 +497,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'emargement_participants_updated',
 				entityType: 'seance',
 				entityId: seanceId,
@@ -700,7 +700,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'emargement_links_sent',
 				entityType: 'seance',
 				entityId: seanceId,

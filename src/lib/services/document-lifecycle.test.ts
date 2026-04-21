@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { DocumentType, DocumentStatus, TransitionContext } from './document-lifecycle';
+import { authenticatedUserId } from './audit-log';
 
 // ── Mock variables ──────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ function makeCtx(overrides: Partial<TransitionContext> = {}): TransitionContext 
 	return {
 		documentId: 'doc-1',
 		formationId: 'formation-1',
-		userId: 'user-1',
+		userId: authenticatedUserId('user-1'),
 		...overrides
 	};
 }
@@ -571,7 +572,7 @@ describe('cancelFormationDocuments', () => {
 		];
 		mockTxFindMany.mockResolvedValue(inFlightDocs);
 
-		const result = await cancelFormationDocuments('formation-1', 'user-1');
+		const result = await cancelFormationDocuments('formation-1', authenticatedUserId('user-1'));
 
 		expect(result).toEqual({ cancelled: 2 });
 		expect(mockLogAuditEvent).toHaveBeenCalledTimes(2);
@@ -596,7 +597,7 @@ describe('cancelFormationDocuments', () => {
 	it('returns 0 when no in-flight documents exist', async () => {
 		mockTxFindMany.mockResolvedValue([]);
 
-		const result = await cancelFormationDocuments('formation-1', 'user-1');
+		const result = await cancelFormationDocuments('formation-1', authenticatedUserId('user-1'));
 
 		expect(result).toEqual({ cancelled: 0 });
 		expect(mockLogAuditEvent).not.toHaveBeenCalled();
@@ -607,7 +608,7 @@ describe('cancelFormationDocuments', () => {
 			{ id: 'doc-a', status: 'signatures_en_cours', type: 'feuille_emargement' }
 		]);
 
-		await cancelFormationDocuments('form-x', 'user-y');
+		await cancelFormationDocuments('form-x', authenticatedUserId('user-y'));
 
 		expect(mockLogAuditEvent).toHaveBeenCalledWith(
 			expect.objectContaining({

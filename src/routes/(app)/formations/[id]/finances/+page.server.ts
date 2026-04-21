@@ -3,7 +3,7 @@ import { db } from '$lib/db';
 import { formationInvoices, formationCostItems, formations } from '$lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getUserWorkspace } from '$lib/auth';
-import { logAuditEvent } from '$lib/services/audit-log';
+import { logAuditEvent, authenticatedUserId } from '$lib/services/audit-log';
 import { uploadInvoicePdf, deleteStorageFile } from '$lib/services/document-service';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -72,7 +72,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'cost_item_updated',
 			entityType: 'formation_cost_item',
 			fieldName: category,
@@ -142,7 +142,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'invoice_created',
 			entityType: 'formation_invoice',
 			entityId: inserted.id,
@@ -231,7 +231,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'invoice_updated',
 			entityType: 'formation_invoice',
 			entityId: invoiceId,
@@ -283,7 +283,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'invoice_deleted',
 			entityType: 'formation_invoice',
 			entityId: invoiceId,

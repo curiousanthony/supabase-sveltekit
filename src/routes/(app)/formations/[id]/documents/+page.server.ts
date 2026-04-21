@@ -5,7 +5,7 @@ import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
 import { generateDocument, getDocumentSignedUrl, type DocumentType } from '$lib/services/document-generator';
 import { getEffectiveStatus, transitionStatus, replaceDocument, isValidTransition, type DocumentType as LifecycleDocType, type DocumentStatus } from '$lib/services/document-lifecycle';
-import { logAuditEvent } from '$lib/services/audit-log';
+import { logAuditEvent, authenticatedUserId } from '$lib/services/audit-log';
 import { evaluatePreflight, assertPreflightOrThrow } from '$lib/preflight/document-preflight';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -232,7 +232,7 @@ export const actions: Actions = {
 			if (sanitizedWarnings.length > 0) {
 				await logAuditEvent({
 					formationId: params.id,
-					userId: user.id,
+					userId: authenticatedUserId(user.id),
 					actionType: 'document_generation_warnings_overridden',
 					entityType: 'formation',
 					entityId: params.id,
@@ -312,7 +312,7 @@ export const actions: Actions = {
 		if (!documentId) return fail(400, { message: 'Document ID manquant' });
 
 		const result = await transitionStatus(
-			{ documentId, formationId: params.id, userId: user.id },
+			{ documentId, formationId: params.id, userId: authenticatedUserId(user.id) },
 			'accepte'
 		);
 
@@ -337,7 +337,7 @@ export const actions: Actions = {
 		if (!documentId) return fail(400, { message: 'Document ID manquant' });
 
 		const result = await transitionStatus(
-			{ documentId, formationId: params.id, userId: user.id },
+			{ documentId, formationId: params.id, userId: authenticatedUserId(user.id) },
 			'refuse'
 		);
 
@@ -362,7 +362,7 @@ export const actions: Actions = {
 		if (!documentId) return fail(400, { message: 'Document ID manquant' });
 
 		const result = await transitionStatus(
-			{ documentId, formationId: params.id, userId: user.id },
+			{ documentId, formationId: params.id, userId: authenticatedUserId(user.id) },
 			'envoye'
 		);
 
@@ -463,11 +463,11 @@ export const actions: Actions = {
 							eq(formationDocuments.status, 'genere')
 						)
 					);
-				} else if (isValidTransition(docType as LifecycleDocType, fromStatus, 'remplace')) {
-					const replaceResult = await replaceDocument(
-						{ documentId: oldDoc.id, formationId: params.id, userId: user.id },
-						newResult.documentId
-					);
+			} else if (isValidTransition(docType as LifecycleDocType, fromStatus, 'remplace')) {
+				const replaceResult = await replaceDocument(
+					{ documentId: oldDoc.id, formationId: params.id, userId: authenticatedUserId(user.id) },
+					newResult.documentId
+				);
 					if (!replaceResult.success) {
 						await db.delete(formationDocuments).where(eq(formationDocuments.id, newResult.documentId));
 						skippedCount++;
@@ -586,7 +586,7 @@ export const actions: Actions = {
 				}
 			} else {
 				const replaceResult = await replaceDocument(
-					{ documentId: oldDoc.id, formationId: params.id, userId: user.id },
+					{ documentId: oldDoc.id, formationId: params.id, userId: authenticatedUserId(user.id) },
 					newResult.documentId
 				);
 				if (!replaceResult.success) {
@@ -776,7 +776,7 @@ export const actions: Actions = {
 					await logAuditEvent(
 						{
 							formationId: params.id,
-							userId: checkedUser.id, // T-46: from locals, never from client
+							userId: authenticatedUserId(checkedUser.id), // T-46: from locals, never from client
 							actionType: 'document_batch_generated',
 							entityType: 'formation_document',
 							entityId: newResult.documentId,

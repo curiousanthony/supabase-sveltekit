@@ -3,7 +3,7 @@ import { db } from '$lib/db';
 import { formations, formationFormateurs, formateurs, seances, thematiques, sousthematiques } from '$lib/db/schema';
 import { and, asc, eq } from 'drizzle-orm';
 import { getUserWorkspace } from '$lib/auth';
-import { logAuditEvent } from '$lib/services/audit-log';
+import { logAuditEvent, authenticatedUserId } from '$lib/services/audit-log';
 import { createFormateurForWorkspace } from '$lib/services/formateur-create';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -72,7 +72,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_added',
 			entityType: 'formation_formateur',
 			entityId: rawFormateurId
@@ -113,7 +113,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_removed',
 			entityType: 'formation_formateur',
 			entityId: rawFormateurId
@@ -165,7 +165,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_costs_updated',
 			entityType: 'formation_formateur',
 			entityId: formateurId,
@@ -223,7 +223,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_assigned_to_session',
 			entityType: 'seance',
 			entityId: seanceId,
@@ -256,7 +256,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_removed_from_session',
 			entityType: 'seance',
 			entityId: seanceId
@@ -307,7 +307,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'formateur_created_and_assigned',
 				entityType: 'formation_formateur',
 				entityId: formateurId

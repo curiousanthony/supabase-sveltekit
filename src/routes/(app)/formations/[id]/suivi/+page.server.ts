@@ -25,6 +25,7 @@ import { generateDocument, type DocumentType } from '$lib/services/document-gene
 import { evaluatePreflight, assertPreflightOrThrow } from '$lib/preflight/document-preflight';
 import { sendFormationTemplateEmail, EMAIL_TYPE_TO_TEMPLATE } from '$lib/services/email-service';
 import { transitionStatus } from '$lib/services/document-lifecycle';
+import { authenticatedUserId } from '$lib/services/audit-log';
 import { env } from '$env/dynamic/private';
 import type { Actions } from './$types';
 
@@ -357,10 +358,10 @@ export const actions: Actions = {
 					});
 
 					if (latestDevis) {
-						await transitionStatus(
-							{ documentId: latestDevis.id, formationId: params.id, userId: user.id },
-							'accepte'
-						);
+					await transitionStatus(
+						{ documentId: latestDevis.id, formationId: params.id, userId: authenticatedUserId(user.id) },
+						'accepte'
+					);
 					}
 				}
 			}

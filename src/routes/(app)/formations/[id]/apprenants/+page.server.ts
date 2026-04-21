@@ -12,7 +12,7 @@ import {
 import { eq, and, gt, isNull, inArray, asc } from 'drizzle-orm';
 import { getUserWorkspace } from '$lib/auth';
 import { ensureUserInPublicUsers } from '$lib/auth';
-import { logAuditEvent } from '$lib/services/audit-log';
+import { logAuditEvent, authenticatedUserId } from '$lib/services/audit-log';
 import { posteOptions } from '$lib/crm/contact-schema';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -98,13 +98,13 @@ export const actions: Actions = {
 				await createEmargementsForSeances(futureIds, contactId);
 			}
 
-			await logAuditEvent({
-				formationId: params.id,
-				userId: user.id,
-				actionType: 'apprenant_added',
-				entityType: 'formation_apprenant',
-				entityId: contactId
-			});
+		await logAuditEvent({
+			formationId: params.id,
+			userId: authenticatedUserId(user.id),
+			actionType: 'apprenant_added',
+			entityType: 'formation_apprenant',
+			entityId: contactId
+		});
 		} catch (e: unknown) {
 			if (e && typeof e === 'object' && 'code' in e && e.code === '23505') {
 				return fail(409, { message: 'Cet apprenant est déjà inscrit' });
@@ -158,8 +158,8 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
-			actionType: 'apprenant_removed',
+		userId: authenticatedUserId(user.id),
+		actionType: 'apprenant_removed',
 			entityType: 'formation_apprenant',
 			entityId: contactId
 		});
@@ -233,8 +233,8 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
-				actionType: 'contact_created_and_apprenant_added',
+			userId: authenticatedUserId(user.id),
+			actionType: 'contact_created_and_apprenant_added',
 				entityType: 'contact',
 				entityId: newContact.id
 			});

@@ -16,7 +16,6 @@ T-30 P2 Auto-send reglement_interieur
 T-38 P2 Quest CTA — per-formation onboarding (every quest)
 T-40 P2 Postmark template — questionnaire satisfaction formateur (fin de formation)
 T-45 P2 Playwright E2E — preflight server-bypass + B2C rétractation scenarios
-T-46 P2 "Security: bind formation_audit_log inserts to auth.uid()"
 T-47 P2 "Architecture: Drizzle queries bypass RLS — pick a posture"
 T-18 P3 Notification UX for auto-generated documents
 T-22 P3 "Hérité du deal badge in Documents tab"

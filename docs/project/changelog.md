@@ -2,6 +2,7 @@
 
 ## 2026-04-21
 
+- T-46 Security — formation_audit_log INSERT policy now binds user_id to auth.uid() (RLS hardening) and AuditEntry.userId is a brand type (`AuthenticatedUserId`) that can only be minted server-side from a verified session
 - T-48 Bug fix — Suivi quests now seeded inside the closeAndCreateFormation transaction so deal→formation flow produces a populated Suivi tab (mirrors /formations/creer behavior)
 
 ## 2026-04-20

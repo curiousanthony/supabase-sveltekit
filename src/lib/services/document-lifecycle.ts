@@ -1,7 +1,7 @@
 import { eq, and, notInArray } from 'drizzle-orm';
 import { db } from '$lib/db';
 import { formationDocuments } from '$lib/db/schema';
-import { logAuditEvent } from './audit-log';
+import { logAuditEvent, type AuthenticatedUserId } from './audit-log';
 
 export type DocumentType =
 	| 'convention'
@@ -131,7 +131,7 @@ export interface TransitionResult {
 export interface TransitionContext {
 	documentId: string;
 	formationId: string;
-	userId: string;
+	userId: AuthenticatedUserId;
 }
 
 type DocInsert = typeof formationDocuments.$inferInsert;
@@ -224,7 +224,7 @@ export async function transitionStatus(
 
 export async function cancelFormationDocuments(
 	formationId: string,
-	userId: string
+	userId: AuthenticatedUserId
 ): Promise<{ cancelled: number }> {
 	return db.transaction(async (tx) => {
 		const inFlightDocs = await tx.query.formationDocuments.findMany({

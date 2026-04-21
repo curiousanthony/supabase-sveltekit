@@ -15,7 +15,7 @@ import {
 } from '$lib/db/schema';
 import { eq, and, sql, max } from 'drizzle-orm';
 import { getUserWorkspace } from '$lib/auth';
-import { logAuditEvent } from '$lib/services/audit-log';
+import { logAuditEvent, authenticatedUserId } from '$lib/services/audit-log';
 import { checkModuleAutoComplete } from '$lib/services/quest-auto-complete';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -147,7 +147,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'module_created',
 				entityType: 'module',
 				entityId: created.id,
@@ -197,7 +197,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'module_updated',
 				entityType: 'module',
 				entityId: moduleId,
@@ -238,7 +238,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'module_deleted',
 				entityType: 'module',
 				entityId: moduleId
@@ -285,7 +285,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'modules_reordered',
 				entityType: 'module'
 			});
@@ -451,7 +451,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'programme_synced_to_source',
 				entityType: 'biblio_programme',
 				entityId: formation.programmeSourceId
@@ -581,7 +581,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'programme_created_from_formation',
 				entityType: 'biblio_programme',
 				entityId: programme.id
@@ -736,7 +736,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'programme_attached',
 				entityType: 'biblio_programme',
 				entityId: programmeId,
@@ -861,7 +861,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'programme_pulled_from_source',
 				entityType: 'biblio_programme',
 				entityId: formation.programmeSourceId
@@ -893,7 +893,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'programme_detached',
 				entityType: 'formation',
 				entityId: params.id
@@ -937,7 +937,7 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
+				userId: authenticatedUserId(user.id),
 				actionType: 'module_formateur_assigned',
 				entityType: 'module',
 				entityId: moduleId,
