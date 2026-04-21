@@ -2,6 +2,7 @@
 
 One-line insights discovered during development. Reviewed by team-architect every 10 entries.
 
+- 2026-04-21 T-20: When extending a polymorphic-FK RLS predicate (one row scoped via either of two parent tables), use **AND across `IS NULL OR EXISTS(parent in my workspace)`**, never `OR` between two `EXISTS`. The OR form lets a member of workspace A insert/update a row whose A-side FK is theirs but whose B-side FK points at a victim's parent — only one branch needs to pass and the row becomes visible/writable to workspace B via the deal-side SELECT branch (stored content + phishing surface). The AND form requires every set FK to resolve to the caller's workspace, fails closed on legacy/buggy cross-tenant rows, and pairs naturally with a CHECK that at least one FK is set. Always also add explicit `WITH CHECK` to UPDATE policies — relying on PG's USING fall-through has historically been a foot-gun for pivot attacks.
 - 2026-04-10 T-8: Replace workspace storage objects only after a successful new upload + DB update; validate object keys against `workspaceId/` before `remove()`; use Sharp `limitInputPixels` against decompression DoS
 - 2026-04-10 T-39: Match an existing route’s Kanban (`flex` + `overflow-x-auto`, `min-w`/`max-w` columns) instead of inventing a new grid breakpoint pattern
 - 2026-04-09 T-1: French PDF amounts need Intl currency + replace U+202F/U+00A0 so Helvetica does not garble thousands separators

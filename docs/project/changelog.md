@@ -2,6 +2,7 @@
 
 ## 2026-04-21
 
+- T-20 Schema — formation_documents.formation_id is now nullable and a nullable deal_id was added (FK to deals, ON DELETE SET NULL) so deal-stage docs can pre-exist any formation; CHECK guarantees one is always set; RLS hardened to AND-not-OR across formation/deal branches with explicit WITH CHECK on UPDATE (security review caught a HIGH cross-workspace data poisoning vector during the OR-permissive draft — now closed)
 - T-46 Security — formation_audit_log INSERT policy now binds user_id to auth.uid() (RLS hardening) and AuditEntry.userId is a brand type (`AuthenticatedUserId`) that can only be minted server-side from a verified session
 - T-48 Bug fix — Suivi quests now seeded inside the closeAndCreateFormation transaction so deal→formation flow produces a populated Suivi tab (mirrors /formations/creer behavior)
 
