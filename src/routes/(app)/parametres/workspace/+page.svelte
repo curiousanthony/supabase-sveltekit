@@ -416,6 +416,50 @@
 
 				<Card.Root>
 					<Card.Header>
+						<Card.Title>Accessibilité (Qualiopi indicateur 26)</Card.Title>
+						<Card.Description>
+							Référent et dispositions appliqués par défaut à toutes vos formations. Une formation
+							peut surcharger ces valeurs depuis sa fiche (cas d'un formateur sous-traitant avec ses
+							propres dispositions, par exemple).
+						</Card.Description>
+					</Card.Header>
+					<Card.Content class="space-y-4">
+						<div class="space-y-2">
+							<Label.Root for="defaultReferentHandicap">Référent handicap par défaut</Label.Root>
+							<Input.Root
+								id="defaultReferentHandicap"
+								name="defaultReferentHandicap"
+								type="text"
+								value={workspace?.defaultReferentHandicap ?? ''}
+								placeholder="Marie Dupont — referent.handicap@exemple.fr — 06 12 34 56 78"
+							/>
+							<p class="text-xs text-muted-foreground">
+								Nom, email et téléphone de la personne en charge des questions d'accessibilité.
+								Apparaît dans les conventions et programmes générés.
+							</p>
+						</div>
+
+						<div class="space-y-2">
+							<Label.Root for="defaultDispositionsHandicap">Dispositions standard d'accueil</Label.Root>
+							<textarea
+								id="defaultDispositionsHandicap"
+								name="defaultDispositionsHandicap"
+								rows="4"
+								value={workspace?.defaultDispositionsHandicap ?? ''}
+								placeholder="Ex : Accès PMR à toutes nos salles, supports adaptables sur demande, étude personnalisée des besoins lors de l'entretien préalable…"
+								class="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+							></textarea>
+							<p class="text-xs text-muted-foreground">
+								Conformément à l'indicateur 26 du référentiel Qualiopi : description des modalités
+								d'accueil, d'accompagnement et d'aménagement pour les personnes en situation de
+								handicap.
+							</p>
+						</div>
+					</Card.Content>
+				</Card.Root>
+
+				<Card.Root>
+					<Card.Header>
 						<Card.Title>Documents générés</Card.Title>
 					</Card.Header>
 					<Card.Content>

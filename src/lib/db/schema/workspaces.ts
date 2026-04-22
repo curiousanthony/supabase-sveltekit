@@ -24,7 +24,9 @@ export const workspaces = pgTable(
 		tvaRate: numeric('tva_rate', { precision: 5, scale: 2 }).default('20.00'),
 		defaultPaymentTerms: text('default_payment_terms').default('30 jours fin de mois, par virement bancaire'),
 		defaultDevisValidityDays: integer('default_devis_validity_days').default(30),
-		defaultCancellationTerms: text('default_cancellation_terms')
+		defaultCancellationTerms: text('default_cancellation_terms'),
+		defaultReferentHandicap: text('default_referent_handicap'),
+		defaultDispositionsHandicap: text('default_dispositions_handicap')
 	},
 	(table) => [unique('workspaces_id2_key').on(table.id)]
 );

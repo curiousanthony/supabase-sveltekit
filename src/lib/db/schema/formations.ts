@@ -75,7 +75,9 @@ export const formations = pgTable(
 		financementAccorde: boolean('financement_accorde').default(false),
 		montantAccorde: numeric('montant_accorde', { precision: 12, scale: 2 }),
 		tjmFormateur: numeric('tjm_formateur', { precision: 10, scale: 2 }),
-		location: text()
+		location: text(),
+		referentHandicap: text('referent_handicap'),
+		dispositionsHandicap: text('dispositions_handicap')
 	},
 	(table) => [
 		foreignKey({

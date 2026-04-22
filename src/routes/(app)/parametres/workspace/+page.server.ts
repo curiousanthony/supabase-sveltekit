@@ -32,7 +32,9 @@ export const load = (async ({ locals, url }) => {
 			nda: true,
 			signatoryName: true,
 			signatoryRole: true,
-			showReferralCta: true
+			showReferralCta: true,
+			defaultReferentHandicap: true,
+			defaultDispositionsHandicap: true
 		}
 	});
 
@@ -121,6 +123,9 @@ export const actions: Actions = {
 		const signatoryName = data.get('signatoryName')?.toString() || null;
 		const signatoryRole = data.get('signatoryRole')?.toString() || null;
 		const showReferralCta = data.get('showReferralCta') === 'on';
+		const defaultReferentHandicap = data.get('defaultReferentHandicap')?.toString().trim() || null;
+		const defaultDispositionsHandicap =
+			data.get('defaultDispositionsHandicap')?.toString().trim() || null;
 
 		await db
 			.update(workspaces)
@@ -137,7 +142,9 @@ export const actions: Actions = {
 				nda,
 				signatoryName,
 				signatoryRole,
-				showReferralCta
+				showReferralCta,
+				defaultReferentHandicap,
+				defaultDispositionsHandicap
 			})
 			.where(eq(workspaces.id, workspaceId));
 

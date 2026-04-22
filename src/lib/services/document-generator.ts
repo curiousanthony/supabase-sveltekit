@@ -67,7 +67,9 @@ async function fetchWorkspaceIdentity(workspaceId: string): Promise<WorkspaceIde
 			tvaRate: true,
 			defaultPaymentTerms: true,
 			defaultDevisValidityDays: true,
-			defaultCancellationTerms: true
+			defaultCancellationTerms: true,
+			defaultReferentHandicap: true,
+			defaultDispositionsHandicap: true
 		}
 	});
 
@@ -117,7 +119,9 @@ async function fetchWorkspaceIdentity(workspaceId: string): Promise<WorkspaceIde
 		tvaRate: ws.tvaRate ? parseFloat(ws.tvaRate) : 20,
 		defaultPaymentTerms: ws.defaultPaymentTerms ?? null,
 		defaultDevisValidityDays: ws.defaultDevisValidityDays ?? 30,
-		defaultCancellationTerms: ws.defaultCancellationTerms ?? null
+		defaultCancellationTerms: ws.defaultCancellationTerms ?? null,
+		defaultReferentHandicap: ws.defaultReferentHandicap ?? null,
+		defaultDispositionsHandicap: ws.defaultDispositionsHandicap ?? null
 	};
 }
 
@@ -145,7 +149,9 @@ async function fetchFormationData(formationId: string): Promise<{
 			publicVise: true,
 			workspaceId: true,
 			prixPublic: true,
-			prixConvenu: true
+			prixConvenu: true,
+			referentHandicap: true,
+			dispositionsHandicap: true
 		},
 		with: {
 			client: {
@@ -191,7 +197,9 @@ async function fetchFormationData(formationId: string): Promise<{
 			type: f.type,
 			objectifs: f.objectifs,
 			prerequis: f.prerequis,
-			publicVise: f.publicVise
+			publicVise: f.publicVise,
+			referentHandicap: f.referentHandicap,
+			dispositionsHandicap: f.dispositionsHandicap
 		},
 		workspaceId: f.workspaceId,
 		client,
@@ -254,6 +262,11 @@ export async function generateDocument(
 ): Promise<GenerateDocumentResult> {
 	const { formation, workspaceId, client, moduleList, prixConvenu, prixPublic } = await fetchFormationData(formationId);
 	const workspace = await fetchWorkspaceIdentity(workspaceId);
+
+	formation.referentHandicap =
+		formation.referentHandicap ?? workspace.defaultReferentHandicap ?? null;
+	formation.dispositionsHandicap =
+		formation.dispositionsHandicap ?? workspace.defaultDispositionsHandicap ?? null;
 
 	let docDefinition: import('pdfmake/interfaces').TDocumentDefinitions;
 	let title: string;

@@ -37,6 +37,7 @@ export function buildConvention(data: ConventionData): TDocumentDefinitions {
 	const objectifsArticleNumber = formation.objectifs ? articleIndex++ : undefined;
 	const programmeArticleNumber = modules.length > 0 ? articleIndex++ : undefined;
 	const moyensArticleNumber = articleIndex++;
+	const accessibiliteArticleNumber = articleIndex++;
 	const conditionsArticleNumber = articleIndex++;
 	const modalitesReglementArticleNumber = articleIndex++;
 	const deduitArticleNumber = articleIndex++;
@@ -172,6 +173,48 @@ export function buildConvention(data: ConventionData): TDocumentDefinitions {
 			text: `Les moyens pédagogiques et techniques mis en œuvre sont adaptés à la nature de la formation. L'Organisme de Formation met à disposition les supports pédagogiques nécessaires au bon déroulement de l'action.`,
 			style: 'body'
 		},
+
+		{
+			text: `Article ${accessibiliteArticleNumber} — Accessibilité aux personnes en situation de handicap`,
+			style: 'subheader'
+		},
+		...(formation.referentHandicap || formation.dispositionsHandicap
+			? [
+					...(formation.referentHandicap
+						? [
+								{
+									text: [
+										{ text: 'Référent handicap : ', bold: true },
+										{ text: formation.referentHandicap }
+									],
+									style: 'body',
+									margin: [0, 0, 0, 5] as [number, number, number, number]
+								}
+							]
+						: []),
+					...(formation.dispositionsHandicap
+						? [
+								{
+									text: [
+										{ text: "Dispositions d'accueil et d'accompagnement : ", bold: true },
+										{ text: formation.dispositionsHandicap }
+									],
+									style: 'body'
+								}
+							]
+						: [
+								{
+									text: `L'Organisme de Formation s'engage à étudier toute demande d'aménagement formulée par un stagiaire en situation de handicap, en lien avec son référent handicap.`,
+									style: 'body'
+								}
+							])
+				]
+			: [
+					{
+						text: `L'Organisme de Formation s'engage à étudier toute demande d'aménagement formulée par un stagiaire en situation de handicap. Le contact du référent handicap sera communiqué sur demande.`,
+						style: 'body'
+					}
+				]),
 
 		{ text: `Article ${conditionsArticleNumber} — Conditions financières`, style: 'subheader' },
 		hasPricingData

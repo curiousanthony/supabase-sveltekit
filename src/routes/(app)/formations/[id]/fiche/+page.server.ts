@@ -1,5 +1,12 @@
 import { db } from '$lib/db';
-import { formations, formationActions, companies, thematiques, sousthematiques } from '$lib/db/schema';
+import {
+	formations,
+	formationActions,
+	companies,
+	thematiques,
+	sousthematiques,
+	workspaces
+} from '$lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
@@ -11,10 +18,15 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 export const load = (async ({ locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) {
-		return { companies: [], thematiques: [], sousthematiques: [] };
+		return {
+			companies: [],
+			thematiques: [],
+			sousthematiques: [],
+			workspaceDefaults: { defaultReferentHandicap: null, defaultDispositionsHandicap: null }
+		};
 	}
 
-	const [companiesData, thematiquesData, sousthematiquesData] = await Promise.all([
+	const [companiesData, thematiquesData, sousthematiquesData, workspaceRow] = await Promise.all([
 		db.query.companies.findMany({
 			where: eq(companies.workspaceId, workspaceId),
 			columns: { id: true, name: true },
@@ -27,13 +39,21 @@ export const load = (async ({ locals }) => {
 		db.query.sousthematiques.findMany({
 			columns: { id: true, name: true, parentTopicId: true },
 			orderBy: [asc(sousthematiques.name)]
+		}),
+		db.query.workspaces.findFirst({
+			where: eq(workspaces.id, workspaceId),
+			columns: { defaultReferentHandicap: true, defaultDispositionsHandicap: true }
 		})
 	]);
 
 	return {
 		companies: companiesData,
 		thematiques: thematiquesData,
-		sousthematiques: sousthematiquesData
+		sousthematiques: sousthematiquesData,
+		workspaceDefaults: {
+			defaultReferentHandicap: workspaceRow?.defaultReferentHandicap ?? null,
+			defaultDispositionsHandicap: workspaceRow?.defaultDispositionsHandicap ?? null
+		}
 	};
 }) satisfies PageServerLoad;
 
@@ -73,7 +93,9 @@ export const actions: Actions = {
 			'prerequis',
 			'publicVise',
 			'prixPublic',
-			'prixConvenu'
+			'prixConvenu',
+			'referentHandicap',
+			'dispositionsHandicap'
 		];
 
 		if (!field || !allowedFields.includes(field)) {

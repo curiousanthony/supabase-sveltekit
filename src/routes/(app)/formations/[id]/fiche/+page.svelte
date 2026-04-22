@@ -12,6 +12,7 @@
 	import Stepper from '$lib/components/ui/stepper/stepper.svelte';
 	import ObjectifsRollup from '$lib/components/formations/fiche/objectifs-rollup.svelte';
 	import PedagogiqueTextarea from '$lib/components/formations/fiche/pedagogique-textarea.svelte';
+	import AccessibilitySection from '$lib/components/formations/fiche/accessibility-section.svelte';
 	import { deserialize } from '$app/forms';
 	import { invalidate } from '$app/navigation';
 	import { page } from '$app/state';
@@ -700,6 +701,17 @@
 					{/if}
 				</div>
 			</div>
+
+			<AccessibilitySection
+				formationReferent={formation?.referentHandicap ?? null}
+				formationDispositions={formation?.dispositionsHandicap ?? null}
+				workspaceDefaultReferent={data.workspaceDefaults?.defaultReferentHandicap ?? null}
+				workspaceDefaultDispositions={data.workspaceDefaults?.defaultDispositionsHandicap ?? null}
+				onSave={async ({ referentHandicap, dispositionsHandicap }) => {
+					await saveField('referentHandicap', referentHandicap ?? '');
+					await saveField('dispositionsHandicap', dispositionsHandicap ?? '');
+				}}
+			/>
 		</Card.Content>
 	</Card.Root>
 

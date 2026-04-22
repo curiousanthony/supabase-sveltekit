@@ -19,6 +19,10 @@ export interface WorkspaceIdentity {
 	defaultPaymentTerms: string | null;
 	defaultDevisValidityDays: number;
 	defaultCancellationTerms: string | null;
+	/** T-56 — Workspace-level Qualiopi indicator 26 defaults; templates should prefer the
+	 * already-resolved `formation.referentHandicap` / `formation.dispositionsHandicap`. */
+	defaultReferentHandicap: string | null;
+	defaultDispositionsHandicap: string | null;
 }
 
 export interface FormationData {
@@ -33,6 +37,13 @@ export interface FormationData {
 	objectifs: string | null;
 	prerequis: string | null;
 	publicVise: string | null;
+	/**
+	 * T-56 — Resolved Qualiopi indicator 26 values: formation override falls back to workspace
+	 * defaults. Pre-resolved by `document-generator.ts` so templates can render without knowing
+	 * the inheritance rules.
+	 */
+	referentHandicap: string | null;
+	dispositionsHandicap: string | null;
 }
 
 export interface ClientData {
