@@ -28,14 +28,24 @@
 		workspacePlanTitle?: string;
 	} = $props();
 
-	let selectedWorkspace = $state(defaultWorkspace ?? (workspaces[0] ? { id: workspaces[0].id, name: workspaces[0].name } : null));
-	let isSwitching = $state(false);
+	type SelectedShape = { id: string; name: string | null };
 
-	$effect(() => {
-		if (defaultWorkspace && defaultWorkspace.id !== selectedWorkspace?.id) {
-			selectedWorkspace = defaultWorkspace;
+	const serverWorkspace = $derived.by((): SelectedShape | null => {
+		if (defaultWorkspace) {
+			return { id: defaultWorkspace.id, name: defaultWorkspace.name };
 		}
+		const first = workspaces[0];
+		return first ? { id: first.id, name: first.name } : null;
 	});
+
+	/** Shown after a successful switch until load data catches up with `defaultWorkspace`. */
+	let pendingWorkspace = $state<SelectedShape | null>(null);
+
+	const selectedWorkspace = $derived.by((): SelectedShape | null => {
+		return pendingWorkspace ?? serverWorkspace;
+	});
+
+	let isSwitching = $state(false);
 
 	const displayName = $derived(selectedWorkspace?.name ?? 'Espace de travail');
 
@@ -55,8 +65,9 @@
 			});
 
 			if (res.ok) {
-				selectedWorkspace = ws;
+				pendingWorkspace = { id: ws.id, name: ws.name };
 				await invalidateAll();
+				pendingWorkspace = null;
 			}
 		} finally {
 			isSwitching = false;
