@@ -47,6 +47,7 @@
 	import { onMount, type Component } from 'svelte';
 	import { evaluatePreflight, type PreflightResult } from '$lib/preflight/document-preflight';
 	import BatchGenerateDialog from '$lib/components/documents/BatchGenerateDialog.svelte';
+	import PreflightResumeBanner from '$lib/components/preflight/PreflightResumeBanner.svelte';
 	import Users from '@lucide/svelte/icons/users';
 	import type { ComplianceWarning } from '$lib/compliance-warnings';
 
@@ -657,6 +658,8 @@
 </script>
 
 <div class="space-y-6">
+	<PreflightResumeBanner />
+
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<h2 class="flex items-center gap-2 text-lg font-semibold">

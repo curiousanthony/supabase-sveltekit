@@ -46,11 +46,15 @@
 	});
 
 	function handleScrollLeft() {
-		scrollEl?.scrollBy({ left: -200, behavior: 'smooth' });
+		if (!scrollEl) return;
+		const step = Math.max(scrollEl.clientWidth * 0.7, 280);
+		scrollEl.scrollBy({ left: -step, behavior: 'smooth' });
 	}
 
 	function handleScrollRight() {
-		scrollEl?.scrollBy({ left: 200, behavior: 'smooth' });
+		if (!scrollEl) return;
+		const step = Math.max(scrollEl.clientWidth * 0.7, 280);
+		scrollEl.scrollBy({ left: step, behavior: 'smooth' });
 	}
 
 	const pathname = $derived(page?.url?.pathname ?? '');
@@ -66,7 +70,7 @@
 
 	const tabClass = (active: boolean) =>
 		cn(
-			'relative flex cursor-pointer items-center gap-2 rounded-t-md border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+			'relative flex shrink-0 cursor-pointer items-center gap-2 rounded-t-md border-b-2 px-4 py-2 font-medium transition-colors',
 			active
 				? 'border-primary text-primary'
 				: 'border-transparent text-muted-foreground hover:text-foreground'
@@ -81,104 +85,118 @@
 
 <nav
 	class={cn(
-		"-mx-4 flex h-fit w-[calc(100%+2rem)] max-w-[calc(100%+2rem)] overflow-visible border-b bg-background px-4 before:absolute before:bottom-full before:left-0 before:right-0 before:z-0 before:block before:h-4 before:bg-background before:content-['']",
+		"nav-tabs relative flex h-fit w-full bg-background before:absolute before:bottom-full before:-left-4 before:-right-4 before:z-0 before:block before:h-4 before:bg-background before:content-['']",
 		sticky && 'sticky top-0 z-40'
 	)}
 	aria-label={ariaLabel}
 >
-	<div class="relative min-w-0 flex-1 overflow-hidden">
-		<div
-			class="nav-tabs-scroll relative z-10 min-w-0 flex-1 overflow-x-auto scroll-smooth"
-			bind:this={scrollEl}
-			onscroll={updateScrollState}
-		>
-			<div class="flex gap-1">
-				{#each tabs as tab (tab.href ?? tab.value ?? tab.label)}
-					{@const active = isActive(tab)}
-					{#if tab.href != null}
-						<a
-							href={tab.href}
-							class={tabClass(active)}
-							aria-current={active ? 'page' : undefined}
-						>
-							{#if tab.icon}
-								<tab.icon class="size-4 shrink-0" />
-							{/if}
-							{tab.label}
-							{#if tab.dot}
-								<span
-									class={cn(
-										'absolute right-1 top-1.5 size-1.5 shrink-0 rounded-full',
-										dotClass(tab.dot)
-									)}
-									aria-hidden="true"
-								></span>
-								<span class="sr-only">Notification</span>
-							{/if}
-						</a>
-					{:else}
-						<button
-							type="button"
-							class={tabClass(active)}
-							aria-current={active ? 'page' : undefined}
-							onclick={() => tab.value != null && onTabChange?.(tab.value)}
-						>
-							{#if tab.icon}
-								<tab.icon class="size-4 shrink-0" />
-							{/if}
-							{tab.label}
-							{#if tab.dot}
-								<span
-									class={cn(
-										'absolute right-1 top-1.5 size-1.5 shrink-0 rounded-full',
-										dotClass(tab.dot)
-									)}
-									aria-hidden="true"
-								></span>
-								<span class="sr-only">Notification</span>
-							{/if}
-						</button>
-					{/if}
-				{/each}
-			</div>
+	<div
+		class="nav-tabs-scroll relative z-10 min-w-0 flex-1 overflow-x-auto scroll-smooth"
+		bind:this={scrollEl}
+		onscroll={updateScrollState}
+	>
+		<div class="flex gap-1">
+			{#each tabs as tab (tab.href ?? tab.value ?? tab.label)}
+				{@const active = isActive(tab)}
+				{#if tab.href != null}
+					<a
+						href={tab.href}
+						class={tabClass(active)}
+						aria-current={active ? 'page' : undefined}
+					>
+						{#if tab.icon}
+							<tab.icon class="size-[18px] shrink-0" />
+						{/if}
+						{tab.label}
+						{#if tab.dot}
+							<span
+								class={cn(
+									'absolute right-1 top-1.5 size-1.5 shrink-0 rounded-full',
+									dotClass(tab.dot)
+								)}
+								aria-hidden="true"
+							></span>
+							<span class="sr-only">Notification</span>
+						{/if}
+					</a>
+				{:else}
+					<button
+						type="button"
+						class={tabClass(active)}
+						aria-current={active ? 'page' : undefined}
+						onclick={() => tab.value != null && onTabChange?.(tab.value)}
+					>
+						{#if tab.icon}
+							<tab.icon class="size-[18px] shrink-0" />
+						{/if}
+						{tab.label}
+						{#if tab.dot}
+							<span
+								class={cn(
+									'absolute right-1 top-1.5 size-1.5 shrink-0 rounded-full',
+									dotClass(tab.dot)
+								)}
+								aria-hidden="true"
+							></span>
+							<span class="sr-only">Notification</span>
+						{/if}
+					</button>
+				{/if}
+			{/each}
 		</div>
-
-		{#if canScrollLeft}
-			<div class="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-center">
-				<div class="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-background to-transparent"></div>
-				<button
-					type="button"
-					class="pointer-events-auto relative z-10 flex h-full items-center px-1 text-muted-foreground transition-colors hover:text-foreground"
-					aria-label="Défiler vers la gauche"
-					onclick={handleScrollLeft}
-				>
-					<ChevronLeft class="size-4" />
-				</button>
-			</div>
-		{/if}
-
-		{#if canScrollRight}
-			<div class="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center">
-				<div class="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-background to-transparent"></div>
-				<button
-					type="button"
-					class="pointer-events-auto relative z-10 flex h-full items-center px-1 text-muted-foreground transition-colors hover:text-foreground"
-					aria-label="Défiler vers la droite"
-					onclick={handleScrollRight}
-				>
-					<ChevronRight class="size-4" />
-				</button>
-			</div>
-		{/if}
 	</div>
+
+	{#if canScrollLeft}
+		<div class="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-center">
+			<div
+				class="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background via-background/80 to-transparent"
+			></div>
+			<button
+				type="button"
+				class="pointer-events-auto relative z-10 ml-0.5 flex size-9 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+				aria-label="Défiler vers la gauche"
+				onclick={handleScrollLeft}
+			>
+				<ChevronLeft class="size-5" />
+			</button>
+		</div>
+	{/if}
+
+	{#if canScrollRight}
+		<div class="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center justify-end">
+			<div
+				class="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background via-background/80 to-transparent"
+			></div>
+			<button
+				type="button"
+				class="pointer-events-auto relative z-10 mr-0.5 flex size-9 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+				aria-label="Défiler vers la droite"
+				onclick={handleScrollRight}
+			>
+				<ChevronRight class="size-5" />
+			</button>
+		</div>
+	{/if}
 </nav>
 
 <style>
+	/* Hide scrollbar while keeping scroll functionality */
 	.nav-tabs-scroll {
 		-ms-overflow-style: none;
 		scrollbar-width: none;
 	}
 	.nav-tabs-scroll::-webkit-scrollbar {
 		display: none;
+	}
+	/* Extend the border-bottom into the p-4 padding area on each side */
+	.nav-tabs::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: -1rem;
+		right: -1rem;
+		height: 1px;
+		background-color: hsl(var(--border));
+		pointer-events: none;
 	}
 </style>

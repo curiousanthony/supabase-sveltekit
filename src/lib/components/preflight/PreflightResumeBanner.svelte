@@ -29,8 +29,7 @@
 		}
 	});
 
-	const isOnDocumentsTab = $derived(page.url.pathname.endsWith('/documents'));
-	const visible = $derived(!!returnTo && !isOnDocumentsTab);
+	const visible = $derived(!!returnTo);
 
 	// F3: Extract docTypeLabel from sanitized returnTo — never echo raw param if key is unknown
 	const docTypeLabel = $derived.by(() => {
@@ -57,7 +56,7 @@
 	<div
 		role="status"
 		aria-atomic="false"
-		class="flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm text-primary shadow-sm"
+		class="flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm text-primary shadow-sm"
 	>
 		<Button
 			href={returnTo}
