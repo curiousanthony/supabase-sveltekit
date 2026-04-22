@@ -6,25 +6,54 @@
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Input from '$lib/components/ui/input/input.svelte';
+	import { Label } from '$lib/components/ui/label';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { enhance } from '$app/forms';
+	import { toast } from 'svelte-sonner';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Search from '@lucide/svelte/icons/search';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
+	import BookOpen from '@lucide/svelte/icons/book-open';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Euro from '@lucide/svelte/icons/euro';
 	import X from '@lucide/svelte/icons/x';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
+	import CityCombobox from '$lib/components/crm/CityCombobox.svelte';
+	import ThematiquesCombobox from '$lib/components/crm/ThematiquesCombobox.svelte';
 
 	let { data }: PageProps = $props();
 
 	let dialogOpen = $state(false);
 	let searchQuery = $state('');
+	let showCreateForm = $state(false);
+	let submitting = $state(false);
+
+	let newFirstName = $state('');
+	let newLastName = $state('');
+	let newEmail = $state('');
+	let newVille = $state('');
+	let newDepartement = $state('');
+	let selectedThematiqueIds = $state<string[]>([]);
+	let selectedSousthematiqueIds = $state<string[]>([]);
+
+	function resetDialog() {
+		searchQuery = '';
+		showCreateForm = false;
+		submitting = false;
+		newFirstName = '';
+		newLastName = '';
+		newEmail = '';
+		newVille = '';
+		newDepartement = '';
+		selectedThematiqueIds = [];
+		selectedSousthematiqueIds = [];
+	}
 
 	const formation = $derived(data.formation);
 	const allFormateurs = $derived(data.allFormateurs ?? []);
@@ -72,6 +101,11 @@
 	const docSubActions = $derived(docAction?.subActions ?? []);
 
 	const formationSeances = $derived(formation?.seances ?? []);
+	const formationModules = $derived(formation?.modules ?? []);
+
+	function modulesForFormateur(formateurId: string) {
+		return formationModules.filter((m) => m.formateurId === formateurId);
+	}
 
 	function seancesForFormateur(formateurId: string) {
 		return formationSeances.filter((s) => s.formateurId === formateurId);
@@ -126,6 +160,7 @@
 </script>
 
 <div class="space-y-6">
+	<QuestGuideBanner />
 	<!-- Summary Card -->
 	{#if assignedFormateurs.length > 0}
 		<Card.Root class="border-primary/20 bg-primary/5">
@@ -158,22 +193,26 @@
 					<Badge variant="secondary" class="text-xs">{assignedFormateurs.length}</Badge>
 				{/if}
 			</Card.Title>
-			<Dialog.Root bind:open={dialogOpen}>
-				<Dialog.Trigger>
-					{#snippet child({ props })}
-						<Button {...props} variant="outline" size="sm" class="cursor-pointer">
-							<UserPlus class="size-4 mr-1.5" />
-							Ajouter
-						</Button>
-					{/snippet}
-				</Dialog.Trigger>
-				<Dialog.Content class="sm:max-w-lg">
-					<Dialog.Header>
-						<Dialog.Title>Ajouter un formateur</Dialog.Title>
-						<Dialog.Description>
-							Recherchez un formateur dans votre répertoire pour l'assigner à cette formation.
-						</Dialog.Description>
-					</Dialog.Header>
+		<Dialog.Root bind:open={dialogOpen} onOpenChange={(open) => { if (!open) resetDialog(); }}>
+			<Dialog.Trigger>
+				{#snippet child({ props })}
+					<Button {...props} variant="outline" size="sm" class="cursor-pointer">
+						<UserPlus class="size-4 mr-1.5" />
+						Ajouter
+					</Button>
+				{/snippet}
+			</Dialog.Trigger>
+			<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+				<Dialog.Header>
+					<Dialog.Title>{showCreateForm ? 'Nouveau formateur' : 'Ajouter un formateur'}</Dialog.Title>
+					<Dialog.Description>
+						{showCreateForm
+							? 'Renseignez les informations du formateur à créer et assigner.'
+							: 'Recherchez un formateur existant ou créez-en un nouveau.'}
+					</Dialog.Description>
+				</Dialog.Header>
+
+				{#if !showCreateForm}
 					<div class="space-y-4">
 						<div class="relative">
 							<Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -220,6 +259,19 @@
 							{/each}
 						</div>
 
+						<button
+							type="button"
+							class="flex w-full items-center gap-2 rounded-md border border-dashed px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							onclick={() => {
+							selectedThematiqueIds = data.formation?.topicId ? [data.formation.topicId] : [];
+							selectedSousthematiqueIds = data.formation?.subtopicsIds ? [data.formation.subtopicsIds] : [];
+							showCreateForm = true;
+						}}
+						>
+							<UserPlus class="size-4" />
+							Créer un nouveau formateur
+						</button>
+
 						<Separator />
 
 						<!-- Marketplace teaser -->
@@ -233,8 +285,91 @@
 							</div>
 						</div>
 					</div>
-				</Dialog.Content>
-			</Dialog.Root>
+				{:else}
+					<form
+						method="POST"
+						action="?/createFormateurAndAssign"
+						use:enhance={() => {
+							submitting = true;
+							return async ({ result, update }) => {
+								submitting = false;
+								if (result.type === 'success') {
+									toast.success('Formateur créé et assigné');
+									dialogOpen = false;
+									resetDialog();
+									await update();
+								} else if (result.type === 'failure') {
+									toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+								}
+							};
+						}}
+					>
+						<div class="space-y-4">
+							<div class="grid grid-cols-2 gap-3">
+								<div class="space-y-1.5">
+									<Label for="new-first-name">Prénom</Label>
+									<Input id="new-first-name" name="firstName" bind:value={newFirstName} autocomplete="off" />
+								</div>
+								<div class="space-y-1.5">
+									<Label for="new-last-name">Nom</Label>
+									<Input id="new-last-name" name="lastName" bind:value={newLastName} required autocomplete="off" />
+								</div>
+							</div>
+							<div class="space-y-1.5">
+								<Label for="new-email">Email</Label>
+								<Input id="new-email" name="email" type="email" bind:value={newEmail} autocomplete="off" />
+							</div>
+							<div class="space-y-1.5">
+								<Label>Ville / Département</Label>
+								<CityCombobox
+									city={newVille}
+									departement={newDepartement}
+									secondaryField="departement"
+									onSelect={(c, _region, _code, dept) => { newVille = c; newDepartement = dept ?? ''; }}
+								/>
+								<input type="hidden" name="ville" value={newVille} />
+								<input type="hidden" name="departement" value={newDepartement} />
+							</div>
+
+							{#if (data.allThematiques ?? []).length > 0}
+								<div class="space-y-1.5">
+									<ThematiquesCombobox
+										thematiques={data.allThematiques ?? []}
+										sousthematiques={data.allSousthematiques ?? []}
+										bind:selectedThematiqueIds
+										bind:selectedSousthematiqueIds
+									/>
+									{#each selectedThematiqueIds as id (id)}
+										<input type="hidden" name="thematiqueIds[]" value={id} />
+									{/each}
+									{#each selectedSousthematiqueIds as id (id)}
+										<input type="hidden" name="sousthematiqueIds[]" value={id} />
+									{/each}
+								</div>
+							{/if}
+
+							<p class="text-xs text-muted-foreground">
+								Vous pourrez compléter son profil (tarif, disponibilité, description…) depuis sa fiche dans le CRM.
+							</p>
+						</div>
+
+						<Dialog.Footer class="mt-4">
+							<Button
+								variant="outline"
+								type="button"
+								class="cursor-pointer"
+								onclick={() => { showCreateForm = false; }}
+							>
+								Retour
+							</Button>
+							<Button type="submit" class="cursor-pointer" disabled={submitting || (!newFirstName.trim() && !newLastName.trim())}>
+								{submitting ? 'Création...' : 'Créer et assigner'}
+							</Button>
+						</Dialog.Footer>
+					</form>
+				{/if}
+			</Dialog.Content>
+		</Dialog.Root>
 		</Card.Header>
 
 		<Card.Content>
@@ -400,13 +535,34 @@
 								</div>
 							{/if}
 
-							<!-- Row 4: Sessions -->
+						<!-- Row 4: Module Assignments (read-only) -->
+						{#if modulesForFormateur(f.id).length > 0}
 							<Separator />
 							<div class="px-4 py-3">
 								<div class="mb-2 flex items-center gap-2">
-									<CalendarDays class="size-4 text-muted-foreground" />
-									<span class="text-xs font-medium text-muted-foreground">Séances assignées</span>
+									<BookOpen class="size-4 text-muted-foreground" />
+									<span class="text-xs font-medium text-muted-foreground">Modules assignés</span>
 								</div>
+								<div class="flex flex-wrap gap-1.5">
+									{#each modulesForFormateur(f.id) as mod (mod.id)}
+										<Badge variant="outline" class="gap-1 text-xs">
+											{mod.name}
+											{#if mod.durationHours}
+												<span class="text-muted-foreground">({mod.durationHours}h)</span>
+											{/if}
+										</Badge>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<!-- Row 5: Sessions -->
+						<Separator />
+						<div class="px-4 py-3">
+							<div class="mb-2 flex items-center gap-2">
+								<CalendarDays class="size-4 text-muted-foreground" />
+								<span class="text-xs font-medium text-muted-foreground">Séances assignées</span>
+							</div>
 
 								{#if seancesForFormateur(f.id).length > 0}
 									<div class="mb-2 space-y-1">

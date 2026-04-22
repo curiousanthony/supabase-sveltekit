@@ -17,7 +17,25 @@ export const load = (async ({ locals, url }) => {
 
 	const workspace = await db.query.workspaces.findFirst({
 		where: eq(workspaces.id, workspaceId),
-		columns: { id: true, name: true, logoUrl: true, legalName: true, siret: true }
+		columns: {
+			id: true,
+			name: true,
+			logoUrl: true,
+			legalName: true,
+			siret: true,
+			address: true,
+			city: true,
+			postalCode: true,
+			phone: true,
+			email: true,
+			website: true,
+			nda: true,
+			signatoryName: true,
+			signatoryRole: true,
+			showReferralCta: true,
+			defaultReferentHandicap: true,
+			defaultDispositionsHandicap: true
+		}
 	});
 
 	if (!workspace) throw redirect(303, '/');
@@ -95,10 +113,39 @@ export const actions: Actions = {
 		const name = data.get('name')?.toString() || null;
 		const legalName = data.get('legalName')?.toString() || null;
 		const siret = data.get('siret')?.toString() || null;
+		const address = data.get('address')?.toString() || null;
+		const city = data.get('city')?.toString() || null;
+		const postalCode = data.get('postalCode')?.toString() || null;
+		const phone = data.get('phone')?.toString() || null;
+		const email = data.get('email')?.toString() || null;
+		const website = data.get('website')?.toString() || null;
+		const nda = data.get('nda')?.toString() || null;
+		const signatoryName = data.get('signatoryName')?.toString() || null;
+		const signatoryRole = data.get('signatoryRole')?.toString() || null;
+		const showReferralCta = data.get('showReferralCta') === 'on';
+		const defaultReferentHandicap = data.get('defaultReferentHandicap')?.toString().trim() || null;
+		const defaultDispositionsHandicap =
+			data.get('defaultDispositionsHandicap')?.toString().trim() || null;
 
 		await db
 			.update(workspaces)
-			.set({ name, legalName, siret })
+			.set({
+				name,
+				legalName,
+				siret,
+				address,
+				city,
+				postalCode,
+				phone,
+				email,
+				website,
+				nda,
+				signatoryName,
+				signatoryRole,
+				showReferralCta,
+				defaultReferentHandicap,
+				defaultDispositionsHandicap
+			})
 			.where(eq(workspaces.id, workspaceId));
 
 		return { success: true };

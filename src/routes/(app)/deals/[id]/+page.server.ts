@@ -2,6 +2,8 @@ import { db } from '$lib/db';
 import {
 	deals,
 	formations,
+	formationActions,
+	questSubActions,
 	contacts,
 	companies,
 	contactCompanies,
@@ -10,6 +12,7 @@ import {
 } from '$lib/db/schema';
 import { getUserWorkspace, ensureUserInPublicUsers } from '$lib/auth';
 import { eq, and, sql, desc } from 'drizzle-orm';
+import { getQuestsForFormation, calculateDueDates } from '$lib/formation-quests';
 import { redirect, fail } from '@sveltejs/kit';
 import { DEAL_STAGES, LOSS_REASONS } from '$lib/crm/deal-schema';
 import { contactSchema, posteOptions } from '$lib/crm/contact-schema';
@@ -305,6 +308,61 @@ export const actions: Actions = {
 					.returning({ id: formations.id });
 
 				if (!inserted) throw new Error('Erreur création formation');
+
+				const quests = getQuestsForFormation(null, null);
+				const dueDates = calculateDueDates(quests, null, null);
+				const questKeyToId = new Map<string, string>();
+
+				for (const quest of quests) {
+					const isFirstQuest = quest.dependencies.length === 0 && quest.orderIndex === 1;
+					const [action] = await tx
+						.insert(formationActions)
+						.values({
+							formationId: inserted.id,
+							title: quest.title,
+							description: quest.description,
+							phase: quest.phase,
+							questKey: quest.key,
+							status: isFirstQuest ? 'En cours' : 'Pas commencé',
+							assigneeId: user.id,
+							orderIndex: quest.orderIndex,
+							dueDate: dueDates.get(quest.key) ?? null
+						})
+						.returning({ id: formationActions.id });
+
+					if (action) {
+						questKeyToId.set(quest.key, action.id);
+
+						if (quest.subActions.length > 0) {
+							await tx.insert(questSubActions).values(
+								quest.subActions.map((sa, i) => ({
+									formationActionId: action.id,
+									title: sa.title,
+									description: sa.description ?? null,
+									orderIndex: i,
+									completed: false,
+									ctaType: sa.ctaType ?? null,
+									ctaLabel: sa.ctaLabel ?? null,
+									ctaTarget: sa.ctaTarget ?? null,
+									documentRequired: sa.documentRequired ?? false
+								}))
+							);
+						}
+					}
+				}
+
+				for (const quest of quests) {
+					if (quest.dependencies.length === 0) continue;
+					const actionId = questKeyToId.get(quest.key);
+					if (!actionId) continue;
+					const blockerId = questKeyToId.get(quest.dependencies[quest.dependencies.length - 1]);
+					if (blockerId) {
+						await tx
+							.update(formationActions)
+							.set({ blockedByActionId: blockerId })
+							.where(eq(formationActions.id, actionId));
+					}
+				}
 
 				await tx
 					.update(deals)

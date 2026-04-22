@@ -45,8 +45,8 @@ export async function ensureWorkspaceLogosBucket(admin: SupabaseAdminClient): Pr
 	if (exists) return;
 	const { error } = await admin.storage.createBucket(BUCKET_ID, {
 		public: true,
-		fileSizeLimit: 5242880, // 5MB
-		allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
+		fileSizeLimit: 2097152, // 2 MiB — uploads are optimized PNGs (see T-8)
+		allowedMimeTypes: ['image/png']
 	});
 	if (error) {
 		// Bucket might already exist (race or created elsewhere)

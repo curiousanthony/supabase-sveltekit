@@ -557,7 +557,7 @@
 					</div>
 				{/snippet}
 
-			<div class="w-full">
+			<div class="w-full min-w-0">
 				<NavTabs
 					tabs={[
 						{ value: 'apercu', label: 'Aperçu', icon: LayoutGrid },

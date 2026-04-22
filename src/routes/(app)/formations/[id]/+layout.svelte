@@ -3,12 +3,15 @@
 	import NavTabs from '$lib/components/nav-tabs.svelte';
 	import LayoutGrid from '@lucide/svelte/icons/layout-grid';
 	import FileText from '@lucide/svelte/icons/file-text';
-	import Target from '@lucide/svelte/icons/target';
+	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import Calendar from '@lucide/svelte/icons/calendar';
 	import GraduationCap from '@lucide/svelte/icons/graduation-cap';
 	import Users from '@lucide/svelte/icons/users';
 	import Wallet from '@lucide/svelte/icons/wallet';
+	import Files from '@lucide/svelte/icons/files';
+	import HudBanner from '$lib/components/formations/hud-banner.svelte';
+	import { getHudBannerState } from '$lib/formation-quest-priority';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -23,16 +26,37 @@
 	const tabs = $derived([
 		{ href: basePath, label: 'Aperçu', icon: LayoutGrid },
 		{ href: basePath + '/fiche', label: 'Fiche', icon: FileText },
-		{ href: basePath + '/actions', label: 'Actions', icon: Target, dot: overdueQuests || undefined },
+		{ href: basePath + '/suivi', label: 'Suivi', icon: ListChecks, dot: overdueQuests || undefined },
 		{ href: basePath + '/programme', label: 'Programme', icon: BookOpen },
 		{ href: basePath + '/seances', label: 'Séances', icon: Calendar, dot: missingSignatures || undefined },
 		{ href: basePath + '/formateurs', label: 'Formateurs', icon: GraduationCap, dot: missingFormateurDocs || undefined },
 		{ href: basePath + '/apprenants', label: 'Apprenants', icon: Users, dot: unsignedEmargements || undefined },
+		{ href: basePath + '/documents', label: 'Documents', icon: Files },
 		{ href: basePath + '/finances', label: 'Finances', icon: Wallet, dot: overdueInvoices || undefined }
 	]);
+
+	const formation = $derived(data?.formation);
+	const actions = $derived(formation?.actions ?? []);
+
+	const hudState = $derived(
+		getHudBannerState({
+			actions: actions as any,
+			formation: {
+				type: formation?.type,
+				typeFinancement: formation?.typeFinancement,
+				dateDebut: formation?.dateDebut,
+				dateFin: formation?.dateFin
+			}
+		})
+	);
 </script>
 
-<div class="flex min-h-0 w-full flex-1 flex-col gap-4">
-	<NavTabs {tabs} ariaLabel="Formation sections" />
-	{@render children()}
+<div class="flex min-h-0 w-full flex-1 flex-col">
+	<div class="sticky top-0 z-40 bg-background">
+		<NavTabs {tabs} sticky={false} ariaLabel="Formation sections" />
+		<HudBanner {hudState} {formationId} />
+	</div>
+	<div class="flex-1 pt-4">
+		{@render children()}
+	</div>
 </div>

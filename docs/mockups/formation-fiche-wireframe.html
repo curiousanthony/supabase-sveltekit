@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lo-fi — Formation · Fiche (wireframe)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #fafafa;
+      --ink: #18181b;
+      --muted: #71717a;
+      --line: #a1a1aa;
+      --line-light: #e4e4e7;
+      --fill: #f4f4f5;
+      --accent: #2563eb;
+      --warn-bg: #fffbeb;
+      --warn-border: #fcd34d;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.45;
+      padding: 16px;
+    }
+    .doc-note {
+      max-width: 1120px;
+      margin: 0 auto 16px;
+      padding: 10px 12px;
+      border: 1px dashed var(--line);
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .doc-note strong { color: var(--ink); }
+    .frame {
+      max-width: 1120px;
+      margin: 0 auto;
+      background: #fff;
+      border: 2px solid var(--ink);
+      min-height: 90vh;
+    }
+    /* ── Shell (parent layout) — simplified ── */
+    .shell-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--ink);
+      overflow-x: auto;
+      background: #fff;
+    }
+    .shell-tabs span {
+      padding: 10px 14px;
+      border-right: 1px solid var(--line-light);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .shell-tabs span.on {
+      font-weight: 600;
+      color: var(--ink);
+      border-bottom: 3px solid var(--ink);
+      margin-bottom: -2px;
+    }
+    .hud-strip {
+      padding: 8px 14px;
+      border-bottom: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      background: var(--fill);
+    }
+    /* ── Layer 1: Synthèse (review: P0 header) ── */
+    .synth {
+      padding: 20px 20px 16px;
+      border-bottom: 2px solid var(--ink);
+      background: linear-gradient(180deg, #fff 0%, #fafafa 100%);
+    }
+    .synth h1 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+    .synth-meta {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .synth-meta span { color: var(--line); padding: 0 6px; }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .chip {
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .chip.warn {
+      border-color: var(--warn-border);
+      background: var(--warn-bg);
+      color: #92400e;
+    }
+    .btn-lofi {
+      display: inline-block;
+      padding: 6px 12px;
+      border: 2px solid var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+      background: #fff;
+    }
+    .synth-inline {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .synth-inline a {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    /* Quest: compact single line (review: reduce stack) */
+    .quest-compact {
+      margin-top: 12px;
+      padding: 8px 10px;
+      border: 1px dashed var(--warn-border);
+      background: var(--warn-bg);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .quest-compact em { font-style: normal; font-weight: 600; color: #78350f; }
+    /* ── Main grid: Col A + Col B (review: lg layout) ── */
+    .main {
+      padding: 16px 20px 24px;
+    }
+    .grid-lg {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 1024px) {
+      .grid-lg {
+        grid-template-columns: minmax(280px, 340px) 1fr;
+        align-items: start;
+      }
+    }
+    .wf-card {
+      border: 2px dashed var(--line);
+      padding: 12px 14px;
+      background: #fff;
+    }
+    .wf-card h2 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--line-light);
+    }
+    .wf-card p.hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .row2 {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 520px) {
+      .row2 { grid-template-columns: 1fr 1fr; }
+    }
+    .field {
+      margin-bottom: 10px;
+    }
+    .field:last-child { margin-bottom: 0; }
+    .lbl {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .lbl .info {
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      font-size: 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+    }
+    .box {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      background: repeating-linear-gradient(
+        -45deg,
+        var(--fill),
+        var(--fill) 4px,
+        #fff 4px,
+        #fff 8px
+      );
+    }
+    .box.tall { min-height: 100px; }
+    .modal-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    @media (min-width: 520px) {
+      .modal-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    .tile {
+      border: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      background: #fff;
+    }
+    .tile.on { border-color: var(--ink); border-width: 2px; color: var(--ink); }
+    /* Collapsible référentiel (review: progressive disclosure) */
+    .disclosure {
+      margin-top: 12px;
+      border: 2px dashed var(--line);
+    }
+    .disclosure summary {
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .disclosure summary::-webkit-details-marker { display: none; }
+    .disclosure summary::after { content: '▼'; font-size: 10px; color: var(--muted); }
+    .disclosure[open] summary::after { content: '▲'; }
+    .disclosure .inner {
+      padding: 0 12px 12px;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 520px) {
+      .disclosure .inner { grid-template-columns: 1fr 1fr; }
+    }
+    /* Bottom band: Logistique + Finance (review: grouping) */
+    .band {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 2px solid var(--line-light);
+    }
+    .band-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 900px) {
+      .band-grid {
+        grid-template-columns: 1.1fr 0.9fr;
+      }
+    }
+    .mini-summary {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      padding: 6px 8px;
+      background: var(--fill);
+      border-left: 3px solid var(--line);
+    }
+    .legend {
+      max-width: 1120px;
+      margin: 16px auto 0;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .legend code { font-size: 10px; background: var(--fill); padding: 1px 4px; }
+  </style>
+</head>
+<body>
+  <p class="doc-note">
+    <strong>Lo-fi wireframe</strong> — Formation détail · onglet <strong>Fiche</strong>.
+    Applique les recommandations de <code>docs/team-artifacts/design/2026-04-14-formation-fiche-tab-ux-review.md</code>
+    (synthèse au-dessus, deal intégré, quête compacte, grille large écran, référentiel replié, aide en tooltips).
+    Ouvrir ce fichier dans le navigateur. Aucun code applicatif modifié.
+  </p>
+
+  <div class="frame" aria-label="Wireframe Fiche formation">
+    <nav class="shell-tabs" aria-label="Onglets formation (shell)">
+      <span>Aperçu</span>
+      <span class="on">Fiche</span>
+      <span>Suivi</span>
+      <span>Programme</span>
+      <span>Séances</span>
+      <span>Formateurs</span>
+      <span>Apprenants</span>
+      <span>Documents</span>
+      <span>Finances</span>
+    </nav>
+    <div class="hud-strip">[ HUD formation — quêtes / alertes — inchangé côté layout parent ]</div>
+
+    <!-- Couche 1 : synthèse + statut + CTA (review: Critical P0) -->
+    <header class="synth">
+      <h1>Sécurité des systèmes d’information — sensibilisation</h1>
+      <p class="synth-meta">
+        Intra <span>·</span> Présentiel <span>·</span> 03/03/2026 – 05/03/2026 <span>·</span> ACME Formation SAS
+      </p>
+      <div class="chips">
+        <span class="chip warn">Manque : lieu</span>
+        <span class="chip">Fiche ~ 92 %</span>
+        <button type="button" class="btn-lofi">Compléter les champs obligatoires</button>
+      </div>
+      <p class="synth-inline">
+        Créée depuis le deal <a href="#">[Deal — Offre intra Q1]</a> ·
+        <a href="#">Fiche entreprise →</a>
+      </p>
+      <div class="quest-compact" role="note">
+        <span><em>Étape liée</em> — Définir le lieu de formation avant convocation.</span>
+        <span style="color: var(--accent); text-decoration: underline;">Ouvrir dans Suivi →</span>
+      </div>
+    </header>
+
+    <div class="main">
+      <div class="grid-lg">
+        <!-- Colonne A : identité + champs courts (review) -->
+        <div class="wf-card">
+          <h2>Identité & format</h2>
+          <div class="field">
+            <div class="lbl">Intitulé <span class="info" title="Tooltip au lieu d’un paragraphe d’aide">i</span></div>
+            <div class="box"></div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <div class="lbl">Type</div>
+              <div class="box"></div>
+            </div>
+            <div class="field">
+              <div class="lbl">Durée (h)</div>
+              <div class="box" style="min-height:44px"></div>
+              <p class="hint">[ presets 7 / 14 / 21 … plus visibles — review Minor ]</p>
+            </div>
+          </div>
+          <div class="field">
+            <div class="lbl">Modalité</div>
+            <div class="modal-grid">
+              <div class="tile on">Présentiel</div>
+              <div class="tile">Distanciel</div>
+              <div class="tile">Hybride</div>
+              <div class="tile">E-learning</div>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <div class="lbl">Thématique</div>
+              <div class="box"></div>
+            </div>
+            <div class="field">
+              <div class="lbl">Sous-thématique</div>
+              <div class="box"></div>
+            </div>
+          </div>
+          <p class="hint" style="margin-top:12px">Mini-légende section (1 phrase métier) — review Card.Description</p>
+        </div>
+
+        <!-- Colonne B : pédagogie + disclosure (review) -->
+        <div class="wf-card">
+          <h2>Pédagogie & contenu</h2>
+          <div class="field">
+            <div class="lbl">Description</div>
+            <div class="box tall"></div>
+          </div>
+
+          <details class="disclosure" open>
+            <summary>Référentiel & tags</summary>
+            <div class="inner">
+              <div class="field">
+                <div class="lbl">Code RNCP <span class="info" title="Définition RNCP en tooltip">i</span></div>
+                <div class="box"></div>
+              </div>
+              <div class="field">
+                <div class="lbl">(autres tags)</div>
+                <div class="box"></div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Bande basse : logistique | finance côte à côte sur large (review) -->
+      <div class="band">
+        <div class="band-grid">
+          <div class="wf-card">
+            <h2>Calendrier & lieu</h2>
+            <div class="mini-summary">Résumé rapide : dates + client visibles aussi dans l’en-tête — moins de scroll mental.</div>
+            <div class="row2">
+              <div class="field">
+                <div class="lbl">Date début</div>
+                <div class="box"></div>
+              </div>
+              <div class="field">
+                <div class="lbl">Date fin</div>
+                <div class="box"></div>
+              </div>
+            </div>
+            <div class="field">
+              <div class="lbl">Lieu <span class="info" title="Exemples d’adresse en tooltip">i</span></div>
+              <div class="box"></div>
+            </div>
+            <div class="field">
+              <div class="lbl">Client (entreprise)</div>
+              <div class="box"></div>
+            </div>
+          </div>
+          <div class="wf-card">
+            <h2>Financement</h2>
+            <div class="mini-summary">Synthèse 1 ligne : OPCO · 4 500 € accordés · TJM 450 € — réduit Hick sur la carte.</div>
+            <div class="row2">
+              <div class="field">
+                <div class="lbl">Type financement</div>
+                <div class="box"></div>
+              </div>
+              <div class="field">
+                <div class="lbl">Montant accordé</div>
+                <div class="box"></div>
+              </div>
+            </div>
+            <div class="row2">
+              <div class="field">
+                <div class="lbl">Financement accordé</div>
+                <div class="box" style="min-height:32px">[ switch ]</div>
+              </div>
+              <div class="field">
+                <div class="lbl">TJM formateur <span class="info" title="Aide TJM en tooltip">i</span></div>
+                <div class="box"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="legend">
+    Légende : hachures = champ éditable placeholder · bords tiretés = zones wireframe ·
+    <code>@media (min-width: 1024px)</code> active la grille 340px + flexible pour refléter le breakpoint <strong>lg</strong> du document d’UX.
+  </p>
+</body>
+</html>

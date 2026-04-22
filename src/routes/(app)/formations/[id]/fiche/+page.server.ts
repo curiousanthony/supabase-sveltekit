@@ -1,8 +1,16 @@
 import { db } from '$lib/db';
-import { formations, companies, thematiques, sousthematiques } from '$lib/db/schema';
+import {
+	formations,
+	formationActions,
+	companies,
+	thematiques,
+	sousthematiques,
+	workspaces
+} from '$lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { getUserWorkspace } from '$lib/auth';
+import { getQuestsForFormation, calculateDueDates } from '$lib/formation-quests';
 import type { PageServerLoad, Actions } from './$types';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -10,10 +18,15 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 export const load = (async ({ locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
 	if (!workspaceId) {
-		return { companies: [], thematiques: [], sousthematiques: [] };
+		return {
+			companies: [],
+			thematiques: [],
+			sousthematiques: [],
+			workspaceDefaults: { defaultReferentHandicap: null, defaultDispositionsHandicap: null }
+		};
 	}
 
-	const [companiesData, thematiquesData, sousthematiquesData] = await Promise.all([
+	const [companiesData, thematiquesData, sousthematiquesData, workspaceRow] = await Promise.all([
 		db.query.companies.findMany({
 			where: eq(companies.workspaceId, workspaceId),
 			columns: { id: true, name: true },
@@ -26,13 +39,21 @@ export const load = (async ({ locals }) => {
 		db.query.sousthematiques.findMany({
 			columns: { id: true, name: true, parentTopicId: true },
 			orderBy: [asc(sousthematiques.name)]
+		}),
+		db.query.workspaces.findFirst({
+			where: eq(workspaces.id, workspaceId),
+			columns: { defaultReferentHandicap: true, defaultDispositionsHandicap: true }
 		})
 	]);
 
 	return {
 		companies: companiesData,
 		thematiques: thematiquesData,
-		sousthematiques: sousthematiquesData
+		sousthematiques: sousthematiquesData,
+		workspaceDefaults: {
+			defaultReferentHandicap: workspaceRow?.defaultReferentHandicap ?? null,
+			defaultDispositionsHandicap: workspaceRow?.defaultDispositionsHandicap ?? null
+		}
 	};
 }) satisfies PageServerLoad;
 
@@ -57,6 +78,11 @@ export const actions: Actions = {
 			'modalite',
 			'duree',
 			'codeRncp',
+			'codeRs',
+			'codeCpfFiche',
+			'niveauQualification',
+			'certificateur',
+			'dateEnregistrementRncp',
 			'dateDebut',
 			'dateFin',
 			'location',
@@ -64,10 +90,12 @@ export const actions: Actions = {
 			'companyId',
 			'topicId',
 			'subtopicsIds',
-			'typeFinancement',
-			'montantAccorde',
-			'financementAccorde',
-			'tjmFormateur'
+			'prerequis',
+			'publicVise',
+			'prixPublic',
+			'prixConvenu',
+			'referentHandicap',
+			'dispositionsHandicap'
 		];
 
 		if (!field || !allowedFields.includes(field)) {
@@ -91,12 +119,20 @@ export const actions: Actions = {
 				processedValue = null;
 			}
 		}
-		if (field === 'financementAccorde') processedValue = value === 'true';
-		if (field === 'montantAccorde' || field === 'tjmFormateur') {
-			const num = value ? parseFloat(value) : NaN;
-			processedValue = Number.isFinite(num) ? num : null;
+		if (field === 'niveauQualification') {
+			if (value) {
+				const n = parseInt(value, 10);
+				processedValue = Number.isFinite(n) && n >= 1 && n <= 8 ? n : null;
+			} else {
+				processedValue = null;
+			}
 		}
-		if (['dateDebut', 'dateFin'].includes(field)) processedValue = value || null;
+		if (field === 'prixPublic' || field === 'prixConvenu') {
+			const num = value ? parseFloat(value) : NaN;
+			processedValue = Number.isFinite(num) && num >= 0 ? num : null;
+		}
+		if (['dateDebut', 'dateFin', 'dateEnregistrementRncp'].includes(field))
+			processedValue = value || null;
 		if (['clientId', 'companyId', 'topicId', 'subtopicsIds'].includes(field)) {
 			processedValue = value && UUID_REGEX.test(value) ? value : null;
 		}
@@ -107,6 +143,38 @@ export const actions: Actions = {
 			.set({ [field]: processedValue })
 			.where(eq(formations.id, params.id));
 
+		if (['dateDebut', 'dateFin', 'type'].includes(field)) {
+			await recalculateActionDueDates(params.id);
+		}
+
 		return { success: true };
 	}
 };
+
+async function recalculateActionDueDates(formationId: string) {
+	const formation = await db.query.formations.findFirst({
+		where: eq(formations.id, formationId),
+		columns: { type: true, typeFinancement: true, dateDebut: true, dateFin: true }
+	});
+	if (!formation) return;
+
+	const quests = getQuestsForFormation(
+		formation.type as 'Intra' | 'Inter' | 'CPF' | null | undefined,
+		formation.typeFinancement as 'CPF' | 'OPCO' | 'Inter' | 'Intra' | null | undefined
+	);
+	const dueDates = calculateDueDates(quests, formation.dateDebut, formation.dateFin);
+
+	const actions = await db.query.formationActions.findMany({
+		where: eq(formationActions.formationId, formationId),
+		columns: { id: true, questKey: true }
+	});
+
+	for (const action of actions) {
+		if (!action.questKey) continue;
+		const newDueDate = dueDates.get(action.questKey) ?? null;
+		await db
+			.update(formationActions)
+			.set({ dueDate: newDueDate })
+			.where(eq(formationActions.id, action.id));
+	}
+}

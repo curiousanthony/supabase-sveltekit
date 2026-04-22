@@ -13,6 +13,11 @@ import {
 	getWorkspaceLogosBucketId,
 	ensureWorkspaceLogosBucket
 } from '$lib/server/supabase-admin';
+import {
+	processWorkspaceLogoUpload,
+	resolveWorkspaceLogoStorageObjectPath,
+	WorkspaceLogoProcessingError
+} from '$lib/server/workspace-logo';
 
 function jsonError(message: string, status: number) {
 	return json({ message }, { status });
@@ -38,14 +43,12 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		return jsonError('Type de fichier non autorisé. Utilisez JPEG, PNG, WebP ou SVG.', 400);
 	}
 
-	// Validate file size (5MB)
+	// Validate file size (5 Mo before processing)
 	if (file.size > 5 * 1024 * 1024) {
-		return jsonError('Le fichier est trop volumineux. Taille maximale: 5MB', 400);
+		return jsonError('Le fichier est trop volumineux. Taille maximale : 5 Mo', 400);
 	}
 
-	// Generate unique filename
-	const extension = file.name.split('.').pop() || 'png';
-	const filename = `${randomUUID()}.${extension}`;
+	const filename = `${randomUUID()}.png`;
 	const filePath = `${workspaceId}/${filename}`;
 	const bucketId = getWorkspaceLogosBucketId();
 
@@ -70,13 +73,42 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 	}
 	const storage = admin;
 
+	const MAX_STORED_PNG_BYTES = 2 * 1024 * 1024;
+
+	let pngBuffer: Buffer;
+	try {
+		pngBuffer = await processWorkspaceLogoUpload(Buffer.from(await file.arrayBuffer()));
+	} catch (e) {
+		if (e instanceof WorkspaceLogoProcessingError) {
+			return jsonError(e.message, 400);
+		}
+		console.error('[Upload Logo] Processing error:', e);
+		return jsonError('Erreur lors du traitement du logo', 500);
+	}
+
+	if (pngBuffer.length > MAX_STORED_PNG_BYTES) {
+		return jsonError(
+			"L'image reste trop volumineuse après optimisation. Utilisez un logo plus simple ou une image plus petite.",
+			400
+		);
+	}
+
 	try {
 		if (admin) {
 			await ensureWorkspaceLogosBucket(admin);
 		}
 
-		const { error: uploadError } = await storage.storage.from(bucketId).upload(filePath, file, {
-			contentType: file.type,
+		const previous = await db.query.workspaces.findFirst({
+			where: eq(workspaces.id, workspaceId),
+			columns: { logoUrl: true }
+		});
+		const previousPath =
+			previous?.logoUrl != null
+				? resolveWorkspaceLogoStorageObjectPath(previous.logoUrl, bucketId, workspaceId)
+				: null;
+
+		const { error: uploadError } = await storage.storage.from(bucketId).upload(filePath, pngBuffer, {
+			contentType: 'image/png',
 			upsert: false
 		});
 
@@ -96,6 +128,10 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		} = storage.storage.from(bucketId).getPublicUrl(filePath);
 
 		await db.update(workspaces).set({ logoUrl: publicUrl }).where(eq(workspaces.id, workspaceId));
+
+		if (previousPath && previousPath !== filePath) {
+			await storage.storage.from(bucketId).remove([previousPath]);
+		}
 
 		return json({ success: true, url: publicUrl });
 	} catch (e) {
@@ -137,10 +173,13 @@ export const DELETE: RequestHandler = async ({ locals, url }) => {
 	const storage = admin;
 
 	if (workspace?.logoUrl) {
-		const urlParts = workspace.logoUrl.split(`/${bucketId}/`);
-		if (urlParts.length > 1) {
-			const filePath = urlParts[1];
-			await storage.storage.from(bucketId).remove([filePath]);
+		const objectPath = resolveWorkspaceLogoStorageObjectPath(
+			workspace.logoUrl,
+			bucketId,
+			workspaceId
+		);
+		if (objectPath) {
+			await storage.storage.from(bucketId).remove([objectPath]);
 		}
 	}
 

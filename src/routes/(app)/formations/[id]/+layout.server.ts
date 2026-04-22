@@ -1,8 +1,10 @@
 import { error } from '@sveltejs/kit';
 import { db } from '$lib/db';
-import { formations } from '$lib/db/schema';
+import { formations, formationDocuments } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { getQuestProgress } from '$lib/formation-quests';
+import { getQuestProgress, getQuestsForFormation, calculateDueDates } from '$lib/formation-quests';
+import { getComplianceWarnings } from '$lib/compliance-warnings';
+import { getEffectiveStatus } from '$lib/services/document-lifecycle';
 import type { LayoutServerLoad } from './$types';
 
 const STATUT_COLORS: Record<string, string> = {
@@ -15,22 +17,76 @@ const STATUT_COLORS: Record<string, string> = {
 	'Archivée': '[&_svg]:text-red-400'
 };
 
-export const load = (async ({ params }) => {
+/** Avoid passing non-UUID segment (e.g. `/formations/1`) to Postgres — it throws and surfaces as 500. */
+const FORMATION_ID_UUID =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const load = (async ({ params, depends }) => {
 	const formationId = params.id;
+	if (!FORMATION_ID_UUID.test(formationId)) {
+		throw error(404, 'Formation introuvable');
+	}
+
+	depends(`formation:${formationId}`);
 
 	const formation = await db.query.formations.findFirst({
 		where: eq(formations.id, formationId),
 		with: {
 			thematique: { columns: { id: true, name: true } },
 			sousthematique: { columns: { id: true, name: true } },
-			client: { columns: { id: true, legalName: true } },
+			client: { columns: { id: true, legalName: true, type: true } },
 			company: { columns: { id: true, name: true } },
 			programmeSource: {
-				columns: { id: true, titre: true, dureeHeures: true, modalite: true }
+				columns: {
+					id: true,
+					titre: true,
+					dureeHeures: true,
+					modalite: true,
+					objectifs: true,
+					publicVise: true,
+					prerequis: true,
+					prixPublic: true,
+					updatedAt: true,
+					topicId: true,
+					derivedFromProgrammeId: true
+				}
 			},
 			modules: {
-				columns: { id: true, name: true, durationHours: true, objectifs: true, orderIndex: true },
-				orderBy: (m, { asc }) => [asc(m.orderIndex)]
+				columns: {
+					id: true,
+					createdAt: true,
+					name: true,
+					durationHours: true,
+					objectifs: true,
+					contenu: true,
+					modaliteEvaluation: true,
+					sourceModuleId: true,
+					orderIndex: true,
+					formateurId: true
+				},
+				orderBy: (m, { asc }) => [asc(m.orderIndex)],
+				with: {
+					formateur: {
+						columns: { id: true },
+						with: {
+							user: { columns: { id: true, firstName: true, lastName: true, avatarUrl: true } }
+						}
+					},
+					moduleSupports: {
+						with: {
+							support: {
+								columns: { id: true, titre: true, url: true, fileName: true, mimeType: true }
+							}
+						}
+					},
+					moduleQuestionnaires: {
+						with: {
+							questionnaire: {
+								columns: { id: true, titre: true, type: true, urlTest: true }
+							}
+						}
+					}
+				}
 			},
 			actions: {
 				columns: {
@@ -46,7 +102,11 @@ export const load = (async ({ params }) => {
 					dueDate: true,
 					completedAt: true,
 					blockedByActionId: true,
-					orderIndex: true
+					orderIndex: true,
+					waitStartedAt: true,
+					lastRemindedAt: true,
+					anticipatedAt: true,
+					softLockOverriddenAt: true
 				},
 				orderBy: (a, { asc }) => [asc(a.orderIndex)],
 				with: {
@@ -127,7 +187,7 @@ export const load = (async ({ params }) => {
 						}
 					},
 					emargements: {
-						columns: { id: true, contactId: true, signedAt: true, signatureToken: true }
+						columns: { id: true, contactId: true, formateurId: true, signerType: true, period: true, signedAt: true, signatureToken: true }
 					}
 				}
 			},
@@ -213,13 +273,16 @@ export const load = (async ({ params }) => {
 	};
 
 	const today = new Date().toISOString().slice(0, 10);
+	const applicableQuests = getQuestsForFormation(
+		formation.type as 'Intra' | 'Inter' | 'CPF' | null | undefined,
+		formation.typeFinancement as 'CPF' | 'OPCO' | 'Inter' | 'Intra' | null | undefined
+	);
+	const dynamicDueDates = calculateDueDates(applicableQuests, formation.dateDebut, formation.dateFin);
 	const overdueQuests =
-		(formation.actions ?? []).some(
-			(a) =>
-				a.dueDate != null &&
-				a.dueDate < today &&
-				a.status !== 'Terminé'
-		) ?? false;
+		(formation.actions ?? []).some((a) => {
+			const dd = a.questKey ? dynamicDueDates.get(a.questKey) ?? a.dueDate : a.dueDate;
+			return dd != null && dd < today && a.status !== 'Terminé';
+		}) ?? false;
 
 	const nowIso = new Date().toISOString();
 
@@ -250,6 +313,28 @@ export const load = (async ({ params }) => {
 			(inv) => inv.status !== 'Payée' && inv.dueDate != null && inv.dueDate < today
 		) ?? false;
 
+	let programmeSourceUpdatedSinceLink = false;
+	if (formation.programmeSource?.updatedAt) {
+		const sourceUpdated = new Date(formation.programmeSource.updatedAt).getTime();
+		const linkedModules = (formation.modules ?? []).filter((m) => m.sourceModuleId);
+		if (linkedModules.length > 0) {
+			const oldestLinkedModule = Math.min(
+				...linkedModules.map((m) => new Date(m.createdAt ?? 0).getTime())
+			);
+			programmeSourceUpdatedSinceLink = sourceUpdated > oldestLinkedModule;
+		}
+	}
+
+	const docStatuses = await db.query.formationDocuments.findMany({
+		where: eq(formationDocuments.formationId, formationId),
+		columns: { type: true, status: true, expiresAt: true }
+	});
+	const docInputs = docStatuses.map((d) => ({
+		type: d.type,
+		effectiveStatus: getEffectiveStatus({ type: d.type, status: d.status, expiresAt: d.expiresAt })
+	}));
+	const complianceWarnings = getComplianceWarnings(docInputs, formation.dateDebut);
+
 	return {
 		formation,
 		pageName: formation.name ?? 'Formation',
@@ -259,6 +344,8 @@ export const load = (async ({ params }) => {
 		missingFormateurDocs,
 		unsignedEmargements,
 		overdueInvoices,
-		questProgress: questProgressData
+		questProgress: questProgressData,
+		programmeSourceUpdatedSinceLink,
+		complianceWarnings
 	};
 }) satisfies LayoutServerLoad;

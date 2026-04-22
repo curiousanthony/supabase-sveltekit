@@ -54,11 +54,12 @@ Gérez votre pipeline de vente de A à Z et transformez vos opportunités en for
 Gérez vos sessions de formation de A à Z : planification, convocation, émargement, attestations.
 
 **Documentation :**
-- 🚧 En cours de documentation
+- [Pré-vol documents & reprise après correction](./formations/documents-preflight.md)
+- 🚧 Autres écrans : en cours de documentation
 
 **Pour qui ?** Tous  
 **Indicateurs Qualiopi :** 2, 5, 6, 7, 8, 11, 19, 22, 32  
-**Status :** 🚧 À documenter
+**Status :** 🚧 Partiellement documenté
 
 ---
 
