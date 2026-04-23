@@ -17,7 +17,6 @@ T-40 P2 Postmark template — questionnaire satisfaction formateur (fin de forma
 T-45 P2 Playwright E2E — preflight server-bypass + B2C rétractation scenarios
 T-47 P2 "Architecture: Drizzle queries bypass RLS — pick a posture"
 T-51 P2 "Schema: drop formations.tjm_formateur with safe data migration"
-T-57 P2 "Read-only financing chip in formation header (cross-tab)"
 T-58 P2 "Help copy: French popovers for Code RNCP / RS / CPF on Fiche Référencement"
 T-59 P2 "Preflight: block convention without prixConvenu, warn convention/programme without module objectifs or publicVise"
 T-62 P2 "Discovery: revamp Formation creation wizard for minimum-viable bootstrap + Quest hand-off"

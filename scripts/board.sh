@@ -48,10 +48,13 @@ if [ -n "$orphans" ]; then
 fi
 
 if [ -f "$learnings" ]; then
-  total=$(grep -c '^- ' "$learnings" 2>/dev/null || echo 0)
-  reviewed=$(grep -c '^## Reviewed' "$learnings" 2>/dev/null || echo 0)
-  pending=$((total - reviewed * 10))
+  last_review_date=$(grep '^## Reviewed' "$learnings" | tail -1 | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' || true)
+  if [ -n "$last_review_date" ]; then
+    pending=$(awk -v d="$last_review_date" '/^- [0-9]{4}-[0-9]{2}-[0-9]{2}/ { if ($2 > d) count++ } END { print count+0 }' "$learnings")
+  else
+    pending=$(grep -c '^- ' "$learnings" 2>/dev/null || echo 0)
+  fi
   if [ "$pending" -ge 10 ]; then
-    echo "ACTION: $pending unreviewed learnings. Run team-architect review."
+    echo "ACTION: $pending unreviewed learnings. Run /team-architect review."
   fi
 fi

@@ -34,13 +34,19 @@ When triggered (by `board.sh` ACTION message or user request), review `docs/proj
 
 1. Read all entries since the last `## Reviewed` marker.
 2. For each entry, assess: does this suggest a change to an agent definition, skill, or rule?
-3. Classify proposed changes:
-   - **Safe** (add note to skill, update checklist, add test pattern): apply directly.
-   - **Moderate** (update agent definition, add recipe step): apply and flag to user.
+3. Classify each learning by domain and append to the appropriate file in `docs/learnings/`:
+   - `svelte-sveltekit.md` — Svelte 5 runes, SvelteKit routing/navigation, UI patterns, PDF/email, form UX
+   - `database.md` — Drizzle, migrations, transactions, Storage, audit logging, seed helpers, Vitest mocking
+   - `security-rls.md` — RLS policies, Storage policies, auth flows, cross-tenant isolation
+   - `project-process.md` — ticket hygiene, board.sh, dependency direction, planning doc drift
+   - **Never add pitfalls directly to agent system prompts** — domain files are the only target.
+4. Additionally classify proposed changes to agent *behavior* (not just knowledge):
+   - **Safe** (add note to skill, update checklist, add test pattern): apply directly to the domain file.
+   - **Moderate** (update agent definition workflow or protocol section): apply and flag to user.
    - **Risky** (change orchestrator rule, modify phase gates): propose only, write to
      `docs/team-artifacts/management/`, require user approval.
-4. Record applied changes in `docs/team-changelog.md`.
-5. Append `## Reviewed YYYY-MM-DD` to `learnings.md` to reset the counter.
+5. Record applied changes in `docs/team-changelog.md`.
+6. Append `## Reviewed YYYY-MM-DD` to `learnings.md` to reset the counter.
 
 ## Change Log Format
 
@@ -60,6 +66,7 @@ Append to `docs/team-changelog.md`:
 ## Guardrails
 
 - **Never delete** a subagent without explicit user approval
+- **Never add pitfalls to agent system prompts** — always route knowledge to `docs/learnings/[domain].md`; only modify agent prompt sections when changing *behavior* (workflow, protocol, output format), not knowledge
 - **Always explain** WHY changes were made (cite transcript evidence)
 - **Commit separately** — agent definition changes get their own commit for easy revert
 - **Preserve intent** — when updating an agent, keep its core role intact. Refine, don't rewrite
