@@ -29,6 +29,8 @@ All project tracking lives in `docs/project/`:
 
 ### Ticket Lifecycle
 
+Before any ticket operation, read `docs/learnings/project-process.md`.
+
 1. **Create**: Use the project-tracker skill template. Assign next sequential ID. Keep `id: T-{N}` and all other ticket fields **only** inside YAML frontmatter between the two `---` delimiters — never as a markdown heading like `## id:` (that corrupts frontmatter and breaks `scripts/board.sh`). Run `bash scripts/board.sh`.
 2. **Update**: Edit YAML frontmatter (status, priority, etc.). Run `bash scripts/board.sh`.
 3. **Close**: Follow the project-tracker skill's 5-step Close Ticket recipe (status → move → board → changelog → learning).

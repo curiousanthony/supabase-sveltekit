@@ -45,3 +45,17 @@ Changes to subagent definitions and the orchestrator rule, maintained by the `te
 - `architect.md`: added two pitfalls — Vercel Cron Jobs setup with `CRON_SECRET` + service-role client; design preflight/compliance guards as a single shared helper invoked by every entry point.
 - `test-engineer.md`: added an edge-case enumeration item — exercise EVERY route/action/cron that triggers a server-side invariant, not just the most visible path.
 - Appended `## Reviewed 2026-04-20` with summary paragraph to `docs/project/learnings.md`.
+
+---
+
+## 2026-04-22 — Learnings review (2026-04-21 — 2026-04-22, 12 entries)
+
+**Agent(s) modified**: implementer, architect, security-analyst, project-manager, test-engineer
+**Change type**: Enhancement
+**Rationale**: 12 unreviewed learnings across T-46, T-48, T-52, T-53 (×2), T-54, T-55, T-56, T-63 (×3), T-20. Six thematic clusters emerged: (1) Svelte 5 reactivity correctness (`$derived.by` type anchoring, writable override toggles); (2) data boundary discipline (fallback resolution at loader/service, brand types, raw DB row shapes); (3) schema/migration quality (dual-layer bounded integer validation, idempotent DO-blocks for enums/FKs/triggers, Drizzle circular imports); (4) cross-tenant security hardening (polymorphic-FK AND rule, explicit WITH CHECK on UPDATE); (5) project tracking hygiene (dependency direction causality, batch ticket ID cross-check); (6) pure service testability (Drizzle schema mocking with vi.mock).
+**Changes made**:
+- `implementer.md`: added 13 new pitfall bullets — fallback resolution boundary (T-56), route path drift (T-56), writable override for feature toggles (T-54), long-form text Modifier/Enregistrer pattern (T-54), `$derived.by` type anchoring (T-53), field migration completeness (T-53), smart form defaults are additive only (T-53), shared descriptor utility modules (T-53), raw DB row shapes in pure services (T-52), dual-layer bounded integer validation (T-55), seed parity across creation paths (T-48), TypeScript brand types for trusted data (T-46).
+- `architect.md`: added 4 new pitfall bullets — Drizzle circular schema imports are safe (T-63), idempotent Supabase migration DO-blocks for enums/FKs/triggers with `public.set_updated_at()` (T-63), dual-layer bounded integer constraints (T-55), seed helpers for multi-path entity creation (T-48).
+- `security-analyst.md`: added 2 new RLS bullets — polymorphic-FK AND rule (never OR between two EXISTS) citing cross-tenant pivot risk (T-20), explicit WITH CHECK on every UPDATE policy (T-20). **[Moderate]**
+- `project-manager.md`: added 2 new ticket lifecycle sections — dependency direction (causality of work, not logical follow-up) (T-54), batch ticket creation ID cross-check hygiene (T-63). **[Moderate]**
+- `test-engineer.md`: added 1 new test-writing convention bullet — Drizzle schema mocking with vi.mock + Symbol to avoid pulling postgres-js/pglite into Vitest (T-52).

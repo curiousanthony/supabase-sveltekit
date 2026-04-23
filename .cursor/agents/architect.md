@@ -30,15 +30,9 @@ Explore the existing schema:
 5. **Migration safety**: Prefer additive migrations. Destructive changes (drop column, rename table) require explicit user approval
 6. **Naming**: Snake_case for database objects, camelCase for Drizzle/TypeScript references
 
-## Pitfalls (from project learnings)
+## Project Learnings
 
-- **Migrations**: Hand-edited or hand-ordered SQL can diverge from Supabase’s tracking — before applying or relying on `migration up`, confirm what `schema_migrations` (or the project’s equivalent) actually contains.
-- **Multi-step writes**: Design flows that replace/link resources as **one transaction** with optimistic concurrency where concurrent updates are plausible.
-- **RLS without `workspace_id`**: Plan `EXISTS` chains through parent tables to workspace membership rather than widening policies.
-- **Cross-route derived data**: Compliance warnings and similar computed flags are often best loaded once in a **layout** `load` shared by sibling routes.
-- **Quest / document wiring**: Stable identifiers for sub-steps should use `orderIndex` (or ids), not string titles.
-- **Scheduled tasks (Vercel)**: Use Vercel Cron Jobs (`vercel.json` `crons` array, `CRON_SECRET` bearer auth, service-role Supabase client) for SvelteKit-on-Vercel scheduled work — cron runs without a user session, so plan auth and RLS bypass explicitly.
-- **Generation entry-point parity**: When a server-side preflight or compliance guard protects generation, design it as a single shared helper invoked by EVERY entry point (form action, quest sub-action, cron) — never let one path skip it.
+Before designing schema or migrations, read `docs/learnings/database.md` and `docs/learnings/security-rls.md`.
 
 ## Output Format
 

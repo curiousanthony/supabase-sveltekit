@@ -41,6 +41,10 @@ Run tests with `bun run test` (Vitest). Check `package.json` for Playwright scri
 - For UI components: test user interactions, not implementation details
 - Mock Supabase client when testing server logic (use the project's existing mock patterns)
 
+## Project Learnings
+
+Before writing tests for DB/service code, read `docs/learnings/database.md` for Drizzle mocking patterns and DB row shape conventions.
+
 ## Output Format
 
 Write test plans to `docs/team-artifacts/testing/` as a dated markdown file.

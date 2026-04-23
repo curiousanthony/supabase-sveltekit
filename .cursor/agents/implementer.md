@@ -55,22 +55,10 @@ dependencies, Svelte 5 quirks), document the issue clearly in the ticket log and
 continue with your best judgment. The orchestrator may re-launch you with a more
 capable model if needed.
 
-## Pitfalls (from project learnings)
+## Project Learnings
 
-- **SvelteKit navigation**: `replaceState` from `$app/navigation` must not run before the router is ready — on pages that read URL params in `$effect`, guard with `onMount` + `requestAnimationFrame`.
-- **Kanban / boards**: Reuse an existing route’s pattern (`flex`, `overflow-x-auto`, sensible `min-w` / `max-w` columns) instead of inventing a new grid/breakpoint layout.
-- **Filters**: When removing or hiding a filter category, if the active filter equals that category, reset to `all` so the list does not look broken.
-- **PDFs (French)**: Use `Intl` for currency; normalize narrow/no-break spaces (`U+202F` / `U+00A0`) for fonts like Helvetica; centralize shared timezone (e.g. `PDF_TIMEZONE`) across templates.
-- **Exhaustive unions**: For enums like document type, use `default` + `assertNever` so missing cases fail at compile time.
-- **DB mutations**: Multi-step updates (replace + link, etc.) belong in `db.transaction()` with optimistic concurrency (`WHERE status = expected`) when races matter.
-- **Storage**: Replace or remove Storage objects only after a successful upload and DB update; validate object keys (e.g. `workspaceId/` prefix) before `remove()`; set Sharp `limitInputPixels` when processing user images (decompression DoS).
-- **Email**: Prefer Postmark templates; do not keep a parallel raw-HTML send path for the same flow.
-- **Status transitions**: Reuse helpers like `transitionStatus` / timestamp maps — avoid manually setting fields the helper already applies.
-- **Quests / documents**: Map lifecycle steps using sub-action `orderIndex`, not title matching.
-- **Compliance / warnings**: When two routes need the same derived warnings, compute once in a shared layout load instead of duplicating per-page queries.
-- **Audit logging**: If `logAuditEvent` runs inside a transaction, pass the transaction client and surface errors — avoid fire-and-forget in critical paths.
-- **Lifecycle generation**: Pre-validate every transition (status, financing, dates, replace/replace-target) BEFORE `generateDocument` writes Storage objects or DB rows — failed validation downstream leaves orphaned uploads.
-- **Server-side preflight parity**: When a compliance/preflight check guards a flow, it must run on EVERY entry point that triggers it (Documents action, Suivi quest sub-action, batch jobs, cron) — covering only the most visible path is a compliance gap.
+Before implementing Svelte components or SvelteKit routes, read `docs/learnings/svelte-sveltekit.md`.
+Before writing DB/service/Storage code, read `docs/learnings/database.md`.
 
 ## File Conventions
 
