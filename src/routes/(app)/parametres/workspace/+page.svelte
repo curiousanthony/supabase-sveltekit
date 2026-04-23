@@ -187,28 +187,28 @@
 		</Tabs.List>
 
 		<Tabs.Content value="general">
-			<Card.Root>
-				<Card.Header>
-					<Card.Title>Informations générales</Card.Title>
-					<Card.Description>Gérez les informations de votre centre de formation</Card.Description>
-				</Card.Header>
-				<Card.Content>
-					<form
-						method="POST"
-						action="?/saveSettings"
-						use:enhance={() => {
-							return async ({ result, update }) => {
-								await update({ reset: false });
-								await invalidateAll();
-								if (result.type === 'success') {
-									toast.success('Paramètres enregistrés');
-								} else if (result.type === 'failure' && result.data) {
-									toast.error((result.data as { message?: string }).message ?? 'Erreur lors de l\'enregistrement');
-								}
-							};
-						}}
-						class="space-y-6"
-					>
+			<form
+				method="POST"
+				action="?/saveSettings"
+				use:enhance={() => {
+					return async ({ result, update }) => {
+						await update({ reset: false });
+						await invalidateAll();
+						if (result.type === 'success') {
+							toast.success('Paramètres enregistrés');
+						} else if (result.type === 'failure' && result.data) {
+							toast.error((result.data as { message?: string }).message ?? 'Erreur lors de l\'enregistrement');
+						}
+					};
+				}}
+				class="space-y-6"
+			>
+				<Card.Root>
+					<Card.Header>
+						<Card.Title>Informations générales</Card.Title>
+						<Card.Description>Gérez les informations de votre centre de formation</Card.Description>
+					</Card.Header>
+					<Card.Content class="space-y-4">
 						<div class="space-y-2">
 							<Label.Root for="name">Nom de l'espace</Label.Root>
 							<Input.Root
@@ -244,7 +244,7 @@
 						</div>
 
 						<div class="space-y-2">
-							<Label.Root>Logo</Label.Root>
+							<Label.Root for="workspace-logo-input">Logo</Label.Root>
 							<div class="flex items-center gap-4">
 								{#if workspace?.logoUrl}
 									<div class="relative">
@@ -254,9 +254,10 @@
 											variant="destructive"
 											size="sm"
 											class="absolute -right-2 -top-2 size-6 rounded-full p-0"
+											aria-label="Supprimer le logo"
 											onclick={handleLogoRemove}
 										>
-											<XIcon class="size-3" />
+											<XIcon class="size-3" aria-hidden="true" />
 										</Button.Root>
 									</div>
 								{:else}
@@ -266,6 +267,7 @@
 								{/if}
 								<div class="flex flex-col gap-2">
 									<input
+										id="workspace-logo-input"
 										bind:this={logoFileInput}
 										type="file"
 										accept="image/jpeg,image/png,image/webp,image/svg+xml"
@@ -282,17 +284,204 @@
 										<UploadIcon class="size-4" />
 										{logoUploading ? 'Téléversement...' : workspace?.logoUrl ? 'Remplacer' : 'Téléverser'}
 									</Button.Root>
-									<p class="text-xs text-muted-foreground">JPEG, PNG, WebP ou SVG (max 5MB)</p>
+									<p class="text-xs text-muted-foreground">
+										Préférez PNG ou JPEG (logo). Téléversement max 5&nbsp;Mo ; le fichier est redimensionné
+										(côté long max 512&nbsp;px) et enregistré en PNG pour les PDF et les e-mails.
+									</p>
 								</div>
 							</div>
 						</div>
+					</Card.Content>
+				</Card.Root>
 
-						{#if canManage}
-							<Button.Root type="submit">Enregistrer</Button.Root>
-						{/if}
-					</form>
-				</Card.Content>
-			</Card.Root>
+				<Card.Root>
+					<Card.Header>
+						<Card.Title>Coordonnées</Card.Title>
+					</Card.Header>
+					<Card.Content class="space-y-4">
+						<div class="space-y-2">
+							<Label.Root for="address">Adresse</Label.Root>
+							<Input.Root
+								id="address"
+								name="address"
+								type="text"
+								value={workspace?.address ?? ''}
+								placeholder="123 rue de la Formation"
+							/>
+						</div>
+
+						<div class="grid grid-cols-2 gap-4">
+							<div class="space-y-2">
+								<Label.Root for="city">Ville</Label.Root>
+								<Input.Root
+									id="city"
+									name="city"
+									type="text"
+									value={workspace?.city ?? ''}
+									placeholder="Paris"
+								/>
+							</div>
+							<div class="space-y-2">
+								<Label.Root for="postalCode">Code postal</Label.Root>
+								<Input.Root
+									id="postalCode"
+									name="postalCode"
+									type="text"
+									value={workspace?.postalCode ?? ''}
+									placeholder="75001"
+									maxlength={10}
+								/>
+							</div>
+						</div>
+
+						<div class="grid grid-cols-2 gap-4">
+							<div class="space-y-2">
+								<Label.Root for="phone">Téléphone</Label.Root>
+								<Input.Root
+									id="phone"
+									name="phone"
+									type="text"
+									value={workspace?.phone ?? ''}
+									placeholder="01 23 45 67 89"
+									maxlength={20}
+								/>
+							</div>
+							<div class="space-y-2">
+								<Label.Root for="email">Email de contact</Label.Root>
+								<Input.Root
+									id="email"
+									name="email"
+									type="email"
+									value={workspace?.email ?? ''}
+									placeholder="contact@centre-formation.fr"
+								/>
+							</div>
+						</div>
+
+						<div class="space-y-2">
+							<Label.Root for="website">Site web</Label.Root>
+							<Input.Root
+								id="website"
+								name="website"
+								type="text"
+								value={workspace?.website ?? ''}
+								placeholder="https://www.centre-formation.fr"
+							/>
+						</div>
+					</Card.Content>
+				</Card.Root>
+
+				<Card.Root>
+					<Card.Header>
+						<Card.Title>Informations légales et formation</Card.Title>
+					</Card.Header>
+					<Card.Content class="space-y-4">
+						<div class="space-y-2">
+							<Label.Root for="nda">Numéro de Déclaration d'Activité (NDA)</Label.Root>
+							<Input.Root
+								id="nda"
+								name="nda"
+								type="text"
+								value={workspace?.nda ?? ''}
+								placeholder="11755030075"
+								maxlength={20}
+							/>
+							<p class="text-xs text-muted-foreground">Numéro attribué par la DREETS lors de votre déclaration d'activité de formation</p>
+						</div>
+
+						<div class="grid grid-cols-2 gap-4">
+							<div class="space-y-2">
+								<Label.Root for="signatoryName">Nom du signataire</Label.Root>
+								<Input.Root
+									id="signatoryName"
+									name="signatoryName"
+									type="text"
+									value={workspace?.signatoryName ?? ''}
+									placeholder="Jean Dupont"
+								/>
+							</div>
+							<div class="space-y-2">
+								<Label.Root for="signatoryRole">Fonction du signataire</Label.Root>
+								<Input.Root
+									id="signatoryRole"
+									name="signatoryRole"
+									type="text"
+									value={workspace?.signatoryRole ?? ''}
+									placeholder="Directeur"
+								/>
+							</div>
+						</div>
+					</Card.Content>
+				</Card.Root>
+
+				<Card.Root>
+					<Card.Header>
+						<Card.Title>Accessibilité (Qualiopi indicateur 26)</Card.Title>
+						<Card.Description>
+							Référent et dispositions appliqués par défaut à toutes vos formations. Une formation
+							peut surcharger ces valeurs depuis sa fiche (cas d'un formateur sous-traitant avec ses
+							propres dispositions, par exemple).
+						</Card.Description>
+					</Card.Header>
+					<Card.Content class="space-y-4">
+						<div class="space-y-2">
+							<Label.Root for="defaultReferentHandicap">Référent handicap par défaut</Label.Root>
+							<Input.Root
+								id="defaultReferentHandicap"
+								name="defaultReferentHandicap"
+								type="text"
+								value={workspace?.defaultReferentHandicap ?? ''}
+								placeholder="Marie Dupont — referent.handicap@exemple.fr — 06 12 34 56 78"
+							/>
+							<p class="text-xs text-muted-foreground">
+								Nom, email et téléphone de la personne en charge des questions d'accessibilité.
+								Apparaît dans les conventions et programmes générés.
+							</p>
+						</div>
+
+						<div class="space-y-2">
+							<Label.Root for="defaultDispositionsHandicap">Dispositions standard d'accueil</Label.Root>
+							<textarea
+								id="defaultDispositionsHandicap"
+								name="defaultDispositionsHandicap"
+								rows="4"
+								value={workspace?.defaultDispositionsHandicap ?? ''}
+								placeholder="Ex : Accès PMR à toutes nos salles, supports adaptables sur demande, étude personnalisée des besoins lors de l'entretien préalable…"
+								class="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+							></textarea>
+							<p class="text-xs text-muted-foreground">
+								Conformément à l'indicateur 26 du référentiel Qualiopi : description des modalités
+								d'accueil, d'accompagnement et d'aménagement pour les personnes en situation de
+								handicap.
+							</p>
+						</div>
+					</Card.Content>
+				</Card.Root>
+
+				<Card.Root>
+					<Card.Header>
+						<Card.Title>Documents générés</Card.Title>
+					</Card.Header>
+					<Card.Content>
+						<label class="flex items-start gap-3">
+							<input
+								type="checkbox"
+								name="showReferralCta"
+								checked={workspace?.showReferralCta ?? true}
+								class="mt-0.5 size-4 rounded border-input"
+							/>
+							<div class="space-y-1">
+								<span class="text-sm font-medium leading-none">Afficher le bandeau Mentore Manager sur les documents générés</span>
+								<p class="text-xs text-muted-foreground">Ajoute un pied de page promotionnel aux documents PDF générés (convention, convocation, etc.)</p>
+							</div>
+						</label>
+					</Card.Content>
+				</Card.Root>
+
+				{#if canManage}
+					<Button.Root type="submit">Enregistrer</Button.Root>
+				{/if}
+			</form>
 		</Tabs.Content>
 
 		<Tabs.Content value="team">

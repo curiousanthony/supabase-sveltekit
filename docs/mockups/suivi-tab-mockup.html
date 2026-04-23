@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi Tab — Mockup v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fff;
+    --fg: #0f0f12;
+    --muted: #737380;
+    --muted-bg: #f4f4f5;
+    --border: #e4e4e7;
+    --primary: #d94f3f;
+    --primary-light: #fef2f2;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --green-light: #dcfce7;
+    --amber: #d97706;
+    --amber-bg: #fffbeb;
+    --blue: #2563eb;
+    --blue-bg: #eff6ff;
+    --gray: #a1a1aa;
+    --gray-bg: #fafafa;
+    --gray-border: #d4d4d8;
+    --radius: 0.5rem;
+    --font: 'Inter', -apple-system, system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font);
+    background: var(--muted-bg);
+    color: var(--fg);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .page-container {
+    max-width: 960px;
+    margin: 0 auto;
+    background: var(--bg);
+    min-height: 100vh;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+
+  .page-header {
+    padding: 20px 24px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-header h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .page-header .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  .breadcrumb { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .breadcrumb a { color: var(--muted); text-decoration: none; }
+  .breadcrumb a:hover { color: var(--fg); }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex; gap: 4px; overflow-x: auto; padding: 0 24px;
+    background: var(--bg); position: sticky; top: 0; z-index: 40;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--muted);
+    border-bottom: 2px solid transparent; white-space: nowrap; cursor: pointer;
+    transition: all 0.15s; position: relative;
+  }
+  .tab:hover { color: var(--fg); }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .tab .dot {
+    position: absolute; top: 6px; right: 4px; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--amber);
+  }
+
+  /* ── HUD Banner ── */
+  .hud-banner {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 24px; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    min-height: 52px; position: relative;
+  }
+  .hud-banner::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  }
+  .hud-banner.state-action::before { background: var(--amber); }
+  .hud-banner.state-wait::before { background: var(--blue); }
+  .hud-banner.state-complete::before { background: var(--green); }
+
+  .hud-phase-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 999px; background: var(--muted-bg);
+    font-size: 12px; font-weight: 500; color: var(--fg); white-space: nowrap;
+  }
+  .hud-phase-pill .phase-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .hud-icon { font-size: 16px; flex-shrink: 0; }
+  .hud-message { font-size: 14px; font-weight: 500; color: var(--fg); flex: 1; min-width: 0; }
+
+  .hud-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 999px; background: var(--muted-bg);
+    font-size: 12px; font-weight: 500; color: var(--muted);
+    cursor: pointer; white-space: nowrap; transition: background 0.15s;
+    border: none; font-family: var(--font);
+  }
+  .hud-chip:hover { background: var(--border); }
+
+  .hud-cta {
+    display: inline-flex; align-items: center;
+    padding: 6px 16px; border-radius: var(--radius);
+    background: var(--fg); color: var(--bg);
+    font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
+    border: none; transition: opacity 0.15s; font-family: var(--font);
+  }
+  .hud-cta:hover { opacity: 0.85; }
+  .hud-cta-soft {
+    background: transparent; color: var(--blue); border: 1px solid var(--border);
+  }
+  .hud-cta-soft:hover { background: var(--blue-bg); }
+
+  /* ── Popover ── */
+  .popover-anchor { position: relative; display: inline-flex; }
+  .popover {
+    display: none; position: absolute; top: calc(100% + 10px); right: 0;
+    width: 360px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    padding: 16px 20px; z-index: 100;
+  }
+  .popover.visible { display: block; }
+  .popover h4 { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 12px; }
+  .popover-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-top: 1px solid var(--border);
+  }
+  .popover-item-title { font-size: 13px; font-weight: 500; color: var(--fg); }
+  .popover-footer {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--muted); font-style: italic;
+  }
+
+  /* ── Suivi content ── */
+  .suivi-content { padding: 24px; }
+
+  /* Phase progress cards */
+  .phase-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 32px; }
+  .phase-card {
+    padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--bg); position: relative;
+  }
+  .phase-card .phase-name-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 2px;
+  }
+  .phase-card .phase-name { font-size: 14px; font-weight: 600; color: var(--fg); }
+  .phase-card .phase-info-icon {
+    width: 16px; height: 16px; border-radius: 50%; background: var(--muted-bg);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; color: var(--muted); cursor: help; font-weight: 600;
+    position: relative; border: none; font-family: var(--font);
+  }
+  .phase-card .phase-description {
+    font-size: 12px; color: var(--muted); margin-bottom: 6px;
+  }
+  .phase-card .phase-dates {
+    font-size: 11px; color: var(--muted); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .phase-card .phase-dates .date-icon { font-size: 12px; opacity: 0.6; }
+  .phase-card .phase-count { font-size: 24px; font-weight: 700; color: var(--fg); }
+  .phase-card .phase-count span { font-size: 14px; font-weight: 500; color: var(--muted); }
+  .phase-card .progress-bar {
+    height: 4px; border-radius: 2px; background: var(--muted-bg); margin-top: 10px; overflow: hidden;
+  }
+  .phase-card .progress-fill {
+    height: 100%; border-radius: 2px; transition: width 0.5s ease;
+  }
+  .phase-card .phase-countdown {
+    font-size: 11px; font-weight: 500; margin-top: 8px;
+  }
+  .phase-card.active .phase-name { color: var(--amber); }
+  .phase-card.active .progress-fill { background: var(--amber); }
+  .phase-card.active .phase-countdown { color: var(--amber); }
+  .phase-card.done .progress-fill { background: var(--green); }
+  .phase-card.done .phase-countdown { color: var(--green); }
+  .phase-card.future .progress-fill { background: var(--border); }
+  .phase-card.future .phase-countdown { color: var(--muted); }
+
+  /* Tooltip for phase info */
+  .tooltip-content {
+    display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%); width: 240px; background: var(--fg);
+    color: var(--bg); font-size: 12px; font-weight: 400; line-height: 1.5;
+    padding: 10px 14px; border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 50; pointer-events: none;
+  }
+  .tooltip-content::after {
+    content: ''; position: absolute; top: 100%; left: 50%;
+    transform: translateX(-50%); border: 6px solid transparent;
+    border-top-color: var(--fg);
+  }
+  .phase-info-icon:hover .tooltip-content { display: block; }
+
+  /* Section headers */
+  .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; margin-top: 32px; }
+  .section-header:first-of-type { margin-top: 0; }
+  .section-header h3 {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--muted);
+  }
+  .section-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+    background: var(--muted-bg); font-size: 11px; font-weight: 600; color: var(--muted);
+  }
+  .section-empty {
+    padding: 20px; text-align: center; color: var(--muted); font-size: 13px;
+    border: 1px dashed var(--border); border-radius: var(--radius);
+  }
+
+  /* Quest rows */
+  .quest-list {
+    display: flex; flex-direction: column; gap: 1px;
+    background: var(--border); border-radius: var(--radius);
+    overflow: hidden; border: 1px solid var(--border);
+  }
+
+  .quest-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg);
+    position: relative;
+    min-height: 44px;
+  }
+  .quest-row::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  }
+  .quest-row.status-actionable::before { background: var(--amber); }
+  .quest-row.status-inprogress::before { background: var(--primary); }
+  .quest-row.status-wait::before { background: var(--blue); }
+  .quest-row.status-locked::before { background: var(--gray-border); }
+  .quest-row.status-softlock::before { background: var(--gray-border); }
+  .quest-row.status-done::before { background: var(--green); }
+  .quest-row.status-anticipated::before { background: var(--green); }
+
+  .quest-row.dimmed { background: var(--gray-bg); }
+  .quest-row.dimmed .quest-title { color: var(--muted); }
+
+  .quest-title { font-size: 13px; font-weight: 500; color: var(--fg); min-width: 0; }
+
+  .quest-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 500; white-space: nowrap;
+    justify-self: end;
+  }
+  .quest-status.actionable { background: var(--amber-bg); color: var(--amber); }
+  .quest-status.wait { background: var(--blue-bg); color: var(--blue); }
+  .quest-status.locked { background: var(--muted-bg); color: var(--muted); cursor: help; position: relative; }
+  .quest-status.done { background: var(--green-bg); color: var(--green); }
+  .quest-status.anticipated { background: var(--green-bg); color: var(--green); }
+
+  .quest-status .status-tooltip {
+    display: none; position: absolute; bottom: calc(100% + 8px); right: 0;
+    width: 220px; background: var(--fg); color: var(--bg);
+    font-size: 12px; font-weight: 400; line-height: 1.4;
+    padding: 8px 12px; border-radius: 6px; z-index: 50; pointer-events: none;
+    white-space: normal;
+  }
+  .quest-status .status-tooltip::after {
+    content: ''; position: absolute; top: 100%; right: 16px;
+    border: 5px solid transparent; border-top-color: var(--fg);
+  }
+  .quest-status:hover .status-tooltip { display: block; }
+
+  .quest-cta {
+    display: inline-flex; align-items: center;
+    padding: 4px 12px; border-radius: var(--radius);
+    font-size: 12px; font-weight: 500; white-space: nowrap;
+    cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg); color: var(--fg);
+    text-decoration: none; transition: all 0.15s;
+    font-family: var(--font); justify-self: end;
+  }
+  .quest-cta:hover { background: var(--muted-bg); border-color: var(--gray-border); }
+
+  .quest-cta-blue {
+    color: var(--blue); border-color: var(--blue);
+  }
+  .quest-cta-blue:hover { background: var(--blue-bg); }
+
+  .quest-detail {
+    font-size: 12px; color: var(--muted); padding: 0 16px 12px 16px;
+    background: var(--bg); margin-top: -1px;
+  }
+  .quest-detail.dimmed-detail { background: var(--gray-bg); }
+
+  .override-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--blue); cursor: pointer; font-weight: 500;
+    margin-left: 4px; background: none; border: none; font-family: var(--font);
+    padding: 0;
+  }
+  .override-link:hover { text-decoration: underline; }
+
+  .quest-date {
+    font-size: 12px; color: var(--muted); white-space: nowrap; justify-self: end;
+  }
+
+  .wait-info {
+    font-size: 12px; color: var(--muted); white-space: nowrap;
+  }
+
+  /* ── Demo controls ── */
+  .demo-controls {
+    position: fixed; bottom: 16px; right: 16px;
+    background: var(--fg); color: var(--bg);
+    padding: 16px; border-radius: var(--radius); z-index: 999;
+    font-size: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    max-width: 220px;
+  }
+  .demo-controls h4 {
+    font-weight: 600; margin-bottom: 8px; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7;
+  }
+  .demo-controls button {
+    display: block; width: 100%; padding: 6px 12px; margin: 4px 0;
+    background: rgba(255,255,255,0.1); color: var(--bg);
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
+    font-size: 12px; cursor: pointer; text-align: left;
+    font-family: var(--font); transition: background 0.15s;
+  }
+  .demo-controls button:hover { background: rgba(255,255,255,0.2); }
+  .demo-controls button.active-btn { background: var(--primary); border-color: var(--primary); }
+
+  @media (max-width: 640px) {
+    .phase-progress { grid-template-columns: 1fr; }
+    .quest-row { grid-template-columns: 1fr; gap: 6px; }
+    .quest-cta { justify-self: start; }
+    .hud-banner { flex-wrap: wrap; gap: 8px; padding: 14px 16px; }
+    .suivi-content { padding: 16px; }
+    .tab-bar { padding: 0 16px; }
+    .page-header { padding: 16px 16px 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="breadcrumb"><a href="#">Formations</a> / Formation Gestion de projet Agile</div>
+    <h1>Gestion de projet Agile — Intra ACME Corp</h1>
+    <p class="subtitle">Intra · 14 heures · 2 jours · OPCO · 12–13 avril 2026</p>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab">Aperçu</div>
+    <div class="tab">Fiche</div>
+    <div class="tab">Programme</div>
+    <div class="tab">Séances<span class="dot"></span></div>
+    <div class="tab">Formateurs</div>
+    <div class="tab">Apprenants</div>
+    <div class="tab">Documents</div>
+    <div class="tab">Finances</div>
+    <div class="tab active">Suivi</div>
+  </div>
+
+  <!-- HUD Banner -->
+  <div class="hud-banner state-action" id="hud">
+    <div class="hud-phase-pill"><span class="phase-dot"></span> Conception</div>
+    <span class="hud-icon">⚡</span>
+    <span class="hud-message">Envoyer la convocation aux stagiaires</span>
+    <div class="popover-anchor">
+      <button class="hud-chip" id="popoverTrigger">+2 autres →</button>
+      <div class="popover" id="popover">
+        <h4>Aussi disponibles maintenant :</h4>
+        <div class="popover-item">
+          <span class="popover-item-title">Préparer la logistique</span>
+          <a href="#" class="quest-cta" style="padding:3px 10px;font-size:11px;">Séances</a>
+        </div>
+        <div class="popover-item">
+          <span class="popover-item-title">Ordre de mission formateur</span>
+          <a href="#" class="quest-cta" style="padding:3px 10px;font-size:11px;">Formateurs</a>
+        </div>
+        <div class="popover-footer">Ces actions peuvent se faire dans l'ordre de votre choix.</div>
+      </div>
+    </div>
+    <button class="hud-cta">Séances</button>
+  </div>
+
+  <div class="suivi-content">
+
+    <!-- Phase progress cards -->
+    <div class="phase-progress">
+      <div class="phase-card active">
+        <div class="phase-name-row">
+          <span class="phase-name">Conception</span>
+          <button class="phase-info-icon">
+            i
+            <span class="tooltip-content">Toutes les étapes de préparation avant le début de la formation : programme, convention, convocations, logistique.</span>
+          </button>
+        </div>
+        <div class="phase-description">Préparation du dossier</div>
+        <div class="phase-dates">
+          <span class="date-icon">📅</span> 1 mars → 11 avril
+        </div>
+        <div class="phase-count">7<span> / 10 étapes</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width: 70%"></div></div>
+        <div class="phase-countdown">Formation dans 18 jours</div>
+      </div>
+      <div class="phase-card future">
+        <div class="phase-name-row">
+          <span class="phase-name">Déploiement</span>
+          <button class="phase-info-icon">
+            i
+            <span class="tooltip-content">Le déroulement de la formation elle-même : accueil, émargements, animation, évaluations en cours.</span>
+          </button>
+        </div>
+        <div class="phase-description">Pendant la formation</div>
+        <div class="phase-dates">
+          <span class="date-icon">📅</span> 12–13 avril
+        </div>
+        <div class="phase-count">0<span> / 6 étapes</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+        <div class="phase-countdown">Commence dans 18 jours</div>
+      </div>
+      <div class="phase-card future">
+        <div class="phase-name-row">
+          <span class="phase-name">Évaluation</span>
+          <button class="phase-info-icon">
+            i
+            <span class="tooltip-content">Tout ce qui suit la formation : satisfaction, certificats, attestations, facturation, amélioration continue.</span>
+          </button>
+        </div>
+        <div class="phase-description">Suivi post-formation</div>
+        <div class="phase-dates">
+          <span class="date-icon">📅</span> 14 avril → 13 juill.
+        </div>
+        <div class="phase-count">0<span> / 8 étapes</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+        <div class="phase-countdown">Commence dans 20 jours</div>
+      </div>
+    </div>
+
+    <!-- Section 1: En cours / À faire -->
+    <div class="section-header">
+      <h3>En cours / À faire</h3>
+      <span class="section-count">3</span>
+    </div>
+    <div class="quest-list">
+      <div class="quest-row status-actionable">
+        <span class="quest-title">Convocations</span>
+        <span class="quest-status actionable">À faire</span>
+        <a href="#" class="quest-cta">Séances</a>
+      </div>
+      <div class="quest-row status-actionable">
+        <span class="quest-title">Préparation logistique</span>
+        <span class="quest-status actionable">À faire</span>
+        <a href="#" class="quest-cta">Séances</a>
+      </div>
+      <div class="quest-row status-actionable">
+        <span class="quest-title">Ordre de mission formateur</span>
+        <span class="quest-status actionable">À faire</span>
+        <a href="#" class="quest-cta">Formateurs</a>
+      </div>
+    </div>
+
+    <!-- Section 2: En attente -->
+    <div class="section-header">
+      <h3>En attente</h3>
+      <span class="section-count">1</span>
+    </div>
+    <div class="quest-list">
+      <div class="quest-row status-wait" style="grid-template-columns: 1fr auto auto auto;">
+        <span class="quest-title">Accord de prise en charge OPCO</span>
+        <span class="quest-status wait">En attente</span>
+        <span class="wait-info">Relancé il y a 5 jours</span>
+        <button class="quest-cta quest-cta-blue">Relancer</button>
+      </div>
+    </div>
+
+    <!-- Section 3: À venir -->
+    <div class="section-header">
+      <h3>À venir</h3>
+      <span class="section-count">8</span>
+    </div>
+    <div class="quest-list">
+      <!-- Soft lock — no badge, just explanation + override -->
+      <div class="quest-row status-softlock dimmed">
+        <span class="quest-title">Règlement intérieur</span>
+        <span class="quest-status" style="background:none; color:var(--muted); font-size:12px;">Après les convocations</span>
+        <button class="override-link">Anticiper cette étape</button>
+      </div>
+
+      <!-- Hard locks -->
+      <div class="quest-row status-locked dimmed">
+        <span class="quest-title">Accueil et lancement</span>
+        <span class="quest-status locked">
+          🔒 Verrouillé
+          <span class="status-tooltip">Cette étape sera disponible au début de la formation, le 12 avril.</span>
+        </span>
+        <span></span>
+      </div>
+      <div class="quest-row status-locked dimmed">
+        <span class="quest-title">Suivi des émargements</span>
+        <span class="quest-status locked">
+          🔒 Verrouillé
+          <span class="status-tooltip">Disponible une fois la formation démarrée. Les émargements seront collectés à chaque séance.</span>
+        </span>
+        <span></span>
+      </div>
+      <div class="quest-row status-locked dimmed">
+        <span class="quest-title">Animation pédagogique</span>
+        <span class="quest-status locked">
+          🔒 Verrouillé
+          <span class="status-tooltip">Disponible une fois la formation démarrée.</span>
+        </span>
+        <span></span>
+      </div>
+      <div class="quest-row status-locked dimmed">
+        <span class="quest-title">Évaluations formatives</span>
+        <span class="quest-status locked">
+          🔒 Verrouillé
+          <span class="status-tooltip">Disponible une fois l'animation pédagogique en cours.</span>
+        </span>
+        <span></span>
+      </div>
+      <div class="quest-row status-locked dimmed">
+        <span class="quest-title">Suivi des absences</span>
+        <span class="quest-status locked">
+          🔒 Verrouillé
+          <span class="status-tooltip">Disponible une fois les émargements en cours.</span>
+        </span>
+        <span></span>
+      </div>
+      <div class="quest-row status-locked dimmed">
+        <span class="quest-title">Bilan intermédiaire et adaptations</span>
+        <span class="quest-status locked">
+          🔒 Verrouillé
+          <span class="status-tooltip">Disponible après les évaluations formatives.</span>
+        </span>
+        <span></span>
+      </div>
+
+      <!-- More evaluation quests (collapsed for brevity) -->
+      <div class="quest-row status-locked dimmed" style="border-top: 1px solid var(--border);">
+        <span class="quest-title" style="color: var(--muted); font-style: italic;">+ 8 étapes d'évaluation (après la formation)</span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+
+    <!-- Section 4: Historique -->
+    <div class="section-header">
+      <h3>Historique</h3>
+      <span class="section-count">8</span>
+    </div>
+    <div class="quest-list">
+      <div class="quest-row status-anticipated">
+        <span class="quest-title">Affectation du formateur</span>
+        <span class="quest-status anticipated">✓ Anticipé</span>
+        <span class="quest-date">10 mars</span>
+      </div>
+      <div class="quest-row status-done">
+        <span class="quest-title">Documents formateur</span>
+        <span class="quest-status done">✓ Complété</span>
+        <span class="quest-date">15 mars</span>
+      </div>
+      <div class="quest-row status-done">
+        <span class="quest-title">Demande de prise en charge OPCO</span>
+        <span class="quest-status done">✓ Complété</span>
+        <span class="quest-date">14 mars</span>
+      </div>
+      <div class="quest-row status-done">
+        <span class="quest-title">Convention de formation</span>
+        <span class="quest-status done">✓ Complété</span>
+        <span class="quest-date">12 mars</span>
+      </div>
+      <div class="quest-row status-done">
+        <span class="quest-title">Test de positionnement</span>
+        <span class="quest-status done">✓ Complété</span>
+        <span class="quest-date">12 mars</span>
+      </div>
+      <div class="quest-row status-done">
+        <span class="quest-title">Établissement du devis</span>
+        <span class="quest-status done">✓ Complété</span>
+        <span class="quest-date">8 mars</span>
+      </div>
+      <div class="quest-row status-done">
+        <span class="quest-title">Programme et modules</span>
+        <span class="quest-status done">✓ Complété</span>
+        <span class="quest-date">5 mars</span>
+      </div>
+      <div class="quest-row status-done">
+        <span class="quest-title">Analyse des besoins</span>
+        <span class="quest-status done">✓ Complété</span>
+        <span class="quest-date">3 mars</span>
+      </div>
+      <div class="quest-row status-done">
+        <span class="quest-title">Vérification des informations</span>
+        <span class="quest-status done">✓ Complété</span>
+        <span class="quest-date">1 mars</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="demo-controls">
+  <h4>Demo — état du bandeau</h4>
+  <button onclick="setBanner('action')" class="active-btn">⚡ Action unique</button>
+  <button onclick="setBanner('concurrent')">⚡ Actions concurrentes</button>
+  <button onclick="setBanner('wait')">⏳ En attente externe</button>
+  <button onclick="setBanner('complete')">✓ Phase complète</button>
+  <button onclick="setBanner('quiet')">✓ Prochaine étape 45j</button>
+</div>
+
+<script>
+  document.getElementById('popoverTrigger')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('popover').classList.toggle('visible');
+  });
+  document.addEventListener('click', () => {
+    document.getElementById('popover')?.classList.remove('visible');
+  });
+
+  function setBanner(state) {
+    const hud = document.getElementById('hud');
+    document.querySelectorAll('.demo-controls button').forEach(b => b.classList.remove('active-btn'));
+    event.target.classList.add('active-btn');
+
+    const states = {
+      action: {
+        cls: 'hud-banner state-action',
+        html: `
+          <div class="hud-phase-pill"><span class="phase-dot"></span> Conception</div>
+          <span class="hud-icon">⚡</span>
+          <span class="hud-message">Envoyer la convocation aux stagiaires</span>
+          <button class="hud-cta">Séances</button>`
+      },
+      concurrent: {
+        cls: 'hud-banner state-action',
+        html: `
+          <div class="hud-phase-pill"><span class="phase-dot"></span> Conception</div>
+          <span class="hud-icon">⚡</span>
+          <span class="hud-message">Envoyer la convocation aux stagiaires</span>
+          <div class="popover-anchor">
+            <button class="hud-chip" id="popoverTrigger">+2 autres →</button>
+            <div class="popover" id="popover">
+              <h4>Aussi disponibles maintenant :</h4>
+              <div class="popover-item">
+                <span class="popover-item-title">Préparer la logistique</span>
+                <a href="#" class="quest-cta" style="padding:3px 10px;font-size:11px;">Séances</a>
+              </div>
+              <div class="popover-item">
+                <span class="popover-item-title">Ordre de mission formateur</span>
+                <a href="#" class="quest-cta" style="padding:3px 10px;font-size:11px;">Formateurs</a>
+              </div>
+              <div class="popover-footer">Ces actions peuvent se faire dans l'ordre de votre choix.</div>
+            </div>
+          </div>
+          <button class="hud-cta">Séances</button>`
+      },
+      wait: {
+        cls: 'hud-banner state-wait',
+        html: `
+          <div class="hud-phase-pill"><span class="phase-dot"></span> Conception</div>
+          <span class="hud-icon">⏳</span>
+          <span class="hud-message">En attente de l'accord OPCO · Relancé il y a 5 jours</span>
+          <button class="hud-cta hud-cta-soft">Relancer</button>`
+      },
+      complete: {
+        cls: 'hud-banner state-complete',
+        html: `
+          <span class="hud-icon" style="font-size:18px;">✓</span>
+          <span class="hud-message">Conception complète · Formation dans 18 jours · Vous pouvez souffler.</span>`
+      },
+      quiet: {
+        cls: 'hud-banner state-complete',
+        html: `
+          <span class="hud-icon" style="font-size:18px;">✓</span>
+          <span class="hud-message">Tout est en ordre · Prochaine étape dans 45 jours · Vous pouvez souffler.</span>`
+      }
+    };
+
+    const s = states[state];
+    hud.className = s.cls;
+    hud.innerHTML = s.html;
+
+    if (state === 'concurrent') {
+      document.getElementById('popoverTrigger')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('popover').classList.toggle('visible');
+      });
+    }
+  }
+</script>
+
+</body>
+</html>

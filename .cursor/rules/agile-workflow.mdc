@@ -1,8 +1,6 @@
 ---
-description: Agile sprint workflow for the Mentore Manager project. Use when the user mentions tickets, sprint, projets, objectifs, backlog, what's next, en cours, à faire, prochainement, assigner, marquer comme fait, état du projet, or when about to implement a feature.
 alwaysApply: false
 ---
-
 # Agile Workflow — Mentore Manager
 
 Ce projet suit un workflow **Agile à sprints** piloté depuis Notion. Deux espaces complémentaires :

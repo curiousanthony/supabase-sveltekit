@@ -1,10 +1,19 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/db';
-import { formations, formationApprenants, contacts, emargements, seances } from '$lib/db/schema';
-import { eq, and, gt, isNull, inArray } from 'drizzle-orm';
+import {
+	formations,
+	formationApprenants,
+	contacts,
+	contactCompanies,
+	companies,
+	emargements,
+	seances
+} from '$lib/db/schema';
+import { eq, and, gt, isNull, inArray, asc } from 'drizzle-orm';
 import { getUserWorkspace } from '$lib/auth';
 import { ensureUserInPublicUsers } from '$lib/auth';
-import { logAuditEvent } from '$lib/services/audit-log';
+import { logAuditEvent, authenticatedUserId } from '$lib/services/audit-log';
+import { posteOptions } from '$lib/crm/contact-schema';
 import type { PageServerLoad, Actions } from './$types';
 
 async function verifyFormationOwnership(params: { id: string }, workspaceId: string) {
@@ -34,21 +43,29 @@ async function createEmargementsForSeances(seanceIds: string[], contactId: strin
 
 export const load = (async ({ locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
-	if (!workspaceId) return { workspaceContacts: [] };
+	if (!workspaceId) return { workspaceContacts: [], workspaceCompanies: [] };
 
-	const workspaceContacts = await db.query.contacts.findMany({
-		where: eq(contacts.workspaceId, workspaceId),
-		columns: { id: true, firstName: true, lastName: true, email: true, phone: true },
-		with: {
-			contactCompanies: {
-				with: { company: { columns: { id: true, name: true } } },
-				limit: 1
-			}
-		},
-		limit: 500
-	});
+	const [workspaceContacts, workspaceCompanies] = await Promise.all([
+		db.query.contacts.findMany({
+			where: eq(contacts.workspaceId, workspaceId),
+			columns: { id: true, firstName: true, lastName: true, email: true, phone: true },
+			with: {
+				contactCompanies: {
+					with: { company: { columns: { id: true, name: true } } },
+					limit: 1
+				}
+			},
+			limit: 500
+		}),
+		db.query.companies.findMany({
+			where: eq(companies.workspaceId, workspaceId),
+			columns: { id: true, name: true },
+			orderBy: [asc(companies.name)],
+			limit: 300
+		})
+	]);
 
-	return { workspaceContacts };
+	return { workspaceContacts, workspaceCompanies };
 }) satisfies PageServerLoad;
 
 export const actions: Actions = {
@@ -81,13 +98,13 @@ export const actions: Actions = {
 				await createEmargementsForSeances(futureIds, contactId);
 			}
 
-			await logAuditEvent({
-				formationId: params.id,
-				userId: user.id,
-				actionType: 'apprenant_added',
-				entityType: 'formation_apprenant',
-				entityId: contactId
-			});
+		await logAuditEvent({
+			formationId: params.id,
+			userId: authenticatedUserId(user.id),
+			actionType: 'apprenant_added',
+			entityType: 'formation_apprenant',
+			entityId: contactId
+		});
 		} catch (e: unknown) {
 			if (e && typeof e === 'object' && 'code' in e && e.code === '23505') {
 				return fail(409, { message: 'Cet apprenant est déjà inscrit' });
@@ -141,8 +158,8 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
-			actionType: 'apprenant_removed',
+		userId: authenticatedUserId(user.id),
+		actionType: 'apprenant_removed',
 			entityType: 'formation_apprenant',
 			entityId: contactId
 		});
@@ -167,17 +184,42 @@ export const actions: Actions = {
 		const lastName = (formData.get('lastName') as string)?.trim() || null;
 		const email = (formData.get('email') as string)?.trim() || null;
 		const phone = (formData.get('phone') as string)?.trim() || null;
+		const posteRaw = (formData.get('poste') as string)?.trim() || null;
+		const existingCompanyId = (formData.get('companyId') as string)?.trim() || null;
+		const newCompanyName = (formData.get('newCompanyName') as string)?.trim() || null;
 		const addToFutureSessions = formData.get('addToFutureSessions') === 'true';
 
 		if (!firstName && !lastName) {
 			return fail(400, { message: 'Le prénom ou le nom est requis' });
 		}
 
+		const poste = posteRaw && posteOptions.includes(posteRaw as (typeof posteOptions)[number])
+			? (posteRaw as (typeof posteOptions)[number])
+			: null;
+
 		try {
 			const [newContact] = await db
 				.insert(contacts)
-				.values({ workspaceId, firstName, lastName, email, phone, createdBy: user.id })
+				.values({ workspaceId, firstName, lastName, email, phone, poste, createdBy: user.id })
 				.returning({ id: contacts.id });
+
+			// Link company: existing or create new
+			const companyIdsToLink: string[] = [];
+			if (existingCompanyId) {
+				companyIdsToLink.push(existingCompanyId);
+			} else if (newCompanyName) {
+				const [newCo] = await db
+					.insert(companies)
+					.values({ workspaceId, name: newCompanyName })
+					.returning({ id: companies.id });
+				if (newCo?.id) companyIdsToLink.push(newCo.id);
+			}
+			if (companyIdsToLink.length > 0) {
+				await db
+					.insert(contactCompanies)
+					.values(companyIdsToLink.map((companyId) => ({ contactId: newContact.id, companyId })))
+					.onConflictDoNothing();
+			}
 
 			await db.insert(formationApprenants).values({
 				formationId: params.id,
@@ -191,8 +233,8 @@ export const actions: Actions = {
 
 			await logAuditEvent({
 				formationId: params.id,
-				userId: user.id,
-				actionType: 'contact_created_and_apprenant_added',
+			userId: authenticatedUserId(user.id),
+			actionType: 'contact_created_and_apprenant_added',
 				entityType: 'contact',
 				entityId: newContact.id
 			});

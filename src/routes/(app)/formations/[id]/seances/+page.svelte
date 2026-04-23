@@ -1,9 +1,17 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
+	import type { DateValue } from '@internationalized/date';
+	import { CalendarDate, fromDate, today, getLocalTimeZone, toCalendarDate } from '@internationalized/date';
+	import {
+		FORMATION_SCHEDULE_TIMEZONE,
+		seanceCalendarDateKeyParis,
+		todayCalendarKeyParis
+	} from '$lib/datetime/seance-schedule';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Select from '$lib/components/ui/select';
+	import * as CalendarUI from '$lib/components/ui/calendar/index.js';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { Input } from '$lib/components/ui/input';
@@ -13,22 +21,21 @@
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
 	import { browser } from '$app/environment';
-	import Calendar from '@lucide/svelte/icons/calendar';
-	import CalendarDays from '@lucide/svelte/icons/calendar-days';
-	import Clock from '@lucide/svelte/icons/clock';
+	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import Plus from '@lucide/svelte/icons/plus';
-	import FileSignature from '@lucide/svelte/icons/file-signature';
 	import Check from '@lucide/svelte/icons/check';
 	import User from '@lucide/svelte/icons/user';
-	import List from '@lucide/svelte/icons/list';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
-	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
-	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Users from '@lucide/svelte/icons/users';
+	import Send from '@lucide/svelte/icons/send';
 	import DoorOpen from '@lucide/svelte/icons/door-open';
+	import CalendarPlus from '@lucide/svelte/icons/calendar-plus';
+	import X from '@lucide/svelte/icons/x';
+	import QuestGuideBanner from '$lib/components/formations/quest-guide-banner.svelte';
+	import { invalidateAll } from '$app/navigation';
 
 	let { data }: PageProps = $props();
 
@@ -48,19 +55,7 @@
 		}))
 	);
 
-	const todayStr = $derived(new Date().toISOString().slice(0, 10));
-
-	// --- View toggle ---
-	const STORAGE_KEY = 'formation-seances-view';
-	let viewMode = $state<'list' | 'calendar'>(
-		browser
-			? ((localStorage.getItem(STORAGE_KEY) as 'list' | 'calendar') ?? 'list')
-			: 'list'
-	);
-
-	$effect(() => {
-		if (browser) localStorage.setItem(STORAGE_KEY, viewMode);
-	});
+	const todayStr = $derived(todayCalendarKeyParis());
 
 	// --- Session dialog state ---
 	let dialogOpen = $state(false);
@@ -77,6 +72,18 @@
 	let formModalityOverride = $state('');
 	let formLocation = $state('');
 	let formRoom = $state('');
+
+	const moduleFormateur = $derived.by(() => {
+		if (!formModuleId) return null;
+		const mod = modules.find((m) => m.id === formModuleId);
+		return mod?.formateur ?? null;
+	});
+
+	const moduleFormateurName = $derived.by(() => {
+		if (!moduleFormateur?.user) return null;
+		return [moduleFormateur.user.firstName, moduleFormateur.user.lastName]
+			.filter(Boolean).join(' ') || null;
+	});
 
 	const effectiveModality = $derived(
 		formModalityOverride || formation?.modalite || null
@@ -102,35 +109,48 @@
 		dialogOpen = true;
 	}
 
-	function openEditDialog(seance: (typeof seances)[number]) {
-		editingSeance = seance;
-		dialogStep = 'form';
-		createdSeanceId = null;
-		formDate = seance.startAt.slice(0, 10);
+	function hydrateSessionForm(seance: (typeof seances)[number]) {
+		formDate = seanceCalendarDateKeyParis(seance.startAt);
 		formStartTime = new Date(seance.startAt).toLocaleTimeString('fr-FR', {
 			hour: '2-digit',
 			minute: '2-digit',
-			hour12: false
+			hour12: false,
+			timeZone: FORMATION_SCHEDULE_TIMEZONE
 		});
 		formEndTime = new Date(seance.endAt).toLocaleTimeString('fr-FR', {
 			hour: '2-digit',
 			minute: '2-digit',
-			hour12: false
+			hour12: false,
+			timeZone: FORMATION_SCHEDULE_TIMEZONE
 		});
 		formModuleId = seance.moduleId ?? '';
 		formFormateurId = seance.formateurId ?? '';
 		formModalityOverride = seance.modalityOverride ?? '';
 		formLocation = seance.location ?? '';
 		formRoom = seance.room ?? '';
+	}
+
+	function openEditDialog(seance: (typeof seances)[number]) {
+		editingSeance = seance;
+		dialogStep = 'form';
+		createdSeanceId = null;
+		hydrateSessionForm(seance);
 		dialogOpen = true;
 	}
 
+	/** Opens the “Participants à la séance” step (émargements apprenants). Must set dialogOpen — callers from a closed dialog need the modal visible. */
 	function openParticipantsStep(seanceId: string) {
+		const seance = seances.find((s) => s.id === seanceId);
+		if (!seance) return;
+		editingSeance = seance;
 		createdSeanceId = seanceId;
 		dialogStep = 'participants';
-		const seance = seances.find((s) => s.id === seanceId);
+		hydrateSessionForm(seance);
+		dialogOpen = true;
 		const existingContactIds = new Set(
-			(seance?.emargements ?? []).map((e) => e.contactId)
+			(seance.emargements ?? [])
+				.filter((e) => e.signerType === 'apprenant' && e.contactId)
+				.map((e) => e.contactId as string)
 		);
 		participantChecked = {};
 		for (const a of apprenants) {
@@ -172,7 +192,7 @@
 
 	// --- Helpers ---
 	function sessionStatus(startAt: string): 'past' | 'today' | 'future' {
-		const dateKey = startAt.slice(0, 10);
+		const dateKey = seanceCalendarDateKeyParis(startAt);
 		if (dateKey < todayStr) return 'past';
 		if (dateKey === todayStr) return 'today';
 		return 'future';
@@ -183,29 +203,30 @@
 			weekday: 'long',
 			day: 'numeric',
 			month: 'long',
-			year: 'numeric'
+			year: 'numeric',
+			timeZone: FORMATION_SCHEDULE_TIMEZONE
 		});
 	}
 
-	function formatDateShort(iso: string) {
-		return new Date(iso).toLocaleDateString('fr-FR', {
-			day: 'numeric',
-			month: 'short'
+	function formatTimeCompact(iso: string) {
+		const t = new Date(iso).toLocaleTimeString('fr-FR', {
+			hour: 'numeric',
+			minute: '2-digit',
+			hour12: false,
+			timeZone: FORMATION_SCHEDULE_TIMEZONE
 		});
-	}
-
-	function formatTime(iso: string) {
-		return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-	}
-
-	function durationHours(start: string, end: string) {
-		const diff = (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60);
-		return Math.round(diff * 10) / 10;
+		return t.replace(':', 'h');
 	}
 
 	function formateurName(formateur: { user?: { firstName?: string | null; lastName?: string | null } | null } | null) {
 		if (!formateur?.user) return null;
 		return [formateur.user.firstName, formateur.user.lastName].filter(Boolean).join(' ') || null;
+	}
+
+	/** Same rule as lieu/salle fields in the form: only Présentiel / Hybride imply a physical venue. */
+	function seanceShowsPhysicalVenue(seance: { modalityOverride: string | null }) {
+		const mod = seance.modalityOverride || formation?.modalite || null;
+		return mod === 'Présentiel' || mod === 'Hybride';
 	}
 
 	async function copyToClipboard(token: string) {
@@ -223,7 +244,7 @@
 		const groups: { dateKey: string; dateLabel: string; sessions: typeof seances }[] = [];
 		const map = new Map<string, typeof seances>();
 		for (const s of seances) {
-			const key = s.startAt.slice(0, 10);
+			const key = seanceCalendarDateKeyParis(s.startAt);
 			if (!map.has(key)) map.set(key, []);
 			map.get(key)!.push(s);
 		}
@@ -234,128 +255,115 @@
 	});
 
 	// --- Calendar state ---
-	const initialCalDate = $derived(seances.length > 0 ? new Date(seances[0].startAt) : new Date());
-	let calYear = $state(new Date().getFullYear());
-	let calMonth = $state(new Date().getMonth());
-	let calInitialized = $state(false);
-
-	$effect(() => {
-		if (!calInitialized && initialCalDate) {
-			calYear = initialCalDate.getFullYear();
-			calMonth = initialCalDate.getMonth();
-			calInitialized = true;
-		}
-	});
-
-	const calMonthLabel = $derived(
-		new Date(calYear, calMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-	);
-
-	function calPrev() {
-		if (calMonth === 0) {
-			calMonth = 11;
-			calYear--;
-		} else {
-			calMonth--;
-		}
-	}
-	function calNext() {
-		if (calMonth === 11) {
-			calMonth = 0;
-			calYear++;
-		} else {
-			calMonth++;
-		}
-	}
-
-	const calDays = $derived.by(() => {
-		const firstDay = new Date(calYear, calMonth, 1);
-		const lastDay = new Date(calYear, calMonth + 1, 0);
-		const startDow = (firstDay.getDay() + 6) % 7;
-		const days: { date: Date; inMonth: boolean; dateStr: string }[] = [];
-
-		for (let i = startDow - 1; i >= 0; i--) {
-			const d = new Date(calYear, calMonth, -i);
-			days.push({ date: d, inMonth: false, dateStr: d.toISOString().slice(0, 10) });
-		}
-		for (let d = 1; d <= lastDay.getDate(); d++) {
-			const date = new Date(calYear, calMonth, d);
-			days.push({ date, inMonth: true, dateStr: date.toISOString().slice(0, 10) });
-		}
-		const remaining = 7 - (days.length % 7);
-		if (remaining < 7) {
-			for (let i = 1; i <= remaining; i++) {
-				const d = new Date(calYear, calMonth + 1, i);
-				days.push({ date: d, inMonth: false, dateStr: d.toISOString().slice(0, 10) });
-			}
-		}
-		return days;
-	});
-
 	const seancesByDate = $derived.by(() => {
 		const map = new Map<string, typeof seances>();
 		for (const s of seances) {
-			const key = s.startAt.slice(0, 10);
+			const key = seanceCalendarDateKeyParis(s.startAt);
 			if (!map.has(key)) map.set(key, []);
 			map.get(key)!.push(s);
 		}
 		return map;
 	});
 
-	const formationDateRange = $derived({
-		start: formation?.dateDebut ?? null,
-		end: formation?.dateFin ?? null
-	});
-
-	function isInFormationRange(dateStr: string) {
-		if (!formationDateRange.start || !formationDateRange.end) return false;
-		return dateStr >= formationDateRange.start && dateStr <= formationDateRange.end;
+	function dateValueToKey(d: DateValue): string {
+		return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
 	}
 
-	const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+	let calendarValue = $state<DateValue | undefined>(undefined);
+	let calendarPlaceholder = $state<DateValue>(today(getLocalTimeZone()));
+	let _calInitialized = false;
+
+	$effect(() => {
+		if (!_calInitialized && seances.length > 0) {
+			const c = toCalendarDate(
+				fromDate(new Date(seances[0].startAt), FORMATION_SCHEDULE_TIMEZONE)
+			);
+			calendarPlaceholder = new CalendarDate(c.year, c.month, c.day);
+			_calInitialized = true;
+		}
+	});
+
+	function handleCalendarClick(value: DateValue | undefined) {
+		if (!value) return;
+		const dateKey = dateValueToKey(value);
+		const daySessions = seancesByDate.get(dateKey);
+		if (daySessions && daySessions.length > 0) {
+			const el = document.getElementById(`date-${dateKey}`);
+			el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		} else {
+			openCreateDialog(dateKey);
+		}
+	}
+
+	// --- Batch creation wizard ---
+	let batchDialogOpen = $state(false);
+	let batchDates = $state<string[]>([]);
+	let batchStartTime = $state('09:00');
+	let batchEndTime = $state('17:00');
+	let batchModuleId = $state('');
+	let batchLocation = $state('');
+	let batchRoom = $state('');
+	let batchModalityOverride = $state('');
+	let batchNewDate = $state('');
+	let batchSubmitting = $state(false);
+
+	const batchModuleFormateur = $derived.by(() => {
+		if (!batchModuleId) return null;
+		const mod = modules.find((m) => m.id === batchModuleId);
+		return mod?.formateur ?? null;
+	});
+
+	const batchModuleFormateurName = $derived.by(() => {
+		if (!batchModuleFormateur?.user) return null;
+		return [batchModuleFormateur.user.firstName, batchModuleFormateur.user.lastName]
+			.filter(Boolean).join(' ') || null;
+	});
+
+	function openBatchWizard() {
+		batchDates = [];
+		batchStartTime = '09:00';
+		batchEndTime = '17:00';
+		batchModuleId = modules[0]?.id ?? '';
+		batchLocation = formation?.location ?? '';
+		batchRoom = '';
+		batchModalityOverride = '';
+		batchNewDate = '';
+		batchDialogOpen = true;
+	}
+
+	function addBatchDate() {
+		if (batchNewDate && !batchDates.includes(batchNewDate)) {
+			batchDates = [...batchDates, batchNewDate].sort();
+			batchNewDate = '';
+		}
+	}
+
+	function removeBatchDate(date: string) {
+		batchDates = batchDates.filter((d) => d !== date);
+	}
+
+	function formatDateShort(dateStr: string) {
+		const d = new Date(dateStr + 'T00:00:00');
+		return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+	}
 </script>
 
 <div class="space-y-6">
+	<QuestGuideBanner />
 	<!-- Header -->
 	<div class="flex items-center justify-between gap-4">
 		<h2 class="text-lg font-semibold flex items-center gap-2">
-			<Calendar class="size-5" />
+			<CalendarIcon class="size-5" />
 			Séances
 			{#if seances.length > 0}
 				<Badge variant="secondary" class="text-xs">{seances.length}</Badge>
 			{/if}
 		</h2>
-
-		<div class="flex items-center gap-2">
-			<div class="hidden sm:flex items-center rounded-md border">
-				<button
-					type="button"
-					class={cn(
-						'flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors rounded-l-md',
-						viewMode === 'list'
-							? 'bg-muted text-foreground font-medium'
-							: 'text-muted-foreground hover:text-foreground'
-					)}
-					onclick={() => (viewMode = 'list')}
-				>
-					<List class="size-4" />
-					Liste
-				</button>
-				<button
-					type="button"
-					class={cn(
-						'flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors rounded-r-md',
-						viewMode === 'calendar'
-							? 'bg-muted text-foreground font-medium'
-							: 'text-muted-foreground hover:text-foreground'
-					)}
-					onclick={() => (viewMode = 'calendar')}
-				>
-					<CalendarDays class="size-4" />
-					Calendrier
-				</button>
-			</div>
-
+		<div class="flex gap-2">
+			<Button variant="outline" size="sm" onclick={openBatchWizard}>
+				<CalendarPlus class="size-4 mr-1.5" />
+				Créer par lot
+			</Button>
 			<Button size="sm" onclick={() => openCreateDialog()}>
 				<Plus class="size-4 mr-1.5" />
 				Ajouter une séance
@@ -367,7 +375,7 @@
 	{#if seances.length === 0}
 		<Card.Root>
 			<Card.Content class="py-12 text-center">
-				<Calendar class="size-12 mx-auto text-muted-foreground/30 mb-3" />
+				<CalendarIcon class="size-12 mx-auto text-muted-foreground/30 mb-3" />
 				<p class="text-muted-foreground">Aucune séance planifiée pour cette formation.</p>
 				<p class="text-sm text-muted-foreground mt-1">
 					Créez des séances pour planifier les sessions de formation et suivre les émargements.
@@ -378,257 +386,277 @@
 				</Button>
 			</Card.Content>
 		</Card.Root>
-	{:else if viewMode === 'list'}
-		<!-- List View: Grouped by date -->
-		<div class="space-y-6">
-			{#each groupedSeances as group (group.dateKey)}
-				<div>
-					<h3 class="text-sm font-medium text-muted-foreground mb-3 capitalize">
-						{group.dateLabel}
-					</h3>
-					<div class="space-y-3">
-						{#each group.sessions as seance (seance.id)}
-							{@const status = sessionStatus(seance.startAt)}
-							{@const signed = seance.emargements?.filter((e) => e.signedAt).length ?? 0}
-							{@const total = seance.emargements?.length ?? 0}
-							{@const allSigned = total > 0 && signed === total}
-							{@const isExpanded = detailSeanceId === seance.id}
-							<Card.Root
-								class={cn(
-									'transition-colors cursor-pointer hover:border-foreground/20',
-									status === 'today' && 'ring-2 ring-primary/30',
-									status === 'past' && 'opacity-75'
-								)}
-							>
-								<Card.Content class="pt-5 pb-4">
-									<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-										<div class="flex-1 space-y-1.5" role="button" tabindex="0" onclick={() => openEditDialog(seance)} onkeydown={(e) => e.key === 'Enter' && openEditDialog(seance)}>
-											<div class="flex items-center gap-2 flex-wrap">
-												<span class="text-sm font-semibold">
-													{formatTime(seance.startAt)} – {formatTime(seance.endAt)}
-												</span>
-												<span class="text-xs text-muted-foreground">
-													({durationHours(seance.startAt, seance.endAt)}h)
-												</span>
-												<Badge
-													variant={status === 'today' ? 'default' : 'outline'}
-													class="text-xs"
-												>
-													{#if status === 'past'}Passée{:else if status === 'today'}Aujourd'hui{:else}À venir{/if}
-												</Badge>
-											</div>
-
-											<div class="flex flex-wrap gap-3 text-sm text-muted-foreground">
-												{#if seance.module}
-													<span class="font-medium text-foreground">{seance.module.name}</span>
-												{/if}
-												{#if seance.formateur?.user}
-													<span class="flex items-center gap-1">
-														<User class="size-3.5 shrink-0" />
-														{formateurName(seance.formateur)}
+	{:else}
+		<!-- 2-column layout -->
+		<div class="flex flex-col md:flex-row gap-6">
+			<!-- Left: scrollable list -->
+			<div class="flex-1 min-w-0 space-y-6 md:max-h-[calc(100vh-12rem)] md:overflow-y-auto md:pr-2">
+				{#each groupedSeances as group (group.dateKey)}
+					<div id="date-{group.dateKey}">
+						<h3 class="text-sm font-medium text-muted-foreground mb-3 capitalize">
+							{group.dateLabel}
+						</h3>
+						<div class="space-y-3">
+							{#each group.sessions as seance (seance.id)}
+								{@const status = sessionStatus(seance.startAt)}
+								{@const signed = seance.emargements?.filter((e) => e.signedAt).length ?? 0}
+								{@const total = seance.emargements?.length ?? 0}
+								{@const isExpanded = detailSeanceId === seance.id}
+								<Card.Root
+									class={cn(
+										'transition-colors cursor-pointer hover:border-foreground/20',
+										status === 'today' && 'ring-2 ring-primary/30',
+										status === 'past' && 'opacity-75'
+									)}
+								>
+									<Card.Content class="pt-4 pb-3">
+										<div
+											class="flex items-start justify-between gap-3"
+											role="button"
+											tabindex="0"
+											onclick={() => openEditDialog(seance)}
+											onkeydown={(e) => e.key === 'Enter' && openEditDialog(seance)}
+										>
+											<div class="flex-1 min-w-0 space-y-1.5">
+												<div class="flex items-center gap-2 flex-wrap">
+													<span class="text-sm font-semibold">
+														{formatTimeCompact(seance.startAt)} – {formatTimeCompact(seance.endAt)}
 													</span>
-												{/if}
-												{#if seance.location}
-													<span class="flex items-center gap-1">
-														<MapPin class="size-3.5 shrink-0" />
-														{seance.location}
-													</span>
-												{/if}
-												{#if seance.room}
-													<span class="flex items-center gap-1">
-														<DoorOpen class="size-3.5 shrink-0" />
-														{seance.room}
-													</span>
-												{/if}
-											</div>
-										</div>
-
-										<!-- Emargement summary -->
-										<div class="flex items-center gap-3">
-											<button
-												type="button"
-												class="flex items-center gap-2 text-sm hover:underline"
-												onclick={() => toggleDetail(seance.id)}
-											>
-												<FileSignature class="size-4 text-muted-foreground" />
-												<span class="font-medium">{signed}/{total}</span>
-												{#if allSigned && total > 0}
-													<Badge variant="default" class="text-xs">
-														<Check class="size-3 mr-0.5" />Complet
+													{#if seance.module}
+														<span class="text-sm text-foreground">{seance.module.name}</span>
+													{/if}
+													<Badge
+														variant={status === 'today' ? 'default' : 'outline'}
+														class="text-xs"
+													>
+														{#if status === 'past'}Passée{:else if status === 'today'}Aujourd'hui{:else}À venir{/if}
 													</Badge>
-												{/if}
-											</button>
-											{#if total > 0}
-												<div class="flex gap-0.5">
-													{#each Array(total) as _, idx}
-														<span
-															class={cn(
-																'h-2 w-2.5 rounded-sm',
-																idx < signed ? 'bg-green-500' : 'bg-muted'
-															)}
-														></span>
-													{/each}
 												</div>
-											{/if}
+
+												<div class="flex flex-wrap gap-3 text-xs text-muted-foreground">
+													{#if seance.formateur?.user}
+														<span class="flex items-center gap-1">
+															<User class="size-3 shrink-0" />
+															{formateurName(seance.formateur)}
+														</span>
+													{/if}
+													{#if seanceShowsPhysicalVenue(seance) && seance.location}
+														<span class="flex items-center gap-1">
+															<MapPin class="size-3 shrink-0" />
+															{seance.location}
+														</span>
+													{/if}
+													{#if seanceShowsPhysicalVenue(seance) && seance.room}
+														<span class="flex items-center gap-1">
+															<DoorOpen class="size-3 shrink-0" />
+															{seance.room}
+														</span>
+													{/if}
+												</div>
+											</div>
+
 											<Button
 												variant="ghost"
 												size="icon"
-												class="size-8"
-												onclick={() => openEditDialog(seance)}
+												class="size-7 shrink-0"
+												onclick={(e: MouseEvent) => { e.stopPropagation(); openEditDialog(seance); }}
 											>
 												<Pencil class="size-3.5" />
 											</Button>
 										</div>
-									</div>
 
-									<!-- Emargement detail (expanded) -->
-									{#if isExpanded && total > 0}
-										<div class="mt-4 border-t pt-3">
-											<div class="flex items-center justify-between mb-2">
-												<p class="text-xs font-medium text-muted-foreground">
-													Détail des émargements
-												</p>
-												<Button
-													variant="outline"
-													size="sm"
-													class="h-7 text-xs"
-													onclick={() => openParticipantsStep(seance.id)}
-												>
-													<Users class="size-3 mr-1" />
-													Gérer
-												</Button>
-											</div>
-											<div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-												{#each seance.emargements ?? [] as emargement}
-													{@const apprenant = apprenants.find(
-														(a) => a.contactId === emargement.contactId
-													)}
-													<div
-														class="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30"
-													>
-														{#if emargement.signedAt}
-															<Check class="size-3.5 text-green-500 shrink-0" />
-														{:else}
-															<div
-																class="size-3.5 rounded-full border border-muted-foreground/30 shrink-0"
-															></div>
-														{/if}
-														<span
-															class={cn(
-																'flex-1 truncate',
-																!emargement.signedAt && 'text-muted-foreground'
-															)}
+										<!-- Emargement progress bar -->
+										{#if total > 0}
+											<button
+												type="button"
+												class="w-full mt-3 text-left"
+												onclick={(e) => { e.stopPropagation(); toggleDetail(seance.id); }}
+											>
+												<div class="flex items-center gap-2">
+													<div class="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+														<div
+															class="h-full bg-green-500 rounded-full transition-all"
+															style="width: {total > 0 ? (signed / total) * 100 : 0}%"
+														></div>
+													</div>
+													<span class="text-xs text-muted-foreground tabular-nums">
+														{signed}/{total} signés
+													</span>
+												</div>
+											</button>
+										{/if}
+
+										<!-- Emargement detail (expanded) -->
+										{#if isExpanded && total > 0}
+											<div class="mt-3 border-t pt-3">
+												<div class="flex items-center justify-between mb-2">
+													<p class="text-xs font-medium text-muted-foreground">
+														Détail des émargements
+													</p>
+													<div class="flex gap-1.5">
+														<form
+															method="POST"
+															action="?/sendEmargementLinks"
+															use:enhance={() => {
+																return async ({ result, update }) => {
+																	if (result.type === 'success') {
+																		const data = result.data as {
+																			sentCount?: number;
+																			failedCount?: number;
+																		};
+																		const sent = data?.sentCount ?? 0;
+																		const failed = data?.failedCount ?? 0;
+																		if (failed > 0) {
+																			toast.warning(
+																				`${sent} lien${sent > 1 ? 's' : ''} envoyé${sent > 1 ? 's' : ''}, ${failed} échec${failed > 1 ? 's' : ''}`
+																			);
+																		} else {
+																			toast.success(
+																				`${sent} lien${sent > 1 ? 's' : ''} envoyé${sent > 1 ? 's' : ''}`
+																			);
+																		}
+																		await update();
+																	} else if (result.type === 'failure') {
+																		toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+																	}
+																};
+															}}
 														>
-															{apprenant?.name ?? 'Participant'}
-														</span>
-														{#if emargement.signedAt}
-															<span class="text-xs text-muted-foreground">
-																{new Date(emargement.signedAt).toLocaleTimeString(
-																	'fr-FR',
-																	{ hour: '2-digit', minute: '2-digit' }
-																)}
-															</span>
-														{:else if emargement.signatureToken}
-															<button
-																type="button"
-																class="text-muted-foreground hover:text-foreground transition-colors"
-																title="Copier le lien de signature"
-																onclick={() => copyToClipboard(emargement.signatureToken)}
+															<input type="hidden" name="seanceId" value={seance.id} />
+															<Button
+																variant="outline"
+																size="sm"
+																class="h-7 text-xs"
+																type="submit"
+																onclick={(e: MouseEvent) => e.stopPropagation()}
 															>
-																<Copy class="size-3.5" />
-															</button>
-														{/if}
+																<Send class="size-3 mr-1" />
+																Envoyer les liens
+															</Button>
+														</form>
+														<Button
+															variant="outline"
+															size="sm"
+															class="h-7 text-xs"
+															onclick={(e: MouseEvent) => { e.stopPropagation(); openParticipantsStep(seance.id); }}
+														>
+															<Users class="size-3 mr-1" />
+															Gérer
+														</Button>
+													</div>
+												</div>
+												{#each [...new Set((seance.emargements ?? []).map((e) => e.period ?? 'morning'))].sort() as period (period)}
+													{@const allPeriods = [...new Set((seance.emargements ?? []).map((e) => e.period ?? 'morning'))]}
+													{#if allPeriods.length > 1}
+														<p class="text-xs font-medium text-muted-foreground mt-2 first:mt-0 mb-1">
+															{period === 'morning' ? 'Matin' : 'Après-midi'}
+														</p>
+													{/if}
+													<div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+														{#each (seance.emargements ?? []).filter((e) => (e.period ?? 'morning') === period) as emargement}
+															{@const apprenant = emargement.signerType === 'formateur'
+																? null
+																: apprenants.find((a) => a.contactId === emargement.contactId)}
+															{@const formateurDisplay = emargement.signerType === 'formateur'
+																? formateurName(seance.formateur)
+																: null}
+															<div
+																class="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30"
+															>
+																{#if emargement.signedAt}
+																	<Check class="size-3.5 text-green-500 shrink-0" />
+																{:else}
+																	<div
+																		class="size-3.5 rounded-full border border-muted-foreground/30 shrink-0"
+																	></div>
+																{/if}
+																<span
+																	class={cn(
+																		'flex-1 truncate',
+																		!emargement.signedAt && 'text-muted-foreground'
+																	)}
+																>
+																	{#if emargement.signerType === 'formateur'}
+																		{formateurDisplay ?? 'Formateur'}
+																		<Badge variant="outline" class="ml-1 text-[10px] py-0">F</Badge>
+																	{:else}
+																		{apprenant?.name ?? 'Participant'}
+																	{/if}
+																</span>
+																{#if emargement.signedAt}
+																	<span class="text-xs text-muted-foreground">
+																		{new Date(emargement.signedAt).toLocaleTimeString(
+																			'fr-FR',
+																			{ hour: '2-digit', minute: '2-digit' }
+																		)}
+																	</span>
+																{:else if emargement.signatureToken}
+																	<button
+																		type="button"
+																		class="text-muted-foreground hover:text-foreground transition-colors"
+																		title="Copier le lien de signature"
+																		onclick={() => copyToClipboard(emargement.signatureToken)}
+																	>
+																		<Copy class="size-3.5" />
+																	</button>
+																{/if}
+															</div>
+														{/each}
 													</div>
 												{/each}
 											</div>
-										</div>
-									{/if}
-								</Card.Content>
-							</Card.Root>
-						{/each}
-					</div>
-				</div>
-			{/each}
-		</div>
-	{:else}
-		<!-- Calendar View -->
-		<Card.Root>
-			<Card.Content class="pt-5 pb-4">
-				<div class="flex items-center justify-between mb-4">
-					<Button variant="ghost" size="icon" onclick={calPrev}>
-						<ChevronLeft class="size-5" />
-					</Button>
-					<h3 class="text-base font-semibold capitalize">{calMonthLabel}</h3>
-					<Button variant="ghost" size="icon" onclick={calNext}>
-						<ChevronRight class="size-5" />
-					</Button>
-				</div>
-
-				<div class="grid grid-cols-7 gap-px">
-					{#each DAY_NAMES as day}
-						<div class="text-center text-xs font-medium text-muted-foreground py-2">
-							{day}
+										{/if}
+									</Card.Content>
+								</Card.Root>
+							{/each}
 						</div>
-					{/each}
+					</div>
+				{/each}
+			</div>
 
-					{#each calDays as day (day.dateStr)}
-						{@const daySessions = seancesByDate.get(day.dateStr) ?? []}
-						{@const hasSession = daySessions.length > 0}
-						{@const isToday = day.dateStr === todayStr}
-						{@const inRange = isInFormationRange(day.dateStr)}
-						<button
-							type="button"
-							class={cn(
-								'relative flex flex-col items-center py-2 px-1 rounded-md text-sm transition-colors min-h-12',
-								!day.inMonth && 'text-muted-foreground/40',
-								day.inMonth && !isToday && 'text-foreground',
-								isToday && 'font-bold',
-								inRange && day.inMonth && 'bg-primary/5',
-								hasSession && 'hover:bg-muted cursor-pointer',
-								!hasSession && day.inMonth && 'hover:bg-muted/50 cursor-pointer'
-							)}
-							onclick={() => {
-								if (hasSession && daySessions.length === 1) {
-									openEditDialog(daySessions[0]);
-								} else if (hasSession) {
-									viewMode = 'list';
-								} else {
-									openCreateDialog(day.dateStr);
-								}
-							}}
-						>
+		<!-- Right: sticky calendar -->
+		{#snippet calendarDay({ day: dateValue, outsideMonth }: { day: DateValue; outsideMonth: boolean })}
+			{@const dateKey = dateValueToKey(dateValue)}
+			{@const daySessions = seancesByDate.get(dateKey) ?? []}
+			<CalendarUI.Day>
+				{dateValue.day}
+				{#if daySessions.length > 0 && !outsideMonth}
+					<span class="flex gap-0.5">
+						{#each daySessions.slice(0, 3) as s (s.id)}
+							{@const total = s.emargements?.length ?? 0}
+							{@const signed = s.emargements?.filter((e) => e.signedAt).length ?? 0}
+							{@const status = sessionStatus(s.startAt)}
 							<span
 								class={cn(
-									'flex items-center justify-center size-7 rounded-full',
-									isToday && 'bg-primary text-primary-foreground'
+									'size-1.5 rounded-full',
+									status === 'future' && 'bg-primary',
+									status === 'today' && 'bg-primary ring-1 ring-primary/30',
+									status === 'past' && total === 0 && 'bg-muted-foreground/40',
+									status === 'past' && total > 0 && signed === total && 'bg-green-500',
+									status === 'past' && total > 0 && signed > 0 && signed < total && 'bg-amber-500',
+									status === 'past' && total > 0 && signed === 0 && 'bg-red-500'
 								)}
-							>
-								{day.date.getDate()}
-							</span>
-							{#if hasSession}
-								<div class="flex gap-0.5 mt-1">
-									{#each daySessions.slice(0, 3) as s (s.id)}
-										<span
-											class={cn(
-												'size-1.5 rounded-full',
-												sessionStatus(s.startAt) === 'past'
-													? 'bg-muted-foreground/40'
-													: 'bg-primary'
-											)}
-										></span>
-									{/each}
-									{#if daySessions.length > 3}
-										<span class="text-[10px] text-muted-foreground leading-none">
-											+{daySessions.length - 3}
-										</span>
-									{/if}
-								</div>
-							{/if}
-						</button>
-					{/each}
-				</div>
-			</Card.Content>
-		</Card.Root>
+							></span>
+						{/each}
+					</span>
+				{/if}
+			</CalendarUI.Day>
+		{/snippet}
+		<div class="w-full md:w-[340px] md:shrink-0 md:sticky md:top-4 md:self-start order-first md:order-last">
+			<Card.Root>
+				<Card.Content class="p-2">
+					<CalendarUI.Calendar
+						type="single"
+						locale="fr-FR"
+						bind:value={calendarValue}
+						bind:placeholder={calendarPlaceholder}
+						onValueChange={handleCalendarClick}
+						day={calendarDay}
+					/>
+				</Card.Content>
+			</Card.Root>
+		</div>
+		</div>
 	{/if}
 </div>
 
@@ -742,29 +770,17 @@
 					</div>
 
 					<div class="space-y-1.5">
-						<Label for="s-formateur">Formateur</Label>
-						<Select.Root type="single" bind:value={formFormateurId} name="formateurId">
-							<Select.Trigger id="s-formateur" class="w-full">
-								{#if formFormateurId}
-									{@const f = formateurs.find((f) => f.id === formFormateurId)}
-									{f?.user
-										? [f.user.firstName, f.user.lastName].filter(Boolean).join(' ')
-										: 'Formateur'}
-								{:else}
-									Aucun
-								{/if}
-							</Select.Trigger>
-							<Select.Content>
-								<Select.Item value="">Aucun</Select.Item>
-								{#each formateurs as f (f.id)}
-									<Select.Item value={f.id}>
-										{f.user
-											? [f.user.firstName, f.user.lastName].filter(Boolean).join(' ')
-											: 'Formateur'}
-									</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
+						<Label>Formateur</Label>
+						<div class="flex h-10 w-full items-center rounded-md border border-input bg-muted/50 px-3 text-sm">
+							{#if moduleFormateurName}
+								<span>{moduleFormateurName}</span>
+							{:else}
+								<span class="text-muted-foreground">Défini par le module</span>
+							{/if}
+						</div>
+						<p class="text-xs text-muted-foreground">
+							Le formateur est assigné via le module dans le programme.
+						</p>
 					</div>
 
 					<div class="space-y-1.5">
@@ -981,10 +997,158 @@
 			}}
 			>
 				<input type="hidden" name="seanceId" value={deletingSeance?.id ?? ''} />
-				<AlertDialog.Action type="submit" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-					Supprimer
-				</AlertDialog.Action>
-			</form>
-		</AlertDialog.Footer>
-	</AlertDialog.Content>
+			<AlertDialog.Action type="submit" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+				Supprimer
+			</AlertDialog.Action>
+		</form>
+	</AlertDialog.Footer>
+</AlertDialog.Content>
 </AlertDialog.Root>
+
+<!-- Batch Creation Wizard -->
+<Dialog.Root bind:open={batchDialogOpen}>
+	<Dialog.Content class="sm:max-w-lg">
+		<Dialog.Header>
+			<Dialog.Title>Créer des séances par lot</Dialog.Title>
+			<Dialog.Description>
+				Sélectionnez les dates et paramètres pour créer plusieurs séances en une fois.
+			</Dialog.Description>
+		</Dialog.Header>
+
+		<form
+			method="POST"
+			action="?/batchCreateSessions"
+			use:enhance={() => {
+				batchSubmitting = true;
+				return async ({ result }) => {
+					batchSubmitting = false;
+					if (result.type === 'success') {
+						const count = (result.data as { createdCount?: number })?.createdCount ?? 0;
+						toast.success(`${count} séance${count > 1 ? 's' : ''} créée${count > 1 ? 's' : ''}`);
+						batchDialogOpen = false;
+						await invalidateAll();
+					} else if (result.type === 'failure') {
+						toast.error((result.data as { message?: string })?.message ?? 'Erreur');
+					}
+				};
+			}}
+		>
+			<input
+				type="hidden"
+				name="sessions"
+				value={JSON.stringify(
+					batchDates.map((date) => ({
+						date,
+						startTime: batchStartTime,
+						endTime: batchEndTime,
+						moduleId: batchModuleId,
+						location: batchLocation,
+						room: batchRoom,
+						modalityOverride: batchModalityOverride
+					}))
+				)}
+			/>
+			{#each apprenants as a (a.contactId)}
+				<input type="hidden" name="contactIds" value={a.contactId} />
+			{/each}
+
+			<div class="flex flex-col gap-4 py-2">
+				<div class="space-y-1.5">
+					<Label>Dates des séances</Label>
+					<div class="flex gap-2">
+						<Input
+							type="date"
+							bind:value={batchNewDate}
+							class="flex-1"
+							onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); addBatchDate(); } }}
+						/>
+						<Button type="button" variant="outline" size="sm" onclick={addBatchDate} disabled={!batchNewDate}>
+							<Plus class="size-4" />
+						</Button>
+					</div>
+					{#if batchDates.length > 0}
+						<div class="flex flex-wrap gap-1.5 mt-2">
+							{#each batchDates as date (date)}
+								<Badge variant="secondary" class="gap-1 pr-1">
+									<span class="capitalize">{formatDateShort(date)}</span>
+									<button type="button" class="rounded-full hover:bg-muted p-0.5" onclick={() => removeBatchDate(date)}>
+										<X class="size-3" />
+									</button>
+								</Badge>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-xs text-muted-foreground">Ajoutez au moins une date.</p>
+					{/if}
+				</div>
+
+				<div class="grid grid-cols-2 gap-3">
+					<div class="space-y-1.5">
+						<Label>Début</Label>
+						<Input type="time" bind:value={batchStartTime} />
+					</div>
+					<div class="space-y-1.5">
+						<Label>Fin</Label>
+						<Input type="time" bind:value={batchEndTime} />
+					</div>
+				</div>
+
+				<div class="space-y-1.5">
+					<Label>Module</Label>
+					<Select.Root type="single" bind:value={batchModuleId} name="batchModule">
+						<Select.Trigger class="w-full">
+							{modules.find((m) => m.id === batchModuleId)?.name || 'Sélectionner un module'}
+						</Select.Trigger>
+						<Select.Content>
+							{#each modules as mod (mod.id)}
+								<Select.Item value={mod.id}>{mod.name}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>
+
+				<div class="space-y-1.5">
+					<Label>Formateur</Label>
+					<div class="flex h-10 w-full items-center rounded-md border border-input bg-muted/50 px-3 text-sm">
+						{#if batchModuleFormateurName}
+							<span>{batchModuleFormateurName}</span>
+						{:else}
+							<span class="text-muted-foreground">Défini par le module</span>
+						{/if}
+					</div>
+				</div>
+
+				{#if showLocationFields}
+					<div class="grid grid-cols-2 gap-3">
+						<div class="space-y-1.5">
+							<Label>Lieu</Label>
+							<Input bind:value={batchLocation} placeholder="Adresse" />
+						</div>
+						<div class="space-y-1.5">
+							<Label>Salle</Label>
+							<Input bind:value={batchRoom} placeholder="Salle A" />
+						</div>
+					</div>
+				{/if}
+
+				{#if batchDates.length > 0}
+					<div class="rounded-md bg-muted/50 p-3 text-sm">
+						<p class="font-medium">{batchDates.length} séance{batchDates.length > 1 ? 's' : ''} seront créées</p>
+						<p class="text-xs text-muted-foreground mt-1">
+							{apprenants.length} participant{apprenants.length > 1 ? 's' : ''} seront automatiquement ajoutés.
+						</p>
+					</div>
+				{/if}
+			</div>
+
+			<Dialog.Footer class="mt-4">
+				<Button type="button" variant="outline" onclick={() => (batchDialogOpen = false)}>
+					Annuler
+				</Button>
+				<Button type="submit" disabled={batchSubmitting || batchDates.length === 0 || !batchModuleId}>
+					{batchSubmitting ? 'Création...' : `Créer ${batchDates.length} séance${batchDates.length > 1 ? 's' : ''}`}
+				</Button>
+			</Dialog.Footer>
+		</form>
+	</Dialog.Content>
+</Dialog.Root>

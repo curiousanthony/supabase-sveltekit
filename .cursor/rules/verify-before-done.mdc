@@ -1,6 +1,5 @@
 ---
-description: Enforces browser-based verification, edge case testing, and production readiness checks before declaring any user-facing change complete. Applies to every conversation.
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Verify Before Done
@@ -59,7 +58,7 @@ Before declaring the work done:
 Once **all** prior sections have passed with no outstanding issues, create a git commit to sync version control. This step is **mandatory** even when the user has not explicitly asked for a commit.
 
 1. **Stage only touched files** — use `git add <specific files>` rather than `git add .` to keep the commit focused on the current task.
-2. **Conventional commit message** — write a concise message that describes *why* the change was made (e.g. `feat(deals): add context menu for deal cards`). Do not merely list what files changed.
+2. **Conventional commit message** — write a concise message that describes _why_ the change was made (e.g. `feat(deals): add context menu for deal cards`). Do not merely list what files changed.
 3. **Never bypass hooks** — do not use `--no-verify`, `--no-gpg-sign`, or any flag that skips pre-commit hooks.
 4. **Verify the working tree** — run `git status` after committing and confirm it is clean.
 5. **Do not force-push** — never run `git push --force` or `git push --force-with-lease` unless the user explicitly requests it.

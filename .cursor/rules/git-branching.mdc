@@ -17,7 +17,20 @@ alwaysApply: false
 - **Fix/chore/docs**:
   - **New standalone task** (e.g. "fix login error", "update deps") → Create a new branch from `develop` (`fix/...`, `chore/...`, `docs/...`).
   - **Part of current work** (e.g. small fix while on `feat/forms`) → Commit on the current branch; use `fix:`, `chore:`, or `docs:` in the message.
-- **Agent safety**: Never run `git push` or `git merge` unless the user explicitly said "Integrate", "Merge to develop", "Release", or "Ship to prod".
 - **Database migrations**: When a feature adds database migrations, apply them locally (e.g. `supabase db reset`) so the app runs correctly on the branch; see [.agent/workflows/database-migration.md](../../.agent/workflows/database-migration.md).
+
+## Agent Git Permissions
+
+| Action | Allowed autonomously | Requires user approval |
+|--------|---------------------|----------------------|
+| `git add` + `git commit` on current branch | Yes | — |
+| `git push` to current feature branch | Yes | — |
+| `gh pr create` targeting `develop` | Yes | — |
+| `git push` to `main` or `develop` | — | Always |
+| `git merge` into `develop` or `main` | — | Always |
+| `git push --force` | — | Always |
+| `git rebase` | — | Always |
+
+Agents commit, push, and create PRs **autonomously** on their feature branch. The orchestrator defines the timing (see `team-orchestrator.mdc` Git Operations section). Agents never merge into protected branches without explicit user approval.
 
 See [docs/git-workflow.md](../../docs/git-workflow.md) for full details.

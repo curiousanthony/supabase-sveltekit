@@ -15,6 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import {
 	modalites,
+	modaliteEvaluation,
 	statutsFormation,
 	typesFinancement,
 	formationType,
@@ -28,13 +29,18 @@ import { thematiques, sousthematiques } from './thematiques';
 import { clients } from './clients';
 import { companies } from './companies';
 import { biblioProgrammes } from './biblio-programmes';
+import { biblioModules } from './biblio-modules';
 import { contacts } from './contacts';
 import { formateurs } from './formateurs';
+import { formationFundingSources } from './funding-sources';
 
 export const formations = pgTable(
 	'formations',
 	{
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
 			.notNull(),
 		createdBy: uuid('created_by').notNull(),
@@ -47,6 +53,11 @@ export const formations = pgTable(
 		duree: integer(),
 		modalite: modalites(),
 		codeRncp: text('code_rncp'),
+		codeRs: text('code_rs'),
+		codeCpfFiche: text('code_cpf_fiche'),
+		niveauQualification: integer('niveau_qualification'),
+		certificateur: text(),
+		dateEnregistrementRncp: date('date_enregistrement_rncp'),
 		idInWorkspace: integer('id_in_workspace'),
 		statut: statutsFormation().default('À traiter').notNull(),
 		typeFinancement: typesFinancement('type_financement'),
@@ -56,10 +67,17 @@ export const formations = pgTable(
 		dateDebut: date('date_debut'),
 		dateFin: date('date_fin'),
 		programmeSourceId: uuid('programme_source_id'),
+		objectifs: text(),
+		prerequis: text(),
+		publicVise: text('public_vise'),
+		prixPublic: numeric('prix_public'),
+		prixConvenu: numeric('prix_convenu', { precision: 12, scale: 2 }),
 		financementAccorde: boolean('financement_accorde').default(false),
 		montantAccorde: numeric('montant_accorde', { precision: 12, scale: 2 }),
 		tjmFormateur: numeric('tjm_formateur', { precision: 10, scale: 2 }),
-		location: text()
+		location: text(),
+		referentHandicap: text('referent_handicap'),
+		dispositionsHandicap: text('dispositions_handicap')
 	},
 	(table) => [
 		foreignKey({
@@ -176,6 +194,10 @@ export const formationActions = pgTable(
 		dueDate: date('due_date'),
 		completedAt: timestamp('completed_at', { withTimezone: true, mode: 'string' }),
 		completedBy: uuid('completed_by'),
+		waitStartedAt: timestamp('wait_started_at', { withTimezone: true, mode: 'string' }),
+		lastRemindedAt: timestamp('last_reminded_at', { withTimezone: true, mode: 'string' }),
+		anticipatedAt: timestamp('anticipated_at', { withTimezone: true, mode: 'string' }),
+		softLockOverriddenAt: timestamp('soft_lock_overridden_at', { withTimezone: true, mode: 'string' }),
 		blockedByActionId: uuid('blocked_by_action_id'),
 		orderIndex: integer('order_index').default(0).notNull(),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
@@ -350,9 +372,13 @@ export const modules = pgTable(
 		name: text().notNull(),
 		durationHours: numeric('duration_hours'),
 		objectifs: text(),
+		contenu: text(),
+		modaliteEvaluation: modaliteEvaluation('modalite_evaluation'),
+		sourceModuleId: uuid('source_module_id'),
 		orderIndex: integer('order_index'),
 		createdBy: uuid('created_by').notNull(),
-		courseId: uuid('course_id').notNull()
+		courseId: uuid('course_id').notNull(),
+		formateurId: uuid('formateur_id')
 	},
 	(table) => [
 		foreignKey({
@@ -366,7 +392,19 @@ export const modules = pgTable(
 			name: 'modules_course_id_fkey'
 		})
 			.onUpdate('cascade')
-			.onDelete('cascade')
+			.onDelete('cascade'),
+		foreignKey({
+			columns: [table.sourceModuleId],
+			foreignColumns: [biblioModules.id],
+			name: 'modules_source_module_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('set null'),
+		foreignKey({
+			columns: [table.formateurId],
+			foreignColumns: [formateurs.id],
+			name: 'modules_formateur_id_fkey'
+		}).onDelete('set null')
 	]
 );
 
@@ -448,6 +486,7 @@ export const formationInvoices = pgTable(
 		paymentDate: date('payment_date'),
 		documentUrl: text('document_url'),
 		notes: text(),
+		fundingSourceId: uuid('funding_source_id'),
 		createdBy: uuid('created_by'),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
 			.defaultNow()
@@ -467,9 +506,17 @@ export const formationInvoices = pgTable(
 			foreignColumns: [users.id],
 			name: 'formation_invoices_created_by_fkey'
 		}),
+		foreignKey({
+			columns: [table.fundingSourceId],
+			foreignColumns: [formationFundingSources.id],
+			name: 'formation_invoices_funding_source_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('set null'),
 		index('formation_invoices_formation_id_idx').on(table.formationId),
 		index('formation_invoices_status_idx').on(table.status),
-		index('formation_invoices_due_date_idx').on(table.dueDate)
+		index('formation_invoices_due_date_idx').on(table.dueDate),
+		index('formation_invoices_funding_source_id_idx').on(table.fundingSourceId)
 	]
 );
 

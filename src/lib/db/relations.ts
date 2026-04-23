@@ -21,7 +21,10 @@ import {
 	formationAuditLog,
 	formationFormateurs,
 	formationApprenants,
+	formationDocuments,
+	formationEmails,
 	formationInvoices,
+	formationFundingSources,
 	formationCostItems,
 	modules,
 	apprenants,
@@ -29,6 +32,7 @@ import {
 	emargements,
 	formateurs,
 	formateursThematiques,
+	formateursSousthematiques,
 	deals,
 	biblioModules,
 	biblioProgrammes,
@@ -38,7 +42,10 @@ import {
 	biblioModuleQuestionnaires,
 	biblioSupports,
 	biblioProgrammeSupports,
-	biblioModuleSupports
+	biblioModuleSupports,
+	biblioProgrammeSousthematiques,
+	moduleSupports,
+	moduleQuestionnaires
 } from './schema';
 
 export const industriesRelations = relations(industries, ({ many }) => ({
@@ -166,13 +173,15 @@ export const sousthematiquesRelations = relations(sousthematiques, ({ one, many 
 		fields: [sousthematiques.parentTopicId],
 		references: [thematiques.id]
 	}),
-	formations: many(formations)
+	formations: many(formations),
+	biblioProgrammeSousthematiques: many(biblioProgrammeSousthematiques)
 }));
 
 export const thematiquesRelations = relations(thematiques, ({ many }) => ({
 	sousthematiques: many(sousthematiques),
 	formations: many(formations),
-	formateursThematiques: many(formateursThematiques)
+	formateursThematiques: many(formateursThematiques),
+	biblioProgrammes: many(biblioProgrammes)
 }));
 
 export const formationsRelations = relations(formations, ({ one, many }) => ({
@@ -211,8 +220,11 @@ export const formationsRelations = relations(formations, ({ one, many }) => ({
 	formationFormateurs: many(formationFormateurs),
 	formationApprenants: many(formationApprenants),
 	seances: many(seances, { relationName: 'formation_seances' }),
+	documents: many(formationDocuments),
+	emails: many(formationEmails),
 	invoices: many(formationInvoices),
 	costItems: many(formationCostItems),
+	fundingSources: many(formationFundingSources),
 	dealsFromFormation: many(deals)
 }));
 
@@ -236,7 +248,17 @@ export const modulesRelations = relations(modules, ({ one, many }) => ({
 		fields: [modules.courseId],
 		references: [formations.id]
 	}),
-	seances: many(seances)
+	sourceModule: one(biblioModules, {
+		fields: [modules.sourceModuleId],
+		references: [biblioModules.id]
+	}),
+	formateur: one(formateurs, {
+		fields: [modules.formateurId],
+		references: [formateurs.id]
+	}),
+	seances: many(seances),
+	moduleSupports: many(moduleSupports),
+	moduleQuestionnaires: many(moduleQuestionnaires)
 }));
 
 export const apprenantsRelations = relations(apprenants, ({ one }) => ({
@@ -276,6 +298,10 @@ export const emargementsRelations = relations(emargements, ({ one }) => ({
 	contact: one(contacts, {
 		fields: [emargements.contactId],
 		references: [contacts.id]
+	}),
+	formateur: one(formateurs, {
+		fields: [emargements.formateurId],
+		references: [formateurs.id]
 	})
 }));
 
@@ -359,8 +385,10 @@ export const formateursRelations = relations(formateurs, ({ one, many }) => ({
 		references: [workspaces.id]
 	}),
 	formateursThematiques: many(formateursThematiques),
+	formateursSousthematiques: many(formateursSousthematiques),
 	formationFormateurs: many(formationFormateurs),
-	seances: many(seances)
+	seances: many(seances),
+	emargements: many(emargements)
 }));
 
 export const formateursThematiquesRelations = relations(formateursThematiques, ({ one }) => ({
@@ -370,6 +398,17 @@ export const formateursThematiquesRelations = relations(formateursThematiques, (
 	}),
 	formateur: one(formateurs, {
 		fields: [formateursThematiques.formateurId],
+		references: [formateurs.id]
+	})
+}));
+
+export const formateursSousthematiquesRelations = relations(formateursSousthematiques, ({ one }) => ({
+	sousthematique: one(sousthematiques, {
+		fields: [formateursSousthematiques.sousthematiqueId],
+		references: [sousthematiques.id]
+	}),
+	formateur: one(formateurs, {
+		fields: [formateursSousthematiques.formateurId],
 		references: [formateurs.id]
 	})
 }));
@@ -386,8 +425,9 @@ export const biblioModulesRelations = relations(biblioModules, ({ one, many }) =
 		references: [users.id]
 	}),
 	programmeModules: many(biblioProgrammeModules),
-	moduleQuestionnaires: many(biblioModuleQuestionnaires),
-	moduleSupports: many(biblioModuleSupports)
+	biblioModuleQuestionnaires: many(biblioModuleQuestionnaires),
+	biblioModuleSupports: many(biblioModuleSupports),
+	derivedModules: many(modules)
 }));
 
 export const biblioProgrammesRelations = relations(biblioProgrammes, ({ one, many }) => ({
@@ -399,9 +439,18 @@ export const biblioProgrammesRelations = relations(biblioProgrammes, ({ one, man
 		fields: [biblioProgrammes.createdBy],
 		references: [users.id]
 	}),
+	thematique: one(thematiques, {
+		fields: [biblioProgrammes.topicId],
+		references: [thematiques.id]
+	}),
+	derivedFrom: one(biblioProgrammes, {
+		fields: [biblioProgrammes.derivedFromProgrammeId],
+		references: [biblioProgrammes.id]
+	}),
 	programmeModules: many(biblioProgrammeModules),
 	programmeQuestionnaires: many(biblioProgrammeQuestionnaires),
 	programmeSupports: many(biblioProgrammeSupports),
+	programmeSousthematiques: many(biblioProgrammeSousthematiques),
 	formations: many(formations)
 }));
 
@@ -426,7 +475,8 @@ export const biblioQuestionnairesRelations = relations(biblioQuestionnaires, ({ 
 		references: [users.id]
 	}),
 	programmeQuestionnaires: many(biblioProgrammeQuestionnaires),
-	moduleQuestionnaires: many(biblioModuleQuestionnaires)
+	biblioModuleQuestionnaires: many(biblioModuleQuestionnaires),
+	formationModuleQuestionnaires: many(moduleQuestionnaires)
 }));
 
 export const biblioProgrammeQuestionnairesRelations = relations(
@@ -467,7 +517,8 @@ export const biblioSupportsRelations = relations(biblioSupports, ({ one, many })
 		references: [users.id]
 	}),
 	programmeSupports: many(biblioProgrammeSupports),
-	moduleSupports: many(biblioModuleSupports)
+	biblioModuleSupports: many(biblioModuleSupports),
+	formationModuleSupports: many(moduleSupports)
 }));
 
 export const biblioProgrammeSupportsRelations = relations(biblioProgrammeSupports, ({ one }) => ({
@@ -514,6 +565,49 @@ export const questCommentsRelations = relations(questComments, ({ one }) => ({
 	})
 }));
 
+export const formationDocumentsRelations = relations(formationDocuments, ({ one, many }) => ({
+	formation: one(formations, {
+		fields: [formationDocuments.formationId],
+		references: [formations.id]
+	}),
+	deal: one(deals, {
+		fields: [formationDocuments.dealId],
+		references: [deals.id]
+	}),
+	generatedByUser: one(users, {
+		fields: [formationDocuments.generatedBy],
+		references: [users.id]
+	}),
+	relatedContact: one(contacts, {
+		fields: [formationDocuments.relatedContactId],
+		references: [contacts.id]
+	}),
+	relatedFormateur: one(formateurs, {
+		fields: [formationDocuments.relatedFormateurId],
+		references: [formateurs.id]
+	}),
+	relatedSeance: one(seances, {
+		fields: [formationDocuments.relatedSeanceId],
+		references: [seances.id]
+	}),
+	emails: many(formationEmails)
+}));
+
+export const formationEmailsRelations = relations(formationEmails, ({ one }) => ({
+	formation: one(formations, {
+		fields: [formationEmails.formationId],
+		references: [formations.id]
+	}),
+	document: one(formationDocuments, {
+		fields: [formationEmails.documentId],
+		references: [formationDocuments.id]
+	}),
+	createdByUser: one(users, {
+		fields: [formationEmails.createdBy],
+		references: [users.id]
+	})
+}));
+
 export const formationInvoicesRelations = relations(formationInvoices, ({ one }) => ({
 	formation: one(formations, {
 		fields: [formationInvoices.formationId],
@@ -522,13 +616,64 @@ export const formationInvoicesRelations = relations(formationInvoices, ({ one })
 	createdByUser: one(users, {
 		fields: [formationInvoices.createdBy],
 		references: [users.id]
+	}),
+	fundingSource: one(formationFundingSources, {
+		fields: [formationInvoices.fundingSourceId],
+		references: [formationFundingSources.id]
 	})
 }));
+
+export const formationFundingSourcesRelations = relations(
+	formationFundingSources,
+	({ one, many }) => ({
+		formation: one(formations, {
+			fields: [formationFundingSources.formationId],
+			references: [formations.id]
+		}),
+		invoices: many(formationInvoices)
+	})
+);
 
 export const formationCostItemsRelations = relations(formationCostItems, ({ one }) => ({
 	formation: one(formations, {
 		fields: [formationCostItems.formationId],
 		references: [formations.id]
+	})
+}));
+
+export const biblioProgrammeSousthematiquesRelations = relations(
+	biblioProgrammeSousthematiques,
+	({ one }) => ({
+		programme: one(biblioProgrammes, {
+			fields: [biblioProgrammeSousthematiques.programmeId],
+			references: [biblioProgrammes.id]
+		}),
+		sousthematique: one(sousthematiques, {
+			fields: [biblioProgrammeSousthematiques.sousthematiqueId],
+			references: [sousthematiques.id]
+		})
+	})
+);
+
+export const moduleSupportsRelations = relations(moduleSupports, ({ one }) => ({
+	module: one(modules, {
+		fields: [moduleSupports.moduleId],
+		references: [modules.id]
+	}),
+	support: one(biblioSupports, {
+		fields: [moduleSupports.supportId],
+		references: [biblioSupports.id]
+	})
+}));
+
+export const moduleQuestionnairesRelations = relations(moduleQuestionnaires, ({ one }) => ({
+	module: one(modules, {
+		fields: [moduleQuestionnaires.moduleId],
+		references: [modules.id]
+	}),
+	questionnaire: one(biblioQuestionnaires, {
+		fields: [moduleQuestionnaires.questionnaireId],
+		references: [biblioQuestionnaires.id]
 	})
 }));
 
@@ -572,5 +717,6 @@ export const dealsRelations = relations(deals, ({ one, many }) => ({
 		fields: [deals.formationId],
 		references: [formations.id]
 	}),
-	dealCompanies: many(dealCompanies)
+	dealCompanies: many(dealCompanies),
+	formationDocuments: many(formationDocuments)
 }));

@@ -1,0 +1,7 @@
+- 2-step process UI for Séances : currently, creating a Séance in a Formation is a 2-step process but the UI doesn't hint at it. First, the user creates the event with datetime, and then the user can pick which learners are involved.
+- Remove "Créer par lot" button to merge the "Créer une séance" UI modal to allow to bulk create Séances like the other does. No need for a separate button.
+- dans documents (convention) : si modalité = Distanciel, alors lieu = visioconférence (et pas l'adresse de l'OF comme actuellement)
+- Documents pied de page : nom organisme, siret, NDA, adresse, contact
+- Création d'un deal : montant du deal en haut
+- Collapsible educators info dans l'onglet Formateurs
+- Essai 14 jours, Stripe, puis si pas d'abonnement, tout en consultatif mais rien en édition ou création (que l'administrateur, sinon les autres membres de l'équipe dont l'abonnement n'est plus actif ou désactivé ne peuvent plus rien voir)

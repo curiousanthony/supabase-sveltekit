@@ -1,6 +1,7 @@
 ---
 name: supabase-database-migration
 description: Manages Supabase + Drizzle schema changes using a schema-first workflow. Use when the task involves changing database tables/columns, adding/removing relations, generating migrations, or when the user mentions migrations, drizzle-kit, supabase db reset, or DATABASE_URL.
+disable-model-invocation: true
 ---
 
 # Supabase Database Migration (Schema-First)

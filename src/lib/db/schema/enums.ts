@@ -7,24 +7,16 @@ export const modalites = pgEnum('modalites', [
 	'E-Learning'
 ]);
 export const contactRole = pgEnum('contact_role', [
-	'PDG / Président',
-	'Directeur Général',
-	'Directeur des Ressources Humaines',
-	'Responsable RH',
-	'Responsable Formation',
-	'Directeur Commercial',
-	'Responsable Commercial',
-	'Directeur Marketing',
-	'Directeur Financier',
-	'Directeur des Opérations',
-	'Directeur Technique',
-	'Office Manager',
-	'Assistant(e) de Direction',
-	'Chef de Projet',
-	'Responsable des Achats',
-	'Consultant',
-	'Gérant',
-	'Associé',
+	'Salarié',
+	'Manager / Responsable',
+	'Cadre',
+	'Dirigeant / Gérant',
+	'RH / Formation',
+	'Commercial',
+	'Technique / IT',
+	'Opérationnel',
+	'Administratif',
+	'Indépendant / Freelance',
 	'Autre'
 ]);
 export const statutsFormation = pgEnum('statuts_formation', [
@@ -123,3 +115,5 @@ export const typeQuestionnaire = pgEnum('type_questionnaire', [
 	'Audit des besoins'
 ]);
 export const questPhase = pgEnum('quest_phase', ['conception', 'deploiement', 'evaluation']);
+export const emargementSignerType = pgEnum('emargement_signer_type', ['apprenant', 'formateur']);
+export const emargementPeriod = pgEnum('emargement_period', ['morning', 'afternoon']);

@@ -9,7 +9,7 @@ import {
 	unique,
 	index
 } from 'drizzle-orm/pg-core';
-import { modalites } from './enums';
+import { emargementPeriod, emargementSignerType, modalites } from './enums';
 import { users } from './users';
 import { formations, modules } from './formations';
 import { formateurs } from './formateurs';
@@ -65,10 +65,13 @@ export const emargements = pgTable(
 	{
 		id: uuid().defaultRandom().primaryKey().notNull(),
 		seanceId: uuid('seance_id').notNull(),
-		contactId: uuid('contact_id').notNull(),
+		signerType: emargementSignerType('signer_type').default('apprenant').notNull(),
+		contactId: uuid('contact_id'),
+		formateurId: uuid('formateur_id'),
 		signedAt: timestamp('signed_at', { withTimezone: true, mode: 'string' }),
 		signatureImageUrl: text('signature_image_url'),
 		signatureToken: uuid('signature_token').defaultRandom().notNull(),
+		period: emargementPeriod('period').notNull().default('morning'),
 		signerIp: text('signer_ip'),
 		signerUserAgent: text('signer_user_agent'),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
@@ -90,7 +93,22 @@ export const emargements = pgTable(
 		})
 			.onUpdate('cascade')
 			.onDelete('cascade'),
-		unique('unique_emargement_seance_contact').on(table.seanceId, table.contactId),
+		foreignKey({
+			columns: [table.formateurId],
+			foreignColumns: [formateurs.id],
+			name: 'emargements_formateur_id_fkey'
+		})
+			.onUpdate('cascade')
+			.onDelete('cascade'),
+		check(
+			'emargements_signer_consistency_chk',
+			sql`(
+				(${table.signerType} = 'apprenant' AND ${table.contactId} IS NOT NULL AND ${table.formateurId} IS NULL) OR
+				(${table.signerType} = 'formateur' AND ${table.formateurId} IS NOT NULL AND ${table.contactId} IS NULL)
+			)`
+		),
+		unique('unique_emargement_seance_contact_period').on(table.seanceId, table.contactId, table.period),
+		unique('unique_emargement_seance_formateur_period').on(table.seanceId, table.formateurId, table.period),
 		unique('unique_emargement_signature_token').on(table.signatureToken),
 		index('emargements_signature_token_idx').on(table.signatureToken)
 	]

@@ -1,9 +1,10 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/db';
-import { formations, formationFormateurs, formateurs, seances } from '$lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { formations, formationFormateurs, formateurs, seances, thematiques, sousthematiques } from '$lib/db/schema';
+import { and, asc, eq } from 'drizzle-orm';
 import { getUserWorkspace } from '$lib/auth';
-import { logAuditEvent } from '$lib/services/audit-log';
+import { logAuditEvent, authenticatedUserId } from '$lib/services/audit-log';
+import { createFormateurForWorkspace } from '$lib/services/formateur-create';
 import type { Actions, PageServerLoad } from './$types';
 
 async function verifyFormationOwnership(params: { id: string }, workspaceId: string) {
@@ -16,24 +17,28 @@ async function verifyFormationOwnership(params: { id: string }, workspaceId: str
 
 export const load = (async ({ locals }) => {
 	const workspaceId = await getUserWorkspace(locals);
-	if (!workspaceId) return { allFormateurs: [] };
+	if (!workspaceId) return { allFormateurs: [], allThematiques: [], allSousthematiques: [] };
 
-	const allFormateurs = await db.query.formateurs.findMany({
-		where: eq(formateurs.workspaceId, workspaceId),
-		with: {
-			user: {
-				columns: {
-					id: true,
-					email: true,
-					firstName: true,
-					lastName: true,
-					avatarUrl: true
+	const [allFormateurs, allThematiques, allSousthematiques] = await Promise.all([
+		db.query.formateurs.findMany({
+			where: eq(formateurs.workspaceId, workspaceId),
+			with: {
+				user: {
+					columns: {
+						id: true,
+						email: true,
+						firstName: true,
+						lastName: true,
+						avatarUrl: true
+					}
 				}
 			}
-		}
-	});
+		}),
+		db.query.thematiques.findMany({ orderBy: [asc(thematiques.name)] }),
+		db.query.sousthematiques.findMany({ orderBy: [asc(sousthematiques.name)] })
+	]);
 
-	return { allFormateurs };
+	return { allFormateurs, allThematiques, allSousthematiques };
 }) satisfies PageServerLoad;
 
 export const actions: Actions = {
@@ -67,7 +72,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_added',
 			entityType: 'formation_formateur',
 			entityId: rawFormateurId
@@ -108,7 +113,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_removed',
 			entityType: 'formation_formateur',
 			entityId: rawFormateurId
@@ -160,7 +165,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_costs_updated',
 			entityType: 'formation_formateur',
 			entityId: formateurId,
@@ -218,7 +223,7 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_assigned_to_session',
 			entityType: 'seance',
 			entityId: seanceId,
@@ -251,12 +256,67 @@ export const actions: Actions = {
 
 		await logAuditEvent({
 			formationId: params.id,
-			userId: user.id,
+			userId: authenticatedUserId(user.id),
 			actionType: 'formateur_removed_from_session',
 			entityType: 'seance',
 			entityId: seanceId
 		});
 
 		return { success: true };
+	},
+
+	createFormateurAndAssign: async ({ request, locals, params }) => {
+		const workspaceId = await getUserWorkspace(locals);
+		if (!workspaceId) return fail(401, { message: 'Non autorisé' });
+		const { session, user } = await locals.safeGetSession();
+		if (!session || !user) return fail(401, { message: 'Non autorisé' });
+
+		if (!(await verifyFormationOwnership(params, workspaceId))) {
+			return fail(403, { message: 'Accès refusé' });
+		}
+
+		const formData = await request.formData();
+		const firstName = (formData.get('firstName') as string)?.trim() || null;
+		const lastName = (formData.get('lastName') as string)?.trim() || null;
+		const email = (formData.get('email') as string)?.trim() || null;
+		const ville = (formData.get('ville') as string)?.trim() || null;
+		const departement = (formData.get('departement') as string)?.trim() || null;
+		const thematiqueIds = formData.getAll('thematiqueIds[]').map(String).filter(Boolean);
+		const sousthematiqueIds = formData.getAll('sousthematiqueIds[]').map(String).filter(Boolean);
+
+		if (!firstName && !lastName) {
+			return fail(400, { message: 'Le prénom ou le nom est requis' });
+		}
+
+		try {
+			const { formateurId } = await createFormateurForWorkspace({
+				workspaceId,
+				firstName,
+				lastName,
+				email,
+				ville,
+				departement,
+				thematiqueIds,
+				sousthematiqueIds
+			});
+
+			await db
+				.insert(formationFormateurs)
+				.values({ formationId: params.id, formateurId })
+				.onConflictDoNothing();
+
+			await logAuditEvent({
+				formationId: params.id,
+				userId: authenticatedUserId(user.id),
+				actionType: 'formateur_created_and_assigned',
+				entityType: 'formation_formateur',
+				entityId: formateurId
+			});
+
+			return { success: true };
+		} catch (e) {
+			console.error('[createFormateurAndAssign]', e instanceof Error ? e.message : String(e));
+			return fail(500, { message: 'Impossible de créer le formateur. Veuillez réessayer.' });
+		}
 	}
 };

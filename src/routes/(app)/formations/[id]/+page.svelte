@@ -5,15 +5,7 @@
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
-	import { cn } from '$lib/utils';
-	import {
-		getQuestTemplate,
-		getNextQuest,
-		PHASE_LABELS,
-		type QuestPhase
-	} from '$lib/formation-quests';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import CheckCircle from '@lucide/svelte/icons/check-circle';
 	import Clock from '@lucide/svelte/icons/clock';
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import Calendar from '@lucide/svelte/icons/calendar';
@@ -28,18 +20,6 @@
 
 	const formation = $derived(data?.formation);
 	const formationId = $derived(formation?.id ?? '');
-
-	const actions = $derived(formation?.actions ?? []);
-	const nextQuest = $derived(getNextQuest(actions));
-	const questTemplate = $derived(
-		nextQuest?.questKey ? getQuestTemplate(nextQuest.questKey) : undefined
-	);
-	const nextQuestTitle = $derived(
-		(nextQuest as { title?: string } | undefined)?.title ?? questTemplate?.title ?? 'Action'
-	);
-	const allComplete = $derived(
-		actions.length > 0 && actions.every((a) => a.status === 'Terminé')
-	);
 
 	const apprenants = $derived(
 		(formation?.formationApprenants ?? []).map((fa) => ({
@@ -147,101 +127,13 @@
 			.toUpperCase();
 	}
 
-	function getPhaseLabel(phase: QuestPhase | null | undefined): string {
-		if (!phase) return 'Conception';
-		return PHASE_LABELS[phase] ?? phase;
-	}
-
 	function goTo(segment: string) {
 		goto(`/formations/${formationId}/${segment}`);
 	}
 </script>
 
 <div class="flex flex-col gap-4">
-	<!-- 1. Next Action Hero Card (full width) -->
-	<Card.Root
-		class={cn(
-			'overflow-hidden',
-			allComplete
-				? 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30'
-				: 'border-primary/30 bg-primary/5'
-		)}
-	>
-		<Card.Content class="py-0">
-			{#if allComplete}
-				<div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
-					<CheckCircle
-						class="size-12 shrink-0 text-green-600 dark:text-green-400"
-						aria-hidden="true"
-					/>
-					<div>
-						<h2 class="text-lg font-semibold text-foreground">
-							Toutes les actions sont terminées
-						</h2>
-						<p class="text-sm text-muted-foreground">
-							La formation est à jour. Consultez les autres onglets pour les détails.
-						</p>
-					</div>
-					<Button
-						variant="outline"
-						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('actions')}
-					>
-						Voir le suivi
-					</Button>
-				</div>
-			{:else if nextQuest}
-				<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-					<div class="min-w-0 flex-1 space-y-2">
-						<div class="flex flex-wrap items-center gap-2">
-							<Badge variant="secondary" class="text-xs">
-								{getPhaseLabel(nextQuest.phase)}
-							</Badge>
-							<span class="text-sm text-muted-foreground">Prochaine action</span>
-						</div>
-						<h2 class="text-lg font-semibold text-foreground">
-							{nextQuestTitle}
-						</h2>
-						{#if questTemplate?.description}
-							<p class="text-sm text-muted-foreground line-clamp-2">
-								{questTemplate.description}
-							</p>
-						{/if}
-					</div>
-					<Button
-						class="shrink-0 cursor-pointer"
-						href="/formations/{formationId}/actions{nextQuest.questKey ? `?quest=${nextQuest.questKey}` : ''}"
-					>
-						Faire
-						<ChevronRight class="ml-1 size-4" />
-					</Button>
-				</div>
-			{:else}
-				<div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
-					<p class="text-sm text-muted-foreground">
-						Aucune action définie.
-						<button
-							type="button"
-							class="text-primary underline-offset-4 hover:underline cursor-pointer ml-1"
-							onclick={() => goTo('actions')}
-						>
-							Configurer les actions
-						</button>
-					</p>
-					<Button
-						variant="outline"
-						size="sm"
-						class="shrink-0 cursor-pointer"
-						onclick={() => goTo('actions')}
-					>
-						Configurer
-					</Button>
-				</div>
-			{/if}
-		</Card.Content>
-	</Card.Root>
-
-	<!-- 2 & 3. Key Info | Participants -->
+	<!-- Key Info | Participants -->
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 		<!-- Key Info Card -->
 		<Card.Root>
@@ -350,7 +242,7 @@
 		</Card.Root>
 	</div>
 
-	<!-- 4 & 5. Upcoming Sessions | Financial Summary -->
+	<!-- Upcoming Sessions | Financial Summary -->
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 		<!-- Upcoming Sessions Card -->
 		<Card.Root>

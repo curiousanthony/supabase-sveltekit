@@ -1,6 +1,7 @@
 ---
 name: svelte5-stack
 description: Enforces the SvelteKit 5 + shadcn-svelte + Tailwind + Drizzle + Supabase stack conventions. Use when adding or editing Svelte components/routes, UI, forms, or server logic in this project.
+disable-model-invocation: true
 ---
 
 # Svelte 5 Application Stack
@@ -63,6 +64,12 @@ Refer to `docs/svelte5-runes.md` for examples and details when needed.
   - Avoid `any`; prefer explicit types and generics.
   - Define interfaces/types for domain objects used across the app.
 - Keep route modules and components strongly typed, especially around form data, API responses, and DB models.
+
+### 5. Left status accents (Tailwind borders only)
+
+- Implement colored left accents with **Tailwind only**: `border-l-*`, `border-l-[Npx]`, etc. **Do not** use `::before` / `::after` for the stripe.
+- **`border-l` on the same element as `rounded-*`**: the stroke follows the border-radius (curved at the corners). **`overflow-hidden` on that same element does not fix that** — it only clips descendants.
+- To get **rounded outer corners** and a **geometrically straight** `border-l` (no pseudo-elements): use an **outer** wrapper `rounded-lg overflow-hidden bg-card` and put **`border-l-*` on an inner** block with **no** border-radius. The parent clips the inner; the left border is a true vertical line on the inner box (the strip’s ends are clipped along the rounded mask at the corners — different from the bent `border-l` path on one rounded element).
 
 ---
 
